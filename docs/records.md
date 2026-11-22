@@ -67,6 +67,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `csv-import-stays-web` | Kind: build | [`docs/decisions/csv-import-stays-web.md`](../docs/decisions/csv-import-stays-web.md) |
 | `duo-card-in-hand` | Kind: build | [`docs/decisions/duo-card-in-hand.md`](../docs/decisions/duo-card-in-hand.md) |
 | `duo-ui-runs-on-pr-label` | The workflow `.github/workflows/duo-ui.yml` runs the UI tests that need a simulator the milestone run does not cover. | [`docs/decisions/duo-ui-runs-on-pr-label.md`](../docs/decisions/duo-ui-runs-on-pr-label.md) |
+| `head-panels-carry-paper-fill` | **Status:** ruled. | [`docs/decisions/head-panels-carry-paper-fill.md`](../docs/decisions/head-panels-carry-paper-fill.md) |
 | `ledger-remote-needed-for-seed` | Kind: build | [`docs/decisions/ledger-remote-needed-for-seed.md`](../docs/decisions/ledger-remote-needed-for-seed.md) |
 | `live-verification` | This file draws the line between proven and unproven. | [`docs/decisions/live-verification.md`](../docs/decisions/live-verification.md) |
 | `masthead-tallies-unequal-thirds` | The tallies are three ruled cells: cards, packages, and value. | [`docs/decisions/masthead-tallies-unequal-thirds.md`](../docs/decisions/masthead-tallies-unequal-thirds.md) |
@@ -95,7 +96,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `remote-is-transport-not-storage` | `window.remote` is transport, not storage. | [`docs/decisions/remote-is-transport-not-storage.md`](../docs/decisions/remote-is-transport-not-storage.md) |
 | `ruled-head-masthead-vocabulary` | Kind: build | [`docs/decisions/ruled-head-masthead-vocabulary.md`](../docs/decisions/ruled-head-masthead-vocabulary.md) |
 | `ruled-head-one-advisory-entrance` | Kind: build | [`docs/decisions/ruled-head-one-advisory-entrance.md`](../docs/decisions/ruled-head-one-advisory-entrance.md) |
-| `ruled-head-panels-carry-no-fill` | **Status:** orchestrator default, 2026-10-11, not built. | [`docs/decisions/ruled-head-panels-carry-no-fill.md`](../docs/decisions/ruled-head-panels-carry-no-fill.md) |
 | `rules-run-in-javascriptcore` | **Status:** ruled. | [`docs/decisions/rules-run-in-javascriptcore.md`](../docs/decisions/rules-run-in-javascriptcore.md) |
 | `screens-checked-headless-in-ci` | Each view (Ledger tab, Orphaned, Tally, Packages) is checked in a headless browser at 375px and 760px. | [`docs/decisions/screens-checked-headless-in-ci.md`](../docs/decisions/screens-checked-headless-in-ci.md) |
 | `seed-load-guards` | Kind: build | [`docs/decisions/seed-load-guards.md`](../docs/decisions/seed-load-guards.md) |
@@ -105,6 +105,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `three-views-share-one-switch` | The bottom bar replaces the top view switch at every width (`phone-nav-is-bottom-bar`). | [`docs/decisions/three-views-share-one-switch.md`](../docs/decisions/three-views-share-one-switch.md) |
 | `typography-cochin-and-mono` | Cochin sets everything that is not a number. | [`docs/decisions/typography-cochin-and-mono.md`](../docs/decisions/typography-cochin-and-mono.md) |
 | `undo-removes-only-its-delta` | Undo keeps the deltas of an assignment, not a snapshot of the ledger. | [`docs/decisions/undo-removes-only-its-delta.md`](../docs/decisions/undo-removes-only-its-delta.md) |
+| `ux-control-earns-place` | Kind: build | [`docs/decisions/ux-control-earns-place.md`](../docs/decisions/ux-control-earns-place.md) |
 | `ux-house-rules-govern` | The owner ruled on 2026-10-11: "apply the latest from claude settings' ux guidelines, along with /design-review /ci-hygiene /fresh-prose". | [`docs/decisions/ux-house-rules-govern.md`](../docs/decisions/ux-house-rules-govern.md) |
 | `worker-keeps-snapshots` | **Status:** ruled. | [`docs/decisions/worker-keeps-snapshots.md`](../docs/decisions/worker-keeps-snapshots.md) |
 
@@ -265,22 +266,21 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `claim-17a-ci-red-unexplained` | `check:screens` claim 17a failed twice on CI, on runs 39892195068 and 39900120189 (2026-10-23). | [`docs/debts/claim-17a-ci-red-unexplained.md`](../docs/debts/claim-17a-ci-red-unexplained.md) |
 | `claim-9-fractional-box-edges` | A 43.5px box reads as 44px, so claim 9 can pass a box just under 44px. | [`docs/debts/claim-9-fractional-box-edges.md`](../docs/debts/claim-9-fractional-box-edges.md) |
 | `cloudflare-access-login-untested` | Whether the backup sign-in survives in an iOS home-screen app has not been run on a device. | [`docs/debts/cloudflare-access-login-untested.md`](../docs/debts/cloudflare-access-login-untested.md) |
-| `composer-keys-cover-tab-bar` | `OrphanedUITests.testComposerDraftSurvivesAViewChange` stays red on the iPhone 18 Pro. | [`docs/debts/composer-keys-cover-tab-bar.md`](../docs/debts/composer-keys-cover-tab-bar.md) |
 | `discard-keeps-draft` | `discardEnvelope` in `src/app.jsx` never clears the draft. | [`docs/debts/discard-keeps-draft.md`](../docs/debts/discard-keeps-draft.md) |
 | `duo-bar-dynamic-type-clips` | The open Duo's tab bar is a fixed 64 pt pill, while its labels scale with Dynamic Type. | [`docs/debts/duo-bar-dynamic-type-clips.md`](../docs/debts/duo-bar-dynamic-type-clips.md) |
 | `duo-checkin-error-under-bar` | On the open Duo, the Packages `checkin-error` overlay sits at the tab's bottom edge. | [`docs/debts/duo-checkin-error-under-bar.md`](../docs/debts/duo-checkin-error-under-bar.md) |
 | `duo-fold-change-unpinned` | The shell UI tests launch MANIFEST in one pose and check the tab bar. | [`docs/debts/duo-fold-change-unpinned.md`](../docs/debts/duo-fold-change-unpinned.md) |
 | `duo-hand-first-case-timeout` | In the `duo-ui` CI job, a 5 s `XCTNSPredicateExpectation` wait in `DuoHandUITests` can time out even though the label it waits for is already right. | [`docs/debts/duo-hand-first-case-timeout.md`](../docs/debts/duo-hand-first-case-timeout.md) |
-| `duo-hand-mockup-gaps` | Poses 1, 2, 3 and 5 of PR 144, the Duo round 2 design pull request, show eight parts that the build lacks: | [`docs/debts/duo-hand-mockup-gaps.md`](../docs/debts/duo-hand-mockup-gaps.md) |
+| `duo-hand-mockup-gaps` | Poses 1, 2, 3 and 5 of the Duo round 2 design, archived at `origin/archive/design/duo-round2` (draft PR 144, the Duo round 2 design pull request, before the archive), show eight parts that the build lacks: | [`docs/debts/duo-hand-mockup-gaps.md`](../docs/debts/duo-hand-mockup-gaps.md) |
 | `duo-keyboard-gap-unmeasured` | On the open Duo, every tab reserves the custom tab bar's height as a bottom scroll margin. | [`docs/debts/duo-keyboard-gap-unmeasured.md`](../docs/debts/duo-keyboard-gap-unmeasured.md) |
 | `duo-keys-minimize-pref` | The Duo keys-up tests in DuoHandUITests wait for the system keys and read their frame. | [`docs/debts/duo-keys-minimize-pref.md`](../docs/debts/duo-keys-minimize-pref.md) |
 | `duo-left-page-dead-margin` | On the open Duo, DuoSystemBar reserves the custom bar's height as a bottom scroll margin in every tab. | [`docs/debts/duo-left-page-dead-margin.md`](../docs/debts/duo-left-page-dead-margin.md) |
+| `duo-post-bar-unmeasured-s-m` | On Card in Hand on the open Duo, the pinned Post bar is 53 pt (owner item 103 b, 2026-11-19 19:26 CST; decision `duo-card-in-hand`): a 1 pt hairline, 4 pt, the 44 pt Post button, 4 pt. | [`docs/debts/duo-post-bar-unmeasured-s-m.md`](../docs/debts/duo-post-bar-unmeasured-s-m.md) |
 | `duo-stacked-poses-unbuilt` | Ruled item 28 of `duo-card-in-hand` sets the stacked poses, laptop and held tall. | [`docs/debts/duo-stacked-poses-unbuilt.md`](../docs/debts/duo-stacked-poses-unbuilt.md) |
 | `duo-tab-items-twice` | RootView names each tab's title, symbol and badge twice: once for the system tab bar and once for the Duo's custom bar. | [`docs/debts/duo-tab-items-twice.md`](../docs/debts/duo-tab-items-twice.md) |
 | `failed-photo-download-no-retry` | When a merge's photo download fails, the id stays in the ledger and the tile stays blank. | [`docs/debts/failed-photo-download-no-retry.md`](../docs/debts/failed-photo-download-no-retry.md) |
 | `half-open-socket-has-no-ping` | A socket that stays open and hears nothing gets no ping. | [`docs/debts/half-open-socket-has-no-ping.md`](../docs/debts/half-open-socket-has-no-ping.md) |
 | `hand-open-under-bar-at-l` | On the open Duo, Packages shows the `hand-open` control near the top of the right page. | [`docs/debts/hand-open-under-bar-at-l.md`](../docs/debts/hand-open-under-bar-at-l.md) |
-| `hand-post-top-scroll-unpinned` | On Card in Hand on the open Duo, when the Post offer shows, the answer page scrolls to its top (`HandScreen.swift`, the `onChange` on the offer). | [`docs/debts/hand-post-top-scroll-unpinned.md`](../docs/debts/hand-post-top-scroll-unpinned.md) |
 | `hand-stale-checkin-error` | On Card in Hand, a failed line check-in shows `hand-checkin-error` on the envelope page. | [`docs/debts/hand-stale-checkin-error.md`](../docs/debts/hand-stale-checkin-error.md) |
 | `hand-tap-label-unpinned` | On Card in Hand on the open Duo, every match row pads 10 pt, so a tap adds the accent bar in the gutter and the name does not move. | [`docs/debts/hand-tap-label-unpinned.md`](../docs/debts/hand-tap-label-unpinned.md) |
 | `header-gestures-unmeasured` | No device ran a phone long-press on the package header. | [`docs/debts/header-gestures-unmeasured.md`](../docs/debts/header-gestures-unmeasured.md) |
@@ -342,7 +342,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `orders-job-unbuilt` | Orders come from a browser extension. | [`docs/debts/orders-job-unbuilt.md`](../docs/debts/orders-job-unbuilt.md) |
 | `orphaned-composer-contrast` | `testAccessibilityAuditOrphanedComposerReady` (the ready composer's contrast audit) failed "Contrast failed" on 2 of 2 tries in duo-ui run 42653870499, job pro-ui-a, on main `9bafcad` plus one Makefile comment line (2026-11-09). | [`docs/debts/orphaned-composer-contrast.md`](../docs/debts/orphaned-composer-contrast.md) |
 | `orphaned-reach-unpinned` | No test pins that Re-import, Backup and Reset must stay reachable from Orphaned, and it is unverified. | [`docs/debts/orphaned-reach-unpinned.md`](../docs/debts/orphaned-reach-unpinned.md) |
-| `panel-paper-fill-unbuilt` | Overlay panels carry no `paper` fill: `panelWrap` in `src/app.jsx` sets padding and a top border, and no background. | [`docs/debts/panel-paper-fill-unbuilt.md`](../docs/debts/panel-paper-fill-unbuilt.md) |
 | `panels-overlay-unbuilt` | Today a panel takes layout space and pushes the list down. | [`docs/debts/panels-overlay-unbuilt.md`](../docs/debts/panels-overlay-unbuilt.md) |
 | `photo-put-unrun-on-github` | `pushPhoto` and `pullPhoto` on `window.remote` (`src/entry.jsx`) have never run against real GitHub. | [`docs/debts/photo-put-unrun-on-github.md`](../docs/debts/photo-put-unrun-on-github.md) |
 | `photoget-throw-counts-as-kill` | In `test/photoget.test.mjs`, `runCase` turns a throw into a red case, and a red case counts as a mutant kill. | [`docs/debts/photoget-throw-counts-as-kill.md`](../docs/debts/photoget-throw-counts-as-kill.md) |
@@ -362,6 +361,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `stamped-toggle-clears-error` | On Packages, a failed line check-in shows its error until a later write lands. | [`docs/debts/stamped-toggle-clears-error.md`](../docs/debts/stamped-toggle-clears-error.md) |
 | `suite-flakes-under-load` | Case 49.C4 in `test/app.test.mjs` reads "Reset clears receivedAt, and the debounce does not write it back". | [`docs/debts/suite-flakes-under-load.md`](../docs/debts/suite-flakes-under-load.md) |
 | `suite-hang-cause-unmeasured` | The cause of the 13-minute hang is unmeasured, and so are the exit codes of the UTC and machine-zone runs. | [`docs/debts/suite-hang-cause-unmeasured.md`](../docs/debts/suite-hang-cause-unmeasured.md) |
+| `suite-size-placeholder-ungraded` | `npm run check:docs` grades one claim in `measurements/`: a numeric assertion count that disagrees with the suite (`check-docs.mjs`, lines 190 to 213). | [`docs/debts/suite-size-placeholder-ungraded.md`](../docs/debts/suite-size-placeholder-ungraded.md) |
 | `sweep-settle-masks-30-13-stall` | The `SWEEP_WAIT` settle after 19.6 hides a stall at 30.13, and it does not explain it. | [`docs/debts/sweep-settle-masks-30-13-stall.md`](../docs/debts/sweep-settle-masks-30-13-stall.md) |
 | `swift-stack-spacing-unset` | Rule `ux-swift-same-intent` (claude-settings, Swift screens space like the web) asks two things. | [`docs/debts/swift-stack-spacing-unset.md`](../docs/debts/swift-stack-spacing-unset.md) |
 | `sync-latency-after-fix-unmeasured` | No run of the probe covers lane web/sync-latency. | [`docs/debts/sync-latency-after-fix-unmeasured.md`](../docs/debts/sync-latency-after-fix-unmeasured.md) |

@@ -1,0 +1,775 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mail day flow</title>
+<style>
+/* Colour by role. Light set, then the dark set. Values are this designer's own (house tokens give none). */
+:root {
+  color-scheme: light dark;
+  --surface: #EDF0F4;
+  --raised: #FFFFFF;
+  --sunk: #E1E6ED;
+  --text: #18212C;
+  --muted: #536070;
+  --edge: #C9D1DC;
+  --accent: #2A55C9;
+  --on-accent: #FFFFFF;
+  --done: #1B714D;
+  --done-soft: #DCEFE5;
+  --aside: #8F5304;
+  --aside-soft: #F6E7CF;
+  --airmail-red: #C8343A;
+  --airmail-blue: #2A55C9;
+  --scrim: rgba(16, 22, 31, 0.32);
+  --hinge: #2A2F37;
+  --bezel: #20252C;
+
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px; --space-16: 64px;
+  --radius: 8px;
+  --sys: -apple-system, system-ui, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Mockup stand-ins for the safe areas a desktop browser reports as 0. Designer's own values. */
+  --mock-sat: 44px;
+  --mock-sab: 20px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface: #10161F; --raised: #19212D; --sunk: #0A0F16; --text: #E5EAF1; --muted: #9BA7B7;
+    --edge: #2C3645; --accent: #8AA9FF; --on-accent: #0C1426; --done: #62C997; --done-soft: #16342A;
+    --aside: #EFB45E; --aside-soft: #3A2B14; --airmail-red: #F0797E; --airmail-blue: #8AA9FF;
+    --scrim: rgba(0, 0, 0, 0.5); --hinge: #000000; --bezel: #000000;
+  }
+}
+:root[data-theme="dark"] {
+  --surface: #10161F; --raised: #19212D; --sunk: #0A0F16; --text: #E5EAF1; --muted: #9BA7B7;
+  --edge: #2C3645; --accent: #8AA9FF; --on-accent: #0C1426; --done: #62C997; --done-soft: #16342A;
+  --aside: #EFB45E; --aside-soft: #3A2B14; --airmail-red: #F0797E; --airmail-blue: #8AA9FF;
+  --scrim: rgba(0, 0, 0, 0.5); --hinge: #000000; --bezel: #000000;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--sunk); color: var(--text); font-family: var(--sys); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- Page chrome (not the app) ---------- */
+.sample { position: sticky; top: 0; z-index: 10; background: var(--aside-soft); color: var(--text);
+  border-bottom: 2px dashed var(--aside); padding: var(--space-2) var(--space-4); font-size: 0.9rem; }
+.chrome { padding: var(--space-6) var(--space-4); display: flex; flex-direction: column; gap: var(--space-8); }
+.intro { display: flex; flex-direction: column; gap: var(--space-2); max-inline-size: 70ch; }
+.intro h1 { margin: 0; font-size: 1.6rem; }
+.intro p { margin: 0; color: var(--muted); line-height: 1.45; }
+.kind { font-weight: 600; color: var(--text); }
+.bar { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; }
+.seg { display: flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; }
+.seg > span { color: var(--muted); font-size: 0.85rem; padding-inline-end: var(--space-1); }
+.chip { min-height: 36px; padding: var(--space-1) var(--space-3); border: 1px solid var(--edge); border-radius: var(--radius);
+  background: var(--raised); font-size: 0.85rem; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.concept { display: flex; flex-direction: column; gap: var(--space-4); }
+.concept[hidden] { display: none; }
+.concept-head { display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
+.concept-head h2 { margin: 0; font-size: 1.35rem; }
+.concept-head p { margin: 0; color: var(--muted); max-inline-size: 70ch; line-height: 1.45; }
+.newtag { border: 2px dashed var(--accent); color: var(--accent); border-radius: var(--radius); padding: var(--space-1) var(--space-2); font-size: 0.8rem; font-weight: 600; }
+.tools { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.tools output { color: var(--done); font-size: 0.85rem; }
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-8); overflow-x: auto; max-inline-size: 100%; padding-block: var(--space-2) var(--space-4); align-items: flex-start; }
+figure { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); flex: none; }
+figcaption { font-size: 0.8rem; color: var(--muted); }
+.restore[hidden] { display: none; }
+
+/* ---------- Device frames ---------- */
+.dev { position: relative; overflow: hidden; background: var(--surface); color: var(--text);
+  border: 10px solid var(--bezel); border-radius: 28px; flex: none; font-family: var(--sys);
+  --t-lt: 34px; --l-lt: 41px; --t-t1: 28px; --l-t1: 34px; --t-t2: 22px; --l-t2: 28px; --t-t3: 20px; --l-t3: 25px;
+  --t-hd: 17px; --l-hd: 22px; --t-bd: 17px; --l-bd: 22px; --t-co: 16px; --l-co: 21px; --t-sb: 15px; --l-sb: 20px;
+  --t-ft: 13px; --l-ft: 18px; --t-c1: 12px; --l-c1: 16px; --t-c2: 11px; --l-c2: 13px;
+  --t-num: 72px; --l-num: 76px;
+}
+.dev.ax5 {
+  --t-lt: 60px; --l-lt: 70px; --t-t1: 58px; --l-t1: 68px; --t-t2: 56px; --l-t2: 66px; --t-t3: 55px; --l-t3: 65px;
+  --t-hd: 53px; --l-hd: 62px; --t-bd: 53px; --l-bd: 62px; --t-co: 51px; --l-co: 60px; --t-sb: 49px; --l-sb: 58px;
+  --t-ft: 44px; --l-ft: 52px; --t-c1: 43px; --l-c1: 51px; --t-c2: 40px; --l-c2: 48px;
+  --t-num: 120px; --l-num: 124px;
+}
+.dev[data-device="iphone-duo-folded"] { width: calc(466px + 20px); height: calc(678px + 20px); }
+.dev[data-device="iphone-duo-unfolded"] { width: calc(951px + 20px); height: calc(669px + 20px); display: grid; grid-template-columns: 455.5px 40px 455.5px; }
+.dev[data-device="iphone-regular"] { width: calc(440px + 20px); height: calc(956px + 20px); border-radius: 48px; }
+.hinge { background: var(--hinge); }
+.page { position: relative; overflow: hidden; height: 100%; min-width: 0; }
+
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column;
+  padding-top: max(env(safe-area-inset-top), var(--mock-sat));
+  padding-bottom: max(env(safe-area-inset-bottom), var(--mock-sab));
+  padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+.status { position: absolute; top: 0; left: 0; right: 0; height: var(--mock-sat); display: flex; align-items: center;
+  justify-content: space-between; padding-inline: var(--space-6); font: 600 15px/20px var(--sys); pointer-events: none; }
+.status i { display: inline-block; width: 24px; height: 11px; border: 1.5px solid currentColor; border-radius: 3px; }
+.homebar { position: absolute; bottom: 6px; left: 50%; translate: -50% 0; width: 134px; height: 5px; border-radius: 3px; background: var(--text); opacity: .8; pointer-events: none; }
+.scroll { flex: 1; overflow-y: auto; overflow-x: hidden; padding-inline: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); padding-bottom: var(--space-4); }
+.foot { padding: var(--space-3) var(--space-4) var(--space-2); display: flex; flex-direction: column; gap: var(--space-2); }
+
+.lt { font: 700 var(--t-lt)/var(--l-lt) var(--sys); margin: 0; letter-spacing: .01em; }
+.t2 { font: 700 var(--t-t2)/var(--l-t2) var(--sys); margin: 0; }
+.t3 { font: 600 var(--t-t3)/var(--l-t3) var(--sys); margin: 0; }
+.hd { font: 600 var(--t-hd)/var(--l-hd) var(--sys); }
+.bd { font: 400 var(--t-bd)/var(--l-bd) var(--sys); margin: 0; }
+.co { font: 400 var(--t-co)/var(--l-co) var(--sys); }
+.sb { font: 400 var(--t-sb)/var(--l-sb) var(--sys); margin: 0; }
+.ft { font: 400 var(--t-ft)/var(--l-ft) var(--sys); margin: 0; }
+.c1 { font: 400 var(--t-c1)/var(--l-c1) var(--sys); }
+.muted { color: var(--muted); }
+.num { font: 700 var(--t-num)/var(--l-num) var(--sys); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+
+.btn { min-height: 50px; min-width: 44px; border-radius: var(--radius); padding: var(--space-3) var(--space-4);
+  font: 600 var(--t-hd)/var(--l-hd) var(--sys); display: flex; align-items: center; justify-content: center; gap: var(--space-2); text-align: center; }
+.btn.primary { background: var(--accent); color: var(--on-accent); }
+.btn.asideb { background: var(--aside); color: var(--surface); }
+.btn.plain { color: var(--accent); }
+.btn.quiet { background: var(--raised); border: 1px solid var(--edge); }
+.btn svg { flex: none; }
+
+.list { display: flex; flex-direction: column; background: var(--raised); border-radius: var(--radius); overflow: hidden; }
+.row { display: flex; gap: var(--space-3); align-items: center; min-height: 52px; padding: var(--space-2) var(--space-4); width: 100%; text-align: left; border-top: 1px solid var(--edge); }
+.list > .row:first-child { border-top: 0; }
+.row .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.row .end { display: flex; align-items: center; gap: var(--space-2); color: var(--muted); flex: none; }
+.row.sel { background: var(--sunk); }
+.row.done .name { color: var(--muted); }
+.ax5 .row { flex-wrap: wrap; }
+.ax5 .row .end { flex-basis: 100%; justify-content: flex-start; }
+
+.ico { width: 22px; height: 22px; flex: none; }
+.ax5 .ico { width: 44px; height: 44px; }
+.mark-here { color: var(--done); }
+.mark-aside { color: var(--aside); }
+.flash { color: var(--done); }
+
+/* Count stepper */
+.stepper { display: flex; align-items: center; justify-content: center; gap: var(--space-6); padding-block: var(--space-4); }
+.stepper .btn { width: 64px; height: 64px; border-radius: 32px; }
+.ax5 .stepper { flex-direction: column; gap: var(--space-2); }
+.ax5 .stepper .btn { width: 96px; height: 96px; border-radius: 48px; }
+
+/* Pile progress strip (Pile by pile) */
+.strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-2); }
+.ax5 .strip { grid-template-columns: repeat(2, 1fr); }
+.seg-pile { min-height: 52px; border-radius: var(--radius); background: var(--raised); border: 1px solid var(--edge); padding: var(--space-2); display: flex; flex-direction: column; gap: var(--space-1); align-items: flex-start; }
+.seg-pile[aria-current="true"] { border: 2px solid var(--accent); }
+.seg-pile.full { background: var(--done-soft); border-color: var(--done-soft); }
+.pips { display: flex; gap: var(--space-1); flex-wrap: wrap; }
+.pip { width: 8px; height: 8px; border-radius: 4px; border: 1.5px solid var(--muted); }
+.pip.here { background: var(--done); border-color: var(--done); }
+.pip.aside { background: var(--aside); border-color: var(--aside); }
+.ax5 .pip { width: 16px; height: 16px; border-radius: 8px; }
+
+.leftcap { display: flex; align-items: baseline; gap: var(--space-2); }
+.head { display: flex; flex-direction: column; gap: var(--space-3); padding-top: var(--space-2); }
+.head-row { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
+
+.card { background: var(--raised); border-radius: var(--radius); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.card.good { background: var(--done-soft); }
+.card.warn { background: var(--aside-soft); }
+
+/* The one bold mark: the airmail edge, shown only at Done. */
+.airmail { position: relative; padding: calc(var(--space-6) + 8px) var(--space-5) var(--space-6); border-radius: var(--radius); background: var(--raised);
+  display: flex; flex-direction: column; gap: var(--space-3); }
+.airmail::before { content: ""; position: absolute; inset: 0; border-radius: var(--radius); padding: 8px; pointer-events: none;
+  background: repeating-linear-gradient(-45deg, var(--airmail-red) 0 14px, transparent 14px 22px, var(--airmail-blue) 22px 36px, transparent 36px 44px);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+@media (forced-colors: active) { .airmail { border: 4px dashed CanvasText; } .airmail::before { display: none; } }
+.stats { display: flex; flex-direction: column; gap: var(--space-2); }
+.stat { display: flex; align-items: center; gap: var(--space-2); }
+
+/* Tab bar (Pile by pile, single-screen poses): floats above content. */
+.tabbar { margin: 0 var(--space-6) var(--space-1); background: var(--raised); border: 1px solid var(--edge); border-radius: 30px; display: grid; grid-template-columns: 1fr 1fr; padding: var(--space-1); box-shadow: 0 6px 20px rgba(0,0,0,.12); }
+.tab { min-height: 52px; border-radius: 26px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-1); color: var(--muted); font: 500 var(--t-c2)/var(--l-c2) var(--sys); position: relative; }
+.tab[aria-selected="true"] { color: var(--accent); background: var(--sunk); }
+.badge { position: absolute; top: 4px; right: calc(50% - 26px); min-width: 18px; height: 18px; border-radius: 9px; background: var(--aside); color: var(--surface); font: 600 11px/18px var(--sys); padding-inline: 4px; }
+.ax5 .tabbar { margin-inline: var(--space-2); border-radius: 20px; }
+.ax5 .tab { border-radius: 16px; min-height: 96px; }
+.ax5 .badge { font-size: 24px; line-height: 32px; height: 32px; min-width: 32px; border-radius: 16px; top: 2px; right: 8px; }
+
+/* Nav bar for a pushed screen */
+.nav { display: flex; align-items: center; min-height: 44px; padding-inline: var(--space-2); }
+.nav .btn { min-height: 44px; padding-inline: var(--space-2); }
+
+/* Letter board */
+.board { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--space-2); }
+.ax5 .board { grid-template-columns: repeat(3, 1fr); }
+.key { min-height: 60px; border-radius: var(--radius); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-1); padding: var(--space-1); }
+.key.lit { background: var(--raised); border: 1px solid var(--edge); box-shadow: 0 1px 0 var(--edge); }
+.key.lit .L { color: var(--text); }
+.key.off { color: var(--muted); opacity: .45; }
+.key.full { background: var(--done-soft); border-color: var(--done-soft); }
+.key.full .L { color: var(--done); }
+.key.q { border: 2px dashed var(--aside); background: transparent; }
+.key .L { font: 700 var(--t-t2)/var(--l-t2) var(--sys); }
+.key[aria-current="true"] { outline: 3px solid var(--accent); outline-offset: -3px; }
+.ax5 .key { min-height: 120px; }
+.ax5 .key.off { display: none; }
+.boardwrap { margin-top: auto; display: flex; flex-direction: column; gap: var(--space-2); }
+.tray { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 44px; padding: var(--space-1) var(--space-3); border-radius: var(--radius); background: var(--aside-soft); color: var(--text); }
+.tray.none { background: var(--raised); color: var(--muted); }
+.countline { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+
+/* Sheet */
+.scrim { position: absolute; inset: 0; background: var(--scrim); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 78%; background: var(--raised); border-radius: 16px 16px 0 0; display: flex; flex-direction: column;
+  box-shadow: 0 -8px 30px rgba(0,0,0,.18); padding-bottom: max(env(safe-area-inset-bottom), var(--mock-sab)); }
+.ax5 .sheet { max-height: 92%; }
+.grab { width: 36px; height: 5px; border-radius: 3px; background: var(--edge); margin: var(--space-2) auto 0; flex: none; }
+.sheet .nav { justify-content: space-between; }
+.sheet .scroll { padding-top: var(--space-2); }
+.sheet .list { background: var(--surface); }
+.inpage { display: flex; flex-direction: column; height: 100%; }
+
+.miss { background: var(--aside-soft); }
+.miss .name { text-decoration: line-through; text-decoration-thickness: 2px; }
+.tag-miss { color: var(--aside); font-weight: 600; }
+.leave { position: absolute; inset: 0; background: linear-gradient(160deg, #3b4a63, #1b2433); color: #fff; display: flex; align-items: center; justify-content: center; font: 600 17px/22px var(--sys); }
+.toast { background: var(--done-soft); color: var(--text); border-radius: var(--radius); padding: var(--space-2) var(--space-3); }
+.skel { height: 52px; border-radius: var(--radius); background: var(--raised); opacity: .7; }
+details summary { min-height: 44px; display: flex; align-items: center; color: var(--accent); cursor: pointer; }
+.hintline { display: flex; gap: var(--space-2); align-items: flex-start; }
+
+/* At the biggest text size the whole screen scrolls, so a pinned footer never hides the list. */
+.ax5 .screen, .ax5 .sheet { overflow-y: auto; }
+.ax5 .scroll { flex: none; overflow: visible; }
+.ax5 .inpage { height: auto; }
+.ax5 .tabbar { position: sticky; bottom: 0; }
+@media (max-width: 600px) { .chrome { padding-inline: var(--space-4); } }
+</style>
+</head>
+<body>
+<div class="sample" role="note"><strong>Sample.</strong> No figure on this page is real: every sender, card, count and price is made up.</div>
+
+<main class="chrome">
+  <header class="intro">
+    <h1>Mail day flow</h1>
+    <p><span class="kind">Designer kind: blind.</span> Designer mail-day-flow-blind-2. Two concepts for the whole mail day: bring the post in, sort it into piles, open each envelope, and finish with everything accounted for. Every tap works. Each concept keeps its place when you leave and come back.</p>
+    <noscript><p>The screens are drawn by the page's script. Turn on JavaScript to see and tap them.</p></noscript>
+  </header>
+
+  <div class="bar" aria-label="Mockup controls">
+    <div class="seg" role="group" aria-label="Theme"><span>Theme</span>
+      <button class="chip" data-theme-set="auto">Auto</button>
+      <button class="chip" data-theme-set="light">Light</button>
+      <button class="chip" data-theme-set="dark">Dark</button>
+    </div>
+    <div class="seg" role="group" aria-label="Jump to a state"><span>State</span>
+      <button class="chip" data-state="count">Count in</button>
+      <button class="chip" data-state="sort">Sort</button>
+      <button class="chip" data-state="work">Mid pile</button>
+      <button class="chip" data-state="envelope">Envelope open</button>
+      <button class="chip" data-state="aside">Set aside</button>
+      <button class="chip" data-state="done">Done</button>
+      <button class="chip" data-state="loading">Loading</button>
+      <button class="chip" data-state="failed">Read failed</button>
+      <button class="chip" data-state="empty">No mail expected</button>
+    </div>
+    <button class="chip restore" id="restore" hidden>Show hidden concepts</button>
+  </div>
+
+  <section class="concept" id="concept-pile" data-concept="pile" aria-labelledby="h-pile">
+    <div class="concept-head">
+      <h2 id="h-pile">Pile by pile</h2>
+      <span class="newtag">New: whole flow</span>
+      <p>A guided run in four steps: count in, sort by first letter into four piles, work one pile at a time, done. A strip of the four piles is always on screen, so the person sees how much is left. Set aside is a tab.</p>
+      <div class="tools">
+        <button class="chip" data-leave="pile">Leave and come back</button>
+        <button class="chip" data-reset="pile">Reset sample</button>
+        <button class="chip" data-hide="pile">Hide this concept</button>
+        <output data-out="pile" aria-live="polite"></output>
+      </div>
+    </div>
+    <div class="frames" data-frames="pile">
+      <figure><div class="dev" data-device="iphone-duo-folded" data-c="pile"></div><figcaption>Duo, folded, 466 &times; 678 pt</figcaption></figure>
+      <figure><div class="dev" data-device="iphone-duo-unfolded" data-c="pile"></div><figcaption>Duo, open, 951 &times; 669 pt, hinge at 455.5&ndash;495.5</figcaption></figure>
+      <figure><div class="dev" data-device="iphone-regular" data-c="pile"></div><figcaption>Large phone, 440 &times; 956 pt (assumed: no size is written)</figcaption></figure>
+      <figure><div class="dev ax5" data-device="iphone-duo-folded" data-c="pile"></div><figcaption>Duo, folded, biggest text size (AX5)</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="concept" id="concept-board" data-concept="board" aria-labelledby="h-board">
+    <div class="concept-head">
+      <h2 id="h-board">Letter board</h2>
+      <span class="newtag">New: whole flow</span>
+      <p>The bold one. The home screen is an alphabet. The letters that have mail today are lit, and the person sorts the post by those letters on the table. Each key shows a dot per envelope, and the dot fills when it is opened. No list, no tabs, no steps: the board is the pile, the progress and the record.</p>
+      <div class="tools">
+        <button class="chip" data-leave="board">Leave and come back</button>
+        <button class="chip" data-reset="board">Reset sample</button>
+        <button class="chip" data-hide="board">Hide this concept</button>
+        <output data-out="board" aria-live="polite"></output>
+      </div>
+    </div>
+    <div class="frames" data-frames="board">
+      <figure><div class="dev" data-device="iphone-duo-folded" data-c="board"></div><figcaption>Duo, folded, 466 &times; 678 pt</figcaption></figure>
+      <figure><div class="dev" data-device="iphone-duo-unfolded" data-c="board"></div><figcaption>Duo, open, 951 &times; 669 pt, hinge at 455.5&ndash;495.5</figcaption></figure>
+      <figure><div class="dev" data-device="iphone-regular" data-c="board"></div><figcaption>Large phone, 440 &times; 956 pt (assumed: no size is written)</figcaption></figure>
+      <figure><div class="dev ax5" data-device="iphone-duo-folded" data-c="board"></div><figcaption>Duo, folded, biggest text size (AX5)</figcaption></figure>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- Sample data (made up) ---------- */
+  var ENVS = [
+    { id: "aster", s: "Aster Hollow Cards", it: [["Ember Wyrm", 1, 0.42], ["Tidecaller Adept", 2, 0.18], ["Saltmarsh Lantern", 1, 1.05]] },
+    { id: "bright", s: "Brightwater Games", it: [["Gilded Heron", 1, 0.35], ["Ashen Courier", 1, 0.25]] },
+    { id: "bramble", s: "Bramble & Coin", it: [["Quiet Orchard", 4, 0.10]] },
+    { id: "cobalt", s: "Cobalt Attic", it: [["Lanternfish Swarm", 1, 0.30], ["Marrowbone Idol", 1, 0.85], ["Stormglass Sage", 1, 0.22], ["Vellum Ward", 2, 0.12]] },
+    { id: "fenwick", s: "Fenwick Card Co", it: [["Copperleaf Scout", 1, 0.15], ["Hollow Bell", 1, 0.40]] },
+    { id: "glass", s: "Glasshouse Singles", it: [["Moonlit Ferry", 1, 1.20]] },
+    { id: "harbor", s: "Harbor Lane Cards", it: [["Ember Wyrm", 1, 0.42], ["Brine Oracle", 1, 0.60], ["Thistle Envoy", 3, 0.11]] },
+    { id: "juniper", s: "Juniper Vault", it: [["Pale Archivist", 1, 0.55], ["Rookery Gate", 1, 0.28]] },
+    { id: "marrow", s: "Marrow Street Games", it: [["Sunken Choir", 2, 0.20], ["Kiln Warden", 1, 0.33]] },
+    { id: "night", s: "Nightjar Collectibles", it: [["Velvet Comet", 1, 2.10]] },
+    { id: "orchard", s: "Orchard Deck Shop", it: [["Fernway Druid", 1, 0.17], ["Rust Gremlin", 2, 0.09], ["Lattice Spire", 1, 0.48]] },
+    { id: "quill", s: "Quillfeather Cards", it: [["Inkwell Imp", 1, 0.13], ["Glass Mantis", 1, 0.36]] },
+    { id: "sable", s: "Sable Point Games", it: [["Tallow Saint", 1, 0.75]] },
+    { id: "tinder", s: "Tinder & Tome", it: [["Cinder Page", 2, 0.14], ["Owl of Ash", 1, 0.52]] },
+    { id: "wren", s: "Wrenfield Cards", it: [["Hedge Knight", 1, 0.21], ["Tin Lantern", 1, 0.19]] }
+  ];
+  var BYID = {}; ENVS.forEach(function (e) { BYID[e.id] = e; });
+  var PILES = [["A", "E"], ["F", "L"], ["M", "R"], ["S", "Z"]].map(function (r) {
+    return { name: r[0] + "–" + r[1], ids: ENVS.filter(function (e) { var c = e.s[0]; return c >= r[0] && c <= r[1]; }).map(function (e) { return e.id; }) };
+  });
+  var ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  var CONCEPTS = ["pile", "board"];
+
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function money(n) { return "$" + n.toFixed(2); }
+  function cards(e) { return e.it.reduce(function (a, i) { return a + i[1]; }, 0); }
+  function cost(e) { return e.it.reduce(function (a, i) { return a + i[1] * i[2]; }, 0); }
+  function plural(n, one, many) { return n + " " + (n === 1 ? one : many); }
+
+  /* ---------- Icons ---------- */
+  var I = {
+    check: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="var(--raised)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    tick: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    ring: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+    tray: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13l2.5-8h13L21 13v6H3z M3 13h5l1.5 2.5h5L16 13h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+    mail: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 7l8.5 6 8.5-6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>',
+    chev: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    back: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+    plus: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+    minus: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+    gap: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="3 3"/><path d="M8 12h8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>'
+  };
+
+  /* ---------- State ---------- */
+  function blank() {
+    return { phase: "count", inHand: 15, countSet: false, res: {}, unknown: 0, open: null, draft: [], pile: 0,
+      view: "day", letter: null, sheet: null, flash: null, back: false };
+  }
+  function preset(name) {
+    var st = blank();
+    if (name === "loading" || name === "failed" || name === "empty") { st.phase = name; return st; }
+    if (name === "count") return st;
+    st.inHand = 16; st.countSet = true;
+    if (name === "sort") { st.phase = "sort"; return st; }
+    st.phase = "work";
+    st.res = { aster: { r: "here", miss: [] }, bright: { r: "here", miss: [] }, bramble: { r: "here", miss: [] },
+      cobalt: { r: "aside", miss: [1] }, fenwick: { r: "here", miss: [] }, glass: { r: "here", miss: [] } };
+    st.pile = 1;
+    if (name === "envelope") { st.open = "harbor"; st.draft = []; st.letter = "H"; }
+    if (name === "aside") { st.view = "aside"; st.sheet = "aside"; }
+    if (name === "done") {
+      ENVS.forEach(function (e) { if (!st.res[e.id]) st.res[e.id] = { r: "here", miss: [] }; });
+      st.res.tinder = { r: "aside", miss: [0] };
+      st.unknown = 1; st.phase = "done"; st.pile = 3;
+    }
+    return st;
+  }
+  function handled(st) { return Object.keys(st.res).length + st.unknown; }
+  function left(st) { return Math.max(0, st.inHand - handled(st)); }
+  function asideList(st) {
+    var out = ENVS.filter(function (e) { return st.res[e.id] && st.res[e.id].r === "aside"; }).map(function (e) {
+      var m = st.res[e.id].miss.map(function (i) { return e.it[i][0]; });
+      return { id: e.id, s: e.s, why: plural(m.length, "card", "cards") + " missing: " + m.join(", ") };
+    });
+    for (var i = 0; i < st.unknown; i++) out.push({ id: null, s: "Envelope with no sender", why: "Nothing on it says who sent it" });
+    return out;
+  }
+  function pileDone(st, p) { return PILES[p].ids.every(function (id) { return st.res[id]; }); }
+  function unopenedExpected(st) { return ENVS.filter(function (e) { return !st.res[e.id]; }).length; }
+
+  var STORE = "mail-day-blind-2:";
+  var S = {};
+  function save(c) { try { localStorage.setItem(STORE + c, JSON.stringify(S[c])); } catch (e) { /* storage off: the mockup still works */ } }
+  function load(c) { try { var v = localStorage.getItem(STORE + c); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+
+  /* ---------- Actions ---------- */
+  function act(c, a, arg) {
+    var st = S[c];
+    st.flash = null; st.back = false;
+    switch (a) {
+      case "inc": st.inHand++; break;
+      case "dec": st.inHand = Math.max(handled(st), st.inHand - 1); break;
+      case "to-sort": st.countSet = true; st.phase = "sort"; break;
+      case "set-count": st.countSet = true; st.phase = "work"; break;
+      case "to-work": st.phase = "work"; break;
+      case "pile": st.pile = +arg; st.open = null; st.view = "day"; break;
+      case "open": st.open = arg; st.draft = st.res[arg] ? st.res[arg].miss.slice() : []; st.view = "day"; break;
+      case "toggle": var i = +arg, k = st.draft.indexOf(i); if (k >= 0) st.draft.splice(k, 1); else st.draft.push(i); break;
+      case "commit":
+        var id = st.open;
+        st.res[id] = st.draft.length ? { r: "aside", miss: st.draft.slice() } : { r: "here", miss: [] };
+        st.flash = { id: id, text: st.draft.length ? "Set aside" : "All here" };
+        st.open = null; st.draft = [];
+        if (st.inHand < handled(st)) st.inHand = handled(st);
+        if (c === "board" && st.letter) {
+          var rest = ENVS.filter(function (e) { return e.s[0] === st.letter && !st.res[e.id]; });
+          if (!rest.length) st.letter = null;
+        }
+        break;
+      case "back": st.open = null; st.draft = []; break;
+      case "undo-unknown": st.unknown = Math.max(0, st.unknown - 1); break;
+      case "unknown":
+        st.unknown++; if (st.inHand < handled(st)) st.inHand = handled(st);
+        st.flash = { id: "unknown", text: "Set aside" }; st.sheet = null; break;
+      case "view": st.view = arg; st.open = null; break;
+      case "letter": st.letter = arg; st.open = null; st.sheet = null; break;
+      case "sheet": st.sheet = arg; st.letter = null; st.open = null; break;
+      case "close": st.letter = null; st.sheet = null; st.open = null; st.draft = []; break;
+      case "retry": st.phase = "loading"; setTimeout(function () { if (S[c].phase === "loading") { S[c].phase = "count"; save(c); draw(c); } }, 900); break;
+      case "import": st.phase = "count"; break;
+      case "newday": S[c] = blank(); save(c); draw(c); return;
+    }
+    if (st.countSet && (st.phase === "work") && left(st) === 0 && handled(st) > 0) { st.phase = "done"; st.open = null; st.letter = null; st.sheet = null; }
+    if (st.phase === "done" && left(st) > 0) st.phase = "work";
+    save(c); draw(c);
+  }
+
+  function B(c, a, arg, inner, cls, extra) {
+    return '<button class="' + (cls || "") + '" data-c="' + c + '" data-a="' + a + '"' + (arg != null ? ' data-arg="' + esc(arg) + '"' : "") + (extra || "") + ">" + inner + "</button>";
+  }
+
+  /* ---------- Shared pieces ---------- */
+  function envelopeView(c, st, opts) {
+    var e = BYID[st.open], miss = st.draft;
+    var backLabel = c === "pile" ? "Pile " + PILES[st.pile].name : e.s[0];
+    var rows = e.it.map(function (it, i) {
+      var m = miss.indexOf(i) >= 0;
+      return B(c, "toggle", i,
+        (m ? '<span class="mark-aside">' + I.gap + "</span>" : '<span class="mark-here">' + I.check + "</span>") +
+        '<span class="grow"><span class="bd name">' + esc(it[0]) + '</span><span class="ft muted">' + (it[1] > 1 ? it[1] + " copies, " : "") + money(it[1] * it[2]) + (m ? ' <span class="tag-miss">Missing</span>' : "") + "</span></span>",
+        "row" + (m ? " miss" : ""), ' aria-pressed="' + m + '"');
+    }).join("");
+    var nav = opts.sheet
+      ? '<div class="grab"></div><div class="nav">' + B(c, "back", null, I.back + "<span>" + esc(backLabel) + "</span>", "btn plain") + "<span></span></div>"
+      : (opts.showBack ? '<div class="nav">' + B(c, "back", null, I.back + "<span>" + esc(backLabel) + "</span>", "btn plain") + "</div>" : "");
+    var primary = miss.length
+      ? B(c, "commit", null, I.tray + "<span>Set aside, " + plural(miss.length, "card", "cards") + " missing</span>", "btn asideb")
+      : B(c, "commit", null, I.tick + "<span>All here</span>", "btn primary");
+    return nav +
+      '<div class="scroll"><div class="head"><h2 class="t2">' + esc(e.s) + '</h2><p class="sb muted">' + plural(cards(e), "card", "cards") + ", " + money(cost(e)) + "</p></div>" +
+      '<p class="sb muted">Tap a card that is not in the envelope.</p>' +
+      '<div class="list">' + rows + "</div></div>" +
+      '<div class="foot">' + primary + "</div>";
+  }
+
+  function asideView(c, st, opts) {
+    var items = asideList(st);
+    var body;
+    if (!items.length) {
+      body = '<div class="card"><p class="bd">Nothing set aside. An envelope with a missing card, or with no sender, waits here.</p>' +
+        B(c, "unknown", null, "Set aside one with no sender", "btn quiet") + "</div>";
+    } else {
+      body = '<div class="list">' + items.map(function (x) {
+        var inner = '<span class="mark-aside">' + I.tray + '</span><span class="grow"><span class="bd name">' + esc(x.s) + '</span><span class="ft muted">' + esc(x.why) + "</span></span>" + (x.id ? '<span class="end">' + I.chev + "</span>" : "");
+        return x.id ? B(c, "open", x.id, inner, "row") : '<div class="row">' + inner + "</div>";
+      }).join("") + "</div>" +
+      '<p class="ft muted">These wait here for later. Open one to change what is missing.</p>';
+    }
+    return (opts.title === false ? "" : "") +
+      '<div class="scroll"><div class="head"><h1 class="lt">Set aside</h1></div>' + body + "</div>";
+  }
+
+  function stateScreen(c, st) {
+    if (st.phase === "loading") {
+      return '<div class="scroll"><div class="head"><h1 class="lt">Mail day</h1><p class="sb muted" role="status">Reading what is expected today…</p></div><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>';
+    }
+    if (st.phase === "failed") {
+      return '<div class="scroll"><div class="head"><h1 class="lt">Mail day</h1></div><div class="card warn"><p class="bd">Could not read what is expected today, so nothing here is counted yet. Your marks so far are safe.</p>' +
+        B(c, "retry", null, "Try again", "btn primary") +
+        '<details><summary class="sb">What went wrong</summary><p class="ft muted">The order list did not answer.</p></details></div></div>';
+    }
+    return '<div class="scroll"><div class="head"><h1 class="lt">Mail day</h1></div><div class="card"><p class="bd">No mail is expected today. Envelopes show here once an order is on its way.</p>' +
+      B(c, "import", null, "Add orders", "btn primary") + "</div></div>";
+  }
+
+  function chrome(inner, extra) {
+    return '<div class="status" aria-hidden="true"><span>9:41</span><i></i></div><div class="screen">' + inner + "</div>" + (extra || "") + '<div class="homebar" aria-hidden="true"></div>';
+  }
+
+  /* ---------- Pile by pile ---------- */
+  function pileStrip(c, st) {
+    return '<div class="strip" role="group" aria-label="Piles">' + PILES.map(function (p, i) {
+      var pips = p.ids.map(function (id) { var r = st.res[id]; return '<span class="pip' + (r ? " " + r.r : "") + '"></span>'; }).join("");
+      return B(c, "pile", i, '<span class="hd">' + p.name + '</span><span class="pips">' + pips + "</span>",
+        "seg-pile" + (pileDone(st, i) ? " full" : ""), ' aria-current="' + (i === st.pile && st.phase === "work") + '" aria-label="Pile ' + p.name + '"');
+    }).join("") + "</div>";
+  }
+  function leftBadge(st) {
+    return '<div class="leftcap"><span class="num">' + left(st) + '</span><span class="hd muted">left in hand</span></div>';
+  }
+  function pilePhase(c, st, opts) {
+    if (st.phase === "loading" || st.phase === "failed" || st.phase === "empty") return stateScreen(c, st);
+    if (st.phase === "count") {
+      return '<div class="scroll"><div class="head"><h1 class="lt">Mail day</h1><h2 class="t3">Count in</h2><p class="bd">Count the envelopes you brought in.</p></div>' +
+        '<div class="stepper">' + B(c, "dec", null, I.minus, "btn quiet", ' aria-label="One fewer"') + '<span class="num" aria-live="polite">' + st.inHand + "</span>" + B(c, "inc", null, I.plus, "btn quiet", ' aria-label="One more"') + "</div>" +
+        '<p class="sb muted" style="text-align:center">' + ENVS.length + " are expected today.</p></div>" +
+        '<div class="foot">' + B(c, "to-sort", null, "Sort into piles", "btn primary") + "</div>";
+    }
+    if (st.phase === "sort") {
+      return '<div class="scroll"><div class="head"><h1 class="lt">Mail day</h1><h2 class="t3">Sort</h2><p class="bd">Make four piles, by the first letter of the sender.</p></div>' +
+        '<div class="list">' + PILES.map(function (p) {
+          return '<div class="row"><span class="t2" style="min-width:3.2em">' + p.name + '</span><span class="grow"><span class="sb muted">' + plural(p.ids.length, "envelope", "envelopes") + " expected</span></span></div>";
+        }).join("") + "</div>" +
+        '<p class="sb muted">An envelope with no sender goes to one side. You can set it aside from any pile.</p></div>' +
+        '<div class="foot">' + B(c, "to-work", null, "Piles are sorted", "btn primary") + "</div>";
+    }
+    if (st.phase === "done") {
+      var ac = asideList(st).length, here = Object.keys(st.res).filter(function (k) { return st.res[k].r === "here"; }).length, notCome = unopenedExpected(st);
+      return '<div class="scroll"><div class="head"></div><div class="airmail" role="status"><h1 class="lt">Done for today</h1><p class="bd">The pile is empty. Every envelope is accounted for.</p>' +
+        '<div class="stats"><span class="stat bd"><span class="mark-here">' + I.check + "</span>" + plural(here, "envelope", "envelopes") + " all here</span>" +
+        (ac ? '<span class="stat bd"><span class="mark-aside">' + I.tray + "</span>" + ac + " waiting for later</span>" : "") +
+        (notCome ? '<span class="stat bd muted">' + I.ring + plural(notCome, "expected envelope", "expected envelopes") + " did not come today</span>" : "") +
+        "</div></div></div>" +
+        '<div class="foot">' + (ac && !opts.split ? B(c, "view", "aside", "Look at what waits", "btn quiet") : "") + B(c, "newday", null, "Start the next mail day", "btn plain") + "</div>";
+    }
+    /* work */
+    var p = PILES[st.pile], openIds = p.ids.filter(function (id) { return !st.res[id]; }), doneIds = p.ids.filter(function (id) { return st.res[id]; });
+    var row = function (id) {
+      var e = BYID[id], r = st.res[id], fl = st.flash && st.flash.id === id;
+      var mark = r ? (r.r === "here" ? '<span class="mark-here">' + I.check + "</span>" : '<span class="mark-aside">' + I.tray + "</span>") : '<span class="muted">' + I.ring + "</span>";
+      return B(c, "open", id, mark + '<span class="grow"><span class="bd name">' + esc(e.s) + '</span><span class="ft muted">' + plural(cards(e), "card", "cards") + (fl ? ' <span class="flash">' + st.flash.text + "</span>" : "") + '</span></span><span class="end">' + I.chev + "</span>",
+        "row" + (r ? " done" : "") + (st.open === id ? " sel" : ""));
+    };
+    var list = openIds.length
+      ? '<div class="list">' + openIds.map(row).join("") + "</div>"
+      : nextCard(c, st);
+    var flashed = st.flash && st.flash.id === "unknown";
+    var unk = B(c, "unknown", null, '<span class="muted">' + I.mail + '</span><span class="grow"><span class="bd">An envelope with no sender</span>' + (flashed ? '<span class="ft flash">Set aside. It waits for later.</span>' : '<span class="ft muted">Set it aside</span>') + "</span>", "row") +
+      (flashed ? B(c, "undo-unknown", null, '<span class="grow"><span class="bd" style="color:var(--accent)">Undo</span></span>', "row") : "");
+    return '<div class="scroll"><div class="head"><div class="head-row"><h1 class="lt">Mail day</h1>' + leftBadge(st) + "</div>" + pileStrip(c, st) + "</div>" +
+      '<h2 class="t3">Pile ' + p.name + "</h2>" +
+      list +
+      (doneIds.length ? '<div class="list" aria-label="Opened">' + doneIds.map(row).join("") + "</div>" : "") +
+      '<div class="list">' + unk + "</div></div>";
+  }
+  function nextCard(c, st) {
+    for (var i = 1; i <= PILES.length; i++) {
+      var n = (st.pile + i) % PILES.length;
+      if (!pileDone(st, n)) {
+        return '<div class="card good" role="status"><p class="bd">Pile ' + PILES[st.pile].name + " is done.</p>" + B(c, "pile", n, "Start pile " + PILES[n].name, "btn primary") + "</div>";
+      }
+    }
+    var l = left(st);
+    return '<div class="card warn" role="status"><p class="bd">Every expected envelope is open, but ' + plural(l, "envelope is", "envelopes are") + " still in hand with no match.</p>" +
+      B(c, "unknown", null, "Set one aside", "btn asideb") + "</div>";
+  }
+  function tabbar(c, st) {
+    var n = asideList(st).length;
+    var aside = st.view === "aside";
+    return '<div class="tabbar" role="tablist">' +
+      B(c, "view", "day", I.mail + "<span>Mail day</span>", "tab", ' role="tab" aria-selected="' + !aside + '"') +
+      B(c, "view", "aside", I.tray + "<span>Set aside</span>" + (n ? '<span class="badge">' + n + "</span>" : ""), "tab", ' role="tab" aria-selected="' + aside + '"') +
+      "</div>";
+  }
+  function pileSingle(c, st) {
+    var pre = st.phase === "loading" || st.phase === "failed" || st.phase === "empty";
+    var inner;
+    if (st.open) inner = envelopeView(c, st, { showBack: true });
+    else if (st.view === "aside" && !pre) inner = asideView(c, st, {});
+    else inner = pilePhase(c, st, {});
+    return inner + (pre || st.open ? "" : tabbar(c, st));
+  }
+  /* Open pose, before work starts: the right page lists who goes on each pile, to sort by. */
+  function pileGuide(st) {
+    return '<div class="scroll"><div class="head"><h2 class="t2">Who goes on each pile</h2></div>' +
+      PILES.map(function (p) {
+        return '<div class="list"><div class="row"><span class="hd" style="min-width:3.2em">' + p.name + '</span><span class="grow"><span class="sb">' +
+          p.ids.map(function (id) { return esc(BYID[id].s); }).join(", ") + "</span></span></div></div>";
+      }).join("") + "</div>";
+  }
+  function pileSplit(c, st) {
+    var pre = st.phase === "loading" || st.phase === "failed" || st.phase === "empty";
+    var leftP = pilePhase(c, st, { split: true });
+    var rightP;
+    if (pre) rightP = '<div class="scroll"><div class="head"></div></div>';
+    else if (st.open) rightP = envelopeView(c, st, {});
+    else if (st.phase === "count" || st.phase === "sort") rightP = pileGuide(st);
+    else rightP = asideView(c, st, {});
+    return [leftP, rightP];
+  }
+
+  /* ---------- Letter board ---------- */
+  function lettersWithMail() { var m = {}; ENVS.forEach(function (e) { (m[e.s[0]] = m[e.s[0]] || []).push(e.id); }); return m; }
+  var LM = lettersWithMail();
+  function boardGrid(c, st) {
+    return '<div class="board" role="group" aria-label="Letters">' + ALPHA.map(function (L) {
+      var ids = LM[L];
+      if (!ids) return '<div class="key off" aria-hidden="true"><span class="L">' + L + "</span></div>";
+      var full = ids.every(function (id) { return st.res[id]; });
+      var pips = ids.map(function (id) { var r = st.res[id]; return '<span class="pip' + (r ? " " + r.r : "") + '"></span>'; }).join("");
+      var openN = ids.filter(function (id) { return !st.res[id]; }).length;
+      return B(c, "letter", L, '<span class="L">' + L + '</span><span class="pips">' + pips + "</span>", "key lit" + (full ? " full" : ""),
+        ' aria-current="' + (st.letter === L) + '" aria-label="' + L + ", " + plural(openN, "envelope", "envelopes") + ' to open"');
+    }).join("") +
+    B(c, "sheet", "unknown", '<span class="L">?</span><span class="c1 muted">No sender</span>', "key lit q", ' aria-label="An envelope with no sender"') +
+    "</div>";
+  }
+  function boardHead(c, st) {
+    var n = asideList(st).length;
+    var hereN = Object.keys(st.res).filter(function (k) { return st.res[k].r === "here"; }).length;
+    if (!st.countSet) {
+      return '<div class="head"><h1 class="lt">Mail day</h1><p class="bd">How many envelopes came in?</p>' +
+        '<div class="countline">' + B(c, "dec", null, I.minus, "btn quiet", ' aria-label="One fewer"') + '<span class="num">' + st.inHand + "</span>" + B(c, "inc", null, I.plus, "btn quiet", ' aria-label="One more"') +
+        B(c, "set-count", null, "That is all", "btn primary") + '</div><p class="sb muted">' + ENVS.length + " are expected today.</p></div>";
+    }
+    if (st.phase === "done") {
+      var notCome = unopenedExpected(st);
+      return '<div class="airmail" role="status"><h1 class="lt">Done for today</h1><p class="bd">The pile is empty. Every envelope is accounted for.</p>' +
+        '<div class="stats"><span class="stat bd"><span class="mark-here">' + I.check + "</span>" + plural(hereN, "envelope", "envelopes") + " all here</span>" +
+        (n ? B(c, "sheet", "aside", '<span class="mark-aside">' + I.tray + "</span>" + n + " waiting for later", "stat bd tray") : "") +
+        (notCome ? '<span class="stat bd muted">' + I.ring + plural(notCome, "expected envelope", "expected envelopes") + " did not come today</span>" : "") +
+        "</div>" + B(c, "newday", null, "Start the next mail day", "btn plain") + "</div>";
+    }
+    var hint = handled(st) === 0
+      ? '<p class="sb muted hintline">Sort the post by the first letter of the sender. Lit letters have mail today. Then tap the letter of the envelope in your hand.</p>' : "";
+    var flash = st.flash ? '<p class="toast sb" role="status">' + esc(st.flash.id === "unknown" ? "Envelope with no sender" : BYID[st.flash.id].s) + ": " + st.flash.text.toLowerCase() + ".</p>" : "";
+    return '<div class="head"><div class="head-row"><div class="leftcap"><span class="num">' + left(st) + '</span><span class="hd muted">left in hand</span></div>' +
+      '<div class="countline">' + B(c, "dec", null, I.minus, "btn quiet", ' aria-label="One fewer in hand"') + B(c, "inc", null, I.plus, "btn quiet", ' aria-label="One more in hand"') + "</div></div>" +
+      '<div class="countline"><span class="stat sb"><span class="mark-here">' + I.check + "</span>" + hereN + " all here</span>" +
+      B(c, "sheet", "aside", I.tray + '<span class="sb">' + n + " set aside</span>", "tray" + (n ? "" : " none")) + "</div>" + flash + hint + "</div>";
+  }
+  function letterSheet(c, st, inSheet) {
+    var ids = LM[st.letter];
+    var rows = ids.map(function (id) {
+      var e = BYID[id], r = st.res[id];
+      var mark = r ? (r.r === "here" ? '<span class="mark-here">' + I.check + "</span>" : '<span class="mark-aside">' + I.tray + "</span>") : '<span class="muted">' + I.ring + "</span>";
+      return B(c, "open", id, mark + '<span class="grow"><span class="bd name">' + esc(e.s) + '</span><span class="ft muted">' + plural(cards(e), "card", "cards") + ", " + money(cost(e)) + '</span></span><span class="end">' + I.chev + "</span>", "row" + (r ? " done" : ""));
+    }).join("");
+    return (inSheet ? '<div class="grab"></div><div class="nav">' + B(c, "close", null, "Close", "btn plain") + "<span></span></div>" : "") +
+      '<div class="scroll"><div class="head"><h2 class="lt">' + st.letter + '</h2><p class="sb muted">Which one is in your hand?</p></div><div class="list">' + rows + "</div></div>";
+  }
+  function unknownSheet(c, st, inSheet) {
+    return (inSheet ? '<div class="grab"></div><div class="nav">' + B(c, "close", null, "Close", "btn plain") + "<span></span></div>" : "") +
+      '<div class="scroll"><div class="head"><h2 class="t2">An envelope with no sender</h2></div><p class="bd">Nothing on it says who sent it. Set it aside, and it counts as accounted for today.</p></div>' +
+      '<div class="foot">' + B(c, "unknown", null, I.tray + "<span>Set it aside</span>", "btn asideb") + "</div>";
+  }
+  function boardAside(c, st, inSheet) {
+    return (inSheet ? '<div class="grab"></div><div class="nav">' + B(c, "close", null, "Close", "btn plain") + "<span></span></div>" : "") + asideView(c, st, {});
+  }
+  function boardMain(c, st) {
+    if (st.phase === "loading" || st.phase === "failed" || st.phase === "empty") return stateScreen(c, st);
+    return '<div class="scroll">' + boardHead(c, st) + '<div class="boardwrap">' + boardGrid(c, st) + "</div></div>";
+  }
+  function boardSheetContent(c, st, inSheet) {
+    if (st.open) return envelopeView(c, st, { sheet: inSheet, showBack: !inSheet });
+    if (st.letter) return letterSheet(c, st, inSheet);
+    if (st.sheet === "unknown") return unknownSheet(c, st, inSheet);
+    if (st.sheet === "aside") return boardAside(c, st, inSheet);
+    return null;
+  }
+  function boardSingle(c, st) {
+    var main = boardMain(c, st);
+    var sh = boardSheetContent(c, st, true);
+    var over = sh ? B(c, "close", null, "", "scrim", ' aria-label="Close" tabindex="-1"') + '<div class="sheet" role="dialog" aria-modal="true">' + sh + "</div>" : "";
+    return [main, over];
+  }
+  function boardSplit(c, st) {
+    var pre = st.phase === "loading" || st.phase === "failed" || st.phase === "empty";
+    var leftP = boardMain(c, st);
+    var r = pre ? '<div class="scroll"><div class="head"></div></div>' : boardSheetContent(c, st, false);
+    if (!r) r = (st.phase === "done" ? "" : '<div class="foot"><p class="sb muted">Pick up an envelope and tap the letter of its sender. It opens here.</p></div>') + asideView(c, st, {});
+    return [leftP, r];
+  }
+
+  /* ---------- Draw ---------- */
+  function frameInner(c, unfolded) {
+    var st = S[c];
+    var leave = st.leaving ? '<div class="leave">Home screen</div>' : "";
+    var back = st.back ? '<div class="toast sb" role="status" style="position:absolute;left:16px;right:16px;top:52px;z-index:3">Back where you left off.</div>' : "";
+    if (unfolded) {
+      var parts = c === "pile" ? pileSplit(c, st) : boardSplit(c, st);
+      return '<div class="page">' + chrome(parts[0]) + back + leave + '</div><div class="hinge" aria-hidden="true"></div><div class="page">' + chrome('<div class="inpage">' + parts[1] + "</div>") + leave + "</div>";
+    }
+    if (c === "pile") return chrome(pileSingle(c, st)) + back + leave;
+    var bs = boardSingle(c, st);
+    return chrome(bs[0], bs[1]) + back + leave;
+  }
+  /* The frames are static in the HTML; each draw refills them from the concept's one state. */
+  function draw(c) {
+    document.querySelectorAll('[data-frames="' + c + '"] .dev').forEach(function (el) {
+      el.innerHTML = frameInner(c, el.dataset.device === "iphone-duo-unfolded");
+    });
+  }
+
+  /* ---------- Page controls ---------- */
+  function readHash() {
+    var h = {}; location.hash.replace(/^#/, "").split("&").forEach(function (p) { var kv = p.split("="); if (kv[0]) h[kv[0]] = decodeURIComponent(kv[1] || ""); });
+    return h;
+  }
+  function writeHash(patch) {
+    var h = readHash(); Object.keys(patch).forEach(function (k) { if (patch[k] == null) delete h[k]; else h[k] = patch[k]; });
+    var s = Object.keys(h).map(function (k) { return k + "=" + encodeURIComponent(h[k]); }).join("&");
+    try { history.replaceState(null, "", s ? "#" + s : location.pathname + location.search); } catch (e) { /* some file views refuse it: the link just stays */ }
+  }
+  function setTheme(t) {
+    if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); else document.documentElement.removeAttribute("data-theme");
+    document.querySelectorAll("[data-theme-set]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.themeSet === (t || "auto"))); });
+  }
+  function markState(s) { document.querySelectorAll("[data-state]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.state === s)); }); }
+  var hidden = {};
+  function applyHidden() {
+    CONCEPTS.forEach(function (c) { document.getElementById("concept-" + c).hidden = !!hidden[c]; });
+    document.getElementById("restore").hidden = !Object.keys(hidden).some(function (k) { return hidden[k]; });
+    try { localStorage.setItem(STORE + "hidden", JSON.stringify(hidden)); } catch (e) {}
+  }
+
+  document.addEventListener("click", function (ev) {
+    var t = ev.target.closest("button");
+    if (!t) return;
+    if (t.dataset.a) { act(t.dataset.c, t.dataset.a, t.dataset.arg); writeHash({ s: null }); markState(null); return; }
+    if (t.dataset.themeSet) { setTheme(t.dataset.themeSet); writeHash({ t: t.dataset.themeSet === "auto" ? null : t.dataset.themeSet }); return; }
+    if (t.dataset.state) { CONCEPTS.forEach(function (c) { S[c] = preset(t.dataset.state); save(c); draw(c); }); writeHash({ s: t.dataset.state }); markState(t.dataset.state); return; }
+    if (t.dataset.hide) { hidden[t.dataset.hide] = true; applyHidden(); return; }
+    if (t.id === "restore") { hidden = {}; applyHidden(); return; }
+    if (t.dataset.reset) { var c = t.dataset.reset; S[c] = blank(); save(c); draw(c); return; }
+    if (t.dataset.leave) {
+      var k = t.dataset.leave, out = document.querySelector('[data-out="' + k + '"]');
+      S[k].leaving = true; draw(k); out.textContent = "Left the app…";
+      setTimeout(function () {
+        var kept = load(k) || blank(); kept.leaving = false; kept.back = true; S[k] = kept; draw(k);
+        out.textContent = "Came back: same place, read from storage.";
+      }, 900);
+    }
+  });
+
+  /* ---------- Boot ---------- */
+  var h = readHash();
+  try { hidden = JSON.parse(localStorage.getItem(STORE + "hidden") || "{}") || {}; } catch (e) { hidden = {}; }
+  CONCEPTS.forEach(function (c) {
+    S[c] = h.s ? preset(h.s) : (load(c) || preset("work"));
+    S[c].leaving = false; S[c].back = false;
+    if (S[c].phase === "loading" && !h.s) S[c] = preset("work");
+    draw(c);
+  });
+  if (h.c && CONCEPTS.indexOf(h.c) >= 0) { hidden[h.c] = false; }
+  setTheme(h.t || "auto"); markState(h.s || null); applyHidden();
+  if (h.c) { var el = document.getElementById("concept-" + h.c); if (el) el.scrollIntoView(); }
+})();
+</script>
+</body>
+</html>

@@ -64,7 +64,9 @@ struct OrphanedView: View {
     }
 
     private var list: some View {
-        MastheadScreen(masthead: masthead, tab: .orphaned, sync: sync, openSync: openSync) {
+        // A drag on the list hides the composer's keys, so the tab bar under them can be reached. Only this tab asks, so the other tabs keep
+        // their keys. Owner ruling: `ux-house-rules-govern`, section "Orphaned composer keys".
+        MastheadScreen(masthead: masthead, tab: .orphaned, sync: sync, openSync: openSync, dismissesKeyboard: true) {
             VStack(alignment: .leading, spacing: 12) {
                 if model.composing == .new {
                     ComposerView(model: model, target: .new, onChange: onChange)

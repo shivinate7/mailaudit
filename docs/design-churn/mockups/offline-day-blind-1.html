@@ -1,0 +1,868 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Offline Mail Day</title>
+<style>
+/* Tokens. Colour by role, a light set and a dark set. Space on the 4 px step. Radius 8 px. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px;
+  --radius: 8px;
+  --bp-wide: 64rem;
+
+  --page: #e6eaee;
+  --page-ink: #1b2229;
+  --page-ink-2: #56616b;
+  --bg: #f4f6f5;
+  --raised: #ffffff;
+  --ink: #17201b;
+  --ink-2: #536059;
+  --line: #d3dad6;
+  --accent: #2741a3;
+  --on-accent: #ffffff;
+  --held: #8a5a00;
+  --held-bg: #fbefd0;
+  --sent: #1d6d46;
+  --sent-bg: #dcf0e4;
+  --alert: #b3261e;
+  --alert-bg: #fde6e2;
+  --other-bg: #e8edf9;
+  --scrim: rgba(16, 22, 19, .36);
+  --label: #7a3fb0;
+  --tape: #ffffff;
+
+  /* iOS Dynamic Type, Large (default) row of the HIG typography page. */
+  --t-large: 34px; --l-large: 41px;
+  --t-title2: 22px; --l-title2: 28px;
+  --t-title3: 20px; --l-title3: 25px;
+  --t-headline: 17px; --l-headline: 22px;
+  --t-body: 17px; --l-body: 22px;
+  --t-callout: 16px; --l-callout: 21px;
+  --t-subhead: 15px; --l-subhead: 20px;
+  --t-footnote: 13px; --l-footnote: 18px;
+  --t-caption: 12px; --l-caption: 16px;
+  --t-caption2: 11px; --l-caption2: 13px;
+  --glyph: 28px;
+  --hit: 44px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #0f1316; --page-ink: #e3e8ec; --page-ink-2: #9aa6b0;
+    --bg: #101513; --raised: #1a201d; --ink: #e7ede9; --ink-2: #a2aea7; --line: #2d3632;
+    --accent: #93a8ff; --on-accent: #0b1433;
+    --held: #f0c461; --held-bg: #3a2d0f; --sent: #72d4a0; --sent-bg: #12301f;
+    --alert: #ff8b7f; --alert-bg: #3f1713; --other-bg: #1c2438;
+    --scrim: rgba(0, 0, 0, .55); --label: #c79bf2; --tape: #161b19;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #0f1316; --page-ink: #e3e8ec; --page-ink-2: #9aa6b0;
+  --bg: #101513; --raised: #1a201d; --ink: #e7ede9; --ink-2: #a2aea7; --line: #2d3632;
+  --accent: #93a8ff; --on-accent: #0b1433;
+  --held: #f0c461; --held-bg: #3a2d0f; --sent: #72d4a0; --sent-bg: #12301f;
+  --alert: #ff8b7f; --alert-bg: #3f1713; --other-bg: #1c2438;
+  --scrim: rgba(0, 0, 0, .55); --label: #c79bf2; --tape: #161b19;
+}
+/* AX5 row of the same table: the biggest accessibility size. */
+.ax5 {
+  --t-large: 60px; --l-large: 70px;
+  --t-title2: 56px; --l-title2: 66px;
+  --t-title3: 55px; --l-title3: 65px;
+  --t-headline: 53px; --l-headline: 62px;
+  --t-body: 53px; --l-body: 62px;
+  --t-callout: 51px; --l-callout: 60px;
+  --t-subhead: 49px; --l-subhead: 58px;
+  --t-footnote: 44px; --l-footnote: 52px;
+  --t-caption: 43px; --l-caption: 51px;
+  --t-caption2: 40px; --l-caption2: 48px;
+  --glyph: 56px;
+  --hit: 64px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--page); color: var(--page-ink);
+  font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+  font-size: 15px; line-height: 1.4;
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* Page chrome around the frames (not part of the app). */
+.sample {
+  background: var(--page-ink); color: var(--page);
+  padding: var(--space-2) var(--space-4); font-weight: 600; text-align: center;
+}
+.head { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); max-width: 80rem; margin-inline: auto; }
+.head h1 { margin: 0; font-size: 22px; line-height: 28px; }
+.kind { color: var(--page-ink-2); margin: 0; }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.ctl-group { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.ctl-group > span { color: var(--page-ink-2); min-width: 5.5rem; }
+.chip {
+  border: 1px solid color-mix(in srgb, var(--page-ink) 30%, transparent);
+  background: transparent; border-radius: 999px; padding: var(--space-1) var(--space-3);
+  min-height: 36px; cursor: pointer;
+}
+.chip[aria-pressed="true"] { background: var(--page-ink); color: var(--page); border-color: var(--page-ink); }
+.concept-tab { display: inline-flex; align-items: center; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--page-ink) 30%, transparent); }
+.concept-tab .chip { border: 0; }
+.concept-tab .hide { border: 0; background: transparent; min-width: 36px; min-height: 36px; border-radius: 999px; cursor: pointer; color: var(--page-ink-2); }
+.press-note { color: var(--page-ink-2); min-height: 20px; margin: 0; }
+.stage {
+  display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start;
+  padding: var(--space-4); max-width: 100%; overflow-x: auto;
+}
+figure.device { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+figure.device[hidden] { display: none; }
+figure.device figcaption { color: var(--page-ink-2); }
+.frame {
+  position: relative; overflow: hidden; border-radius: 20px;
+  background: var(--bg); color: var(--ink);
+  box-shadow: 0 0 0 8px #050607, 0 0 0 9px #2a2f33;
+  margin: 9px;
+}
+.frame.open { display: grid; grid-template-columns: 455.5px 40px 455.5px; background: #050607; }
+.hinge { background: repeating-linear-gradient(90deg, #050607 0 18px, #23282c 18px 22px, #050607 22px 40px); }
+
+/* The app. */
+.screen, .page {
+  position: relative; display: flex; flex-direction: column; overflow: hidden;
+  background: var(--bg); color: var(--ink); height: 100%;
+  padding-top: max(var(--sb), env(safe-area-inset-top));
+  padding-bottom: max(var(--hi), env(safe-area-inset-bottom));
+  padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);
+  --sb: 28px; --hi: 20px;
+}
+.statusbar {
+  position: absolute; top: 0; left: 0; right: 0; height: var(--sb);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 var(--space-5); font-size: 13px; font-weight: 600; z-index: 3;
+}
+.statusbar .sig { display: inline-flex; align-items: center; gap: var(--space-1); }
+.home-ind { position: absolute; bottom: 6px; left: 50%; translate: -50% 0; width: 120px; height: 5px; border-radius: 3px; background: var(--ink); opacity: .8; z-index: 6; }
+.navbar { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-4) var(--space-2); }
+.largetitle { font-size: var(--t-large); line-height: var(--l-large); font-weight: 700; margin: 0; }
+.sub { font-size: var(--t-subhead); line-height: var(--l-subhead); color: var(--ink-2); margin: 0; }
+.scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+.stack { display: flex; flex-direction: column; gap: var(--space-3); }
+
+/* Status strip: the one sentence that says where the marks are. */
+.strip {
+  display: grid; grid-template-columns: var(--glyph) 1fr auto; align-items: center; gap: var(--space-3);
+  background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: var(--space-3); min-height: 64px;
+}
+.strip.is-held { background: var(--held-bg); border-color: color-mix(in srgb, var(--held) 40%, transparent); }
+.strip.is-alert { background: var(--alert-bg); border-color: color-mix(in srgb, var(--alert) 40%, transparent); }
+.strip.is-well { background: var(--sent-bg); border-color: color-mix(in srgb, var(--sent) 35%, transparent); }
+.strip-text { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.strip-main { font-size: var(--t-headline); line-height: var(--l-headline); font-weight: 600; }
+.strip-meta { font-size: var(--t-footnote); line-height: var(--l-footnote); color: var(--ink-2); }
+.strip details { font-size: var(--t-footnote); line-height: var(--l-footnote); color: var(--ink-2); }
+.btn {
+  min-height: var(--hit); min-width: var(--hit); padding: 0 var(--space-4);
+  border-radius: 999px; border: 0; cursor: pointer;
+  background: var(--accent); color: var(--on-accent);
+  font-size: var(--t-headline); line-height: var(--l-headline); font-weight: 600;
+}
+.btn.quiet { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.btn.plain { background: transparent; color: var(--accent); padding: 0 var(--space-2); }
+
+/* Glyphs: shape carries the state, so the word shows once. */
+.g { width: var(--glyph); height: var(--glyph); flex: none; display: block; }
+.g-held { color: var(--held); }
+.g-sent { color: var(--sent); }
+.g-other { color: var(--accent); }
+.g-alert { color: var(--alert); }
+.g-open { color: var(--ink-2); }
+
+/* Pocket list. */
+.search {
+  display: flex; align-items: center; gap: var(--space-2);
+  background: color-mix(in srgb, var(--ink) 7%, transparent); border-radius: 10px;
+  padding: 0 var(--space-3); min-height: var(--hit);
+}
+.search input {
+  flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink);
+  font: inherit; font-size: var(--t-body); line-height: var(--l-body); min-height: var(--hit);
+}
+.search input:focus { outline: none; }
+.search:focus-within { outline: 3px solid var(--accent); }
+ul.rows { list-style: none; margin: 0; padding: 0 var(--space-4) var(--space-4); display: flex; flex-direction: column; }
+.row {
+  display: grid; grid-template-columns: 1fr var(--hit); align-items: center; gap: var(--space-3);
+  padding: var(--space-3) 0; border-bottom: 1px solid var(--line); min-height: 64px;
+}
+.row-text { display: flex; flex-direction: column; min-width: 0; }
+.sender { font-size: var(--t-headline); line-height: var(--l-headline); font-weight: 600; overflow-wrap: anywhere; }
+.inside { font-size: var(--t-subhead); line-height: var(--l-subhead); color: var(--ink-2); }
+.due { font-size: var(--t-footnote); line-height: var(--l-footnote); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.row[data-st="conflict"] .sender { color: var(--alert); }
+.mark {
+  width: var(--hit); height: var(--hit); border-radius: 999px; border: 0; background: transparent;
+  display: grid; place-items: center; cursor: pointer; padding: 0;
+}
+/* AX5: the whole screen scrolls as one column, so no fixed header can fill it. */
+.frame.ax5 { contain: paint; }
+.ax5 .screen { overflow-y: auto; overscroll-behavior: contain; }
+.ax5 .screen > .scroll, .ax5 .screen > .tape-wrap { flex: none; overflow: visible; }
+.ax5 .tape, .ax5 .tray-list { flex: none; overflow: visible; }
+.ax5 .tray.folded { height: auto; }
+.ax5 .tabbar { position: sticky; bottom: var(--space-2); left: auto; right: auto; margin: 0 var(--space-4); flex: none; }
+.ax5 .pad-tab { display: none; }
+.ax5 .scrim, .ax5 .sheet, .ax5 .home-ind { position: fixed; }
+.ax5 .row { grid-template-columns: 1fr; }
+.ax5 .strip { grid-template-columns: 1fr; justify-items: start; }
+.ax5 .row .mark { justify-self: start; }
+.section-h { font-size: var(--t-footnote); line-height: var(--l-footnote); color: var(--ink-2); font-weight: 600; padding: var(--space-4) var(--space-4) var(--space-1); margin: 0; }
+.empty { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; padding: var(--space-6) var(--space-4); }
+.empty p { margin: 0; font-size: var(--t-body); line-height: var(--l-body); }
+
+.tabbar {
+  position: absolute; left: var(--space-4); right: var(--space-4); bottom: max(var(--space-6), env(safe-area-inset-bottom));
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-1);
+  background: color-mix(in srgb, var(--raised) 86%, transparent); backdrop-filter: blur(14px);
+  border: 1px solid var(--line); border-radius: 999px; padding: var(--space-1); z-index: 4;
+  box-shadow: 0 6px 24px rgba(0,0,0,.12);
+}
+.tab {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  min-height: 52px; border: 0; background: transparent; border-radius: 999px; cursor: pointer;
+  font-size: var(--t-caption2); line-height: var(--l-caption2); font-weight: 600; color: var(--ink-2); position: relative;
+}
+.tab[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.tab svg { width: 24px; height: 24px; }
+.badge {
+  position: absolute; top: 4px; left: calc(50% + 8px); min-width: 18px; height: 18px; border-radius: 9px;
+  font-size: 11px; line-height: 18px; text-align: center; padding: 0 5px; background: var(--held); color: var(--raised);
+}
+.badge.alert { background: var(--alert); }
+.ax5 .tabbar { grid-template-columns: 1fr 1fr; }
+.ax5 .tab span.tl { display: none; }
+.pad-tab { height: 96px; flex: none; }
+
+.sync-list { list-style: none; margin: 0; padding: 0 var(--space-4); display: flex; flex-direction: column; }
+.sync-item { display: grid; grid-template-columns: var(--glyph) 1fr; gap: var(--space-3); align-items: start; padding: var(--space-3) 0; border-bottom: 1px solid var(--line); }
+.sync-item .t { font-size: var(--t-subhead); line-height: var(--l-subhead); }
+.sync-item .m { font-size: var(--t-footnote); line-height: var(--l-footnote); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.sync-item .acts { display: flex; flex-wrap: wrap; gap: var(--space-2); padding-top: var(--space-2); }
+
+/* Sheet. Lives on one page; never crosses the hinge. */
+.scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 7; }
+.sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; max-height: 86%; z-index: 8;
+  background: var(--raised); border-radius: 16px 16px 0 0; display: flex; flex-direction: column;
+  padding-bottom: max(var(--hi), env(safe-area-inset-bottom));
+}
+.sheet-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: var(--space-2) var(--space-2) 0; }
+.sheet-bar h2 { margin: 0; font-size: var(--t-headline); line-height: var(--l-headline); text-align: center; }
+.sheet-body { overflow-y: auto; padding: var(--space-3) var(--space-4) var(--space-6); display: flex; flex-direction: column; gap: var(--space-4); }
+.choice-card { display: flex; flex-direction: column; gap: var(--space-3); }
+.choice-card p { margin: 0; font-size: var(--t-body); line-height: var(--l-body); }
+.choice {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left;
+  min-height: 64px; width: 100%; padding: var(--space-3) var(--space-4); border-radius: var(--radius);
+  border: 2px solid var(--line); background: var(--bg); cursor: pointer;
+}
+.choice b { font-size: var(--t-headline); line-height: var(--l-headline); }
+.choice span { font-size: var(--t-footnote); line-height: var(--l-footnote); color: var(--ink-2); }
+.choice.primary { border-color: var(--accent); }
+
+/* Receipt tape. */
+.tape-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--bg); }
+.tape {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  margin: 0 var(--space-4); padding: var(--space-3) 0; list-style: none;
+  display: flex; flex-direction: column; gap: var(--space-2);
+}
+.tape-paper {
+  background: var(--tape); border-left: 1px solid var(--line); border-right: 1px solid var(--line);
+}
+.line {
+  display: grid; grid-template-columns: 4.6em var(--glyph) 1fr; gap: var(--space-2); align-items: start;
+  padding: var(--space-2) var(--space-3); border-radius: var(--radius); background: transparent;
+  border: 0; text-align: left; width: 100%; cursor: pointer;
+}
+.line .time { font-size: var(--t-footnote); line-height: var(--l-footnote); color: var(--ink-2); font-variant-numeric: tabular-nums; padding-top: 2px; }
+.line .what { font-size: var(--t-subhead); line-height: var(--l-subhead); }
+.line .what b { font-weight: 600; }
+.line .why { display: block; font-size: var(--t-footnote); line-height: var(--l-footnote); color: var(--ink-2); }
+.line.from-other { background: var(--other-bg); margin-left: var(--space-8); width: calc(100% - var(--space-8)); }
+.line.is-alert { background: var(--alert-bg); }
+.line-acts { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-2) var(--space-3) var(--space-2) var(--space-8); }
+.ax5 .line { grid-template-columns: var(--glyph) 1fr; }
+.ax5 .line .time { grid-column: 2; grid-row: 2; }
+.ax5 .line-acts { padding-left: var(--space-3); }
+.perf {
+  position: relative; display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start;
+  padding: var(--space-3) var(--space-3); margin: var(--space-1) 0;
+  border-top: 2px dashed var(--ink-2);
+}
+.perf::before, .perf::after {
+  content: ""; position: absolute; top: -9px; width: 16px; height: 16px; border-radius: 50%; background: var(--bg);
+}
+.perf::before { left: -9px; } .perf::after { right: -9px; }
+.perf-main { font-size: var(--t-headline); line-height: var(--l-headline); font-weight: 600; display: flex; align-items: center; gap: var(--space-2); }
+.perf-meta { font-size: var(--t-footnote); line-height: var(--l-footnote); color: var(--ink-2); }
+.perf.is-held { border-top-color: var(--held); }
+.perf.is-held .perf-main { color: var(--held); }
+.perf.is-alert .perf-main { color: var(--alert); }
+.perf.is-well .perf-main { color: var(--sent); }
+.below-perf .line { background: color-mix(in srgb, var(--held-bg) 70%, transparent); }
+
+.tray {
+  flex: none; display: flex; flex-direction: column; min-height: 0;
+  background: var(--raised); border-top: 1px solid var(--line);
+  border-radius: 16px 16px 0 0; box-shadow: 0 -6px 20px rgba(0,0,0,.08);
+}
+.tray.folded { height: 46%; }
+.tray.full { flex: 1; border-radius: 0; box-shadow: none; border-top: 0; }
+.tray-h { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); padding: var(--space-3) var(--space-4) var(--space-1); }
+.tray-h h2 { margin: 0; font-size: var(--t-title3); line-height: var(--l-title3); }
+.tray-h .count { font-size: var(--t-subhead); line-height: var(--l-subhead); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.tray-list { flex: 1; min-height: 0; overflow-y: auto; list-style: none; margin: 0; padding: 0 var(--space-4); display: flex; flex-direction: column; }
+.tray-item {
+  display: grid; grid-template-columns: var(--glyph) 1fr; gap: var(--space-3); align-items: center; text-align: left;
+  min-height: 60px; width: 100%; padding: var(--space-2) 0; border: 0; border-bottom: 1px solid var(--line); background: transparent; cursor: pointer;
+}
+.tray-search { padding: var(--space-2) var(--space-4) var(--space-3); }
+
+/* "New:" labels: dashed, on the folded frame only; one press hides them all. */
+[data-new] { outline: 1.5px dashed var(--label); outline-offset: 2px; }
+.strip[data-new], .mark[data-new], .tray[data-new] { position: relative; }
+[data-new]::after {
+  content: "New: " attr(data-new); position: absolute; top: -10px; right: 6px; z-index: 9;
+  font: 600 10px/14px -apple-system, system-ui, sans-serif; color: var(--label);
+  background: var(--bg); padding: 0 4px; border: 1px dashed var(--label); border-radius: 4px; pointer-events: none;
+  white-space: nowrap;
+}
+.perf[data-new]::after { top: 4px; }
+body.no-labels [data-new] { outline: none; }
+body.no-labels [data-new]::after { display: none; }
+
+.hidden-note { padding: var(--space-8) var(--space-4); color: var(--page-ink-2); }
+</style>
+</head>
+<body>
+<div class="sample" role="note">Sample. No sender, date or count on this page is real.</div>
+
+<header class="head">
+  <h1>Offline mail day</h1>
+  <p class="kind">Designer kind: blind. Designer offline-day-blind-1. Two concepts; press one to see it, or hide it.</p>
+
+  <div class="ctl-group" role="group" aria-label="Concept">
+    <span>Concept</span>
+    <div class="cluster" id="concept-tabs"></div>
+    <button class="chip" id="show-hidden" hidden data-page="unhide">Show hidden</button>
+  </div>
+  <div class="ctl-group" role="group" aria-label="State">
+    <span>State</span>
+    <div class="cluster" id="state-tabs"></div>
+  </div>
+  <div class="ctl-group" role="group" aria-label="Simulate">
+    <span>Simulate</span>
+    <div class="cluster">
+      <button class="chip" data-page="signal" id="sim-signal" aria-pressed="false">Signal</button>
+      <button class="chip" data-page="other-dup">Other phone marks one you marked</button>
+      <button class="chip" data-page="other-undo">Other phone unmarks one you marked</button>
+      <button class="chip" data-page="other-new">Other phone marks a new one</button>
+      <button class="chip" data-page="failnext" id="sim-fail" aria-pressed="false">Next send fails</button>
+      <button class="chip" data-page="reopen">Close and reopen app</button>
+    </div>
+  </div>
+  <p class="press-note" id="press-note" aria-live="polite"></p>
+  <div class="ctl-group" role="group" aria-label="View">
+    <span>View</span>
+    <div class="cluster">
+      <button class="chip" data-page="theme" id="theme-btn">Theme: system</button>
+      <button class="chip" data-page="labels" id="labels-btn" aria-pressed="true">New labels</button>
+    </div>
+  </div>
+</header>
+
+<main class="stage" id="stage">
+  <figure class="device" data-device="iphone-duo-folded"><figcaption>Duo, folded, 466 x 678 pt</figcaption><div class="frame" style="width:466px;height:678px"></div></figure>
+  <figure class="device" data-device="iphone-duo-unfolded"><figcaption>Duo, open, 951 x 669 pt, hinge x 455.5 to 495.5</figcaption><div class="frame open" style="width:951px;height:669px"></div></figure>
+  <figure class="device" data-device="iphone-large"><figcaption>Large phone, 430 x 932 pt, a stand-in size (none written)</figcaption><div class="frame" style="width:430px;height:932px"></div></figure>
+  <figure class="device" data-device="iphone-duo-folded-ax5"><figcaption>Duo, folded, text size AX5</figcaption><div class="frame ax5" style="width:466px;height:678px"></div></figure>
+</main>
+
+<script>
+(function () {
+'use strict';
+
+/* ---------- Sample data (the shape the job implies; nothing real) ---------- */
+const ALL_PIECES = [
+  { id: 'p0', sender: 'Arden Stamp Co.', inside: 'Small flat envelope', due: 'Wed 18 Nov', n: 18 },
+  { id: 'p1', sender: 'Whitlow Books', inside: 'Padded mailer', due: 'Thu 19 Nov', n: 19 },
+  { id: 'p2', sender: 'Kestrel Post Co.', inside: 'Small envelope, stiff', due: 'Fri 20 Nov', n: 20 },
+  { id: 'p3', sender: 'R. Okafor', inside: 'Flat, marked do not bend', due: 'Fri 20 Nov', n: 20 },
+  { id: 'p4', sender: 'Halvard Seeds', inside: 'Box, two packets', due: 'Sat 21 Nov', n: 21 },
+  { id: 'p5', sender: 'Quarry Lane Prints', inside: 'Tube', due: 'Sat 21 Nov', n: 21 },
+  { id: 'p6', sender: 'Marlowe & Daughters', inside: 'Small envelope', due: 'Mon 23 Nov', n: 23 },
+  { id: 'p7', sender: 'Northgate Supply', inside: 'Box', due: 'Tue 24 Nov', n: 24 },
+  { id: 'p8', sender: 'Tamsin Hale', inside: 'Letter', due: 'Wed 25 Nov', n: 25 }
+];
+const CONCEPTS = [
+  { key: 'pocket', name: 'Pocket list' },
+  { key: 'tape', name: 'Receipt tape' }
+];
+const STATES = [
+  { key: 'offline', name: 'No signal, 3 kept' },
+  { key: 'sending', name: 'Signal back, sending' },
+  { key: 'conflict', name: 'Needs a choice' },
+  { key: 'failed', name: 'Send failed' },
+  { key: 'live', name: 'All is well' },
+  { key: 'unknown', name: 'No copy yet' },
+  { key: 'empty', name: 'Nothing expected' }
+];
+const FRAMES = [
+  { dev: 'iphone-duo-folded', layout: 'folded', w: 466, h: 678, cap: 'Duo, folded, 466 x 678 pt', primary: true },
+  { dev: 'iphone-duo-unfolded', layout: 'open', w: 951, h: 669, cap: 'Duo, open, 951 x 669 pt, hinge x 455.5 to 495.5' },
+  { dev: 'iphone-large', layout: 'phone', w: 430, h: 932, cap: 'Large phone, 430 x 932 pt (size not written; my pick)' },
+  { dev: 'iphone-duo-folded-ax5', layout: 'folded', w: 466, h: 678, cap: 'Duo, folded, text size AX5', ax5: true }
+];
+const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- State ---------- */
+let S;
+let pumpTimer = null;
+function fresh() {
+  return {
+    concept: 'pocket', st: 'offline', hidden: new Set(S ? S.hidden : []),
+    theme: S ? S.theme : 'system', labels: S ? S.labels : true,
+    pieces: ALL_PIECES.map(p => ({ ...p })), listLoaded: true,
+    net: 'online', rec: {}, lines: [], remote: [], conflicts: [],
+    lastHeard: '11:02 AM', clock: 14 * 60 + 20, failNext: false,
+    tab: 'mail', sheet: false, q: '', openLine: null, seq: 0
+  };
+}
+function fmt(min) {
+  let h = Math.floor(min / 60), m = min % 60, ap = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12; return h + ':' + String(m).padStart(2, '0') + ' ' + ap;
+}
+function now() { S.clock += 1; return fmt(S.clock); }
+function piece(id) { return S.pieces.find(p => p.id === id); }
+function nid() { S.seq += 1; return 'l' + S.seq; }
+
+function addRecv(pid, t, origin, sent, note) {
+  S.rec[pid] = { by: origin, t, sent };
+  S.lines.push({ id: nid(), kind: 'recv', pid, origin, sent, t, note: note || '' });
+}
+function held() { return S.lines.filter(l => l.origin !== 'other' && !l.sent && l.kind !== 'conflict'); }
+
+function preset(st) {
+  if (pumpTimer) { clearTimeout(pumpTimer); pumpTimer = null; }
+  const keep = { concept: S ? S.concept : 'pocket' };
+  S = fresh(); S.concept = keep.concept; S.st = st;
+  addRecv('p0', 'Yesterday', 'this', true);
+  const three = () => { addRecv('p1', '1:41 PM', 'this', false); addRecv('p2', '1:42 PM', 'this', false); addRecv('p3', '1:44 PM', 'this', false); };
+  const queue = () => { S.remote = [{ kind: 'recv', pid: 'p2', t: '1:50 PM' }, { kind: 'undo', pid: 'p3', t: '1:55 PM' }]; };
+  if (st === 'offline') { three(); queue(); S.net = 'offline'; }
+  if (st === 'sending') { three(); queue(); S.net = 'sending'; markSent(S.lines[1]); S.slow = true; schedulePump(); S.slow = false; }
+  if (st === 'failed') { three(); queue(); S.net = 'failed'; }
+  if (st === 'conflict') { three(); queue(); S.lines.forEach(markSent); S.net = 'online'; deliver(); S.lastHeard = '2:19 PM'; }
+  if (st === 'live') { three(); queue(); S.lines.forEach(markSent); S.remote = [{ kind: 'recv', pid: 'p2', t: '1:50 PM' }]; S.net = 'online'; deliver(); S.lastHeard = '2:19 PM'; }
+  if (st === 'unknown') { S.listLoaded = false; S.net = 'offline'; S.lines = []; S.rec = {}; S.lastHeard = ''; }
+  if (st === 'empty') { S.pieces = S.pieces.filter(p => p.id === 'p0'); S.net = 'online'; }
+}
+function markSent(l) { l.sent = true; if (S.rec[l.pid] && l.kind === 'recv') S.rec[l.pid].sent = true; }
+
+/* ---------- Acts ---------- */
+const note = { text: '' };
+function say(t) { note.text = t; }
+function toggle(pid) {
+  const r = S.rec[pid];
+  const p = piece(pid);
+  if (!r) {
+    const t = now(); addRecv(pid, t, 'this', false);
+    say('Marked ' + p.sender + ' received.');
+  } else {
+    const heldLine = S.lines.find(l => l.pid === pid && l.kind === 'recv' && !l.sent && l.origin === 'this');
+    if (heldLine) { S.lines = S.lines.filter(l => l !== heldLine); }
+    else { S.lines.push({ id: nid(), kind: 'undo', pid, origin: 'this', sent: false, t: now() }); }
+    delete S.rec[pid];
+    say('Took back ' + p.sender + '.');
+  }
+  if (S.net === 'online' && held().length) { S.net = 'sending'; schedulePump(); }
+}
+function schedulePump() {
+  if (pumpTimer) clearTimeout(pumpTimer);
+  pumpTimer = setTimeout(pump, S.slow ? 5000 : (reduced ? 200 : 1100));
+}
+function pump() {
+  pumpTimer = null;
+  if (S.net !== 'sending') return;
+  const h = held();
+  if (!h.length) { S.net = 'online'; deliver(); S.lastHeard = fmt(S.clock); render(); return; }
+  if (S.failNext) { S.failNext = false; S.net = 'failed'; render(); return; }
+  markSent(h[0]); render();
+  schedulePump();
+}
+function deliver() {
+  const evs = S.remote; S.remote = [];
+  evs.forEach(ev => {
+    const r = S.rec[ev.pid];
+    if (ev.kind === 'recv') {
+      if (r && (r.by === 'this' || r.by === 'both')) {
+        r.by = 'both';
+        const l = S.lines.find(x => x.pid === ev.pid && x.kind === 'recv' && x.origin === 'this');
+        if (l) l.origin = 'both';
+      } else if (!r) { addRecv(ev.pid, ev.t, 'other', true); }
+    } else if (ev.kind === 'undo') {
+      if (r && r.by !== 'other') {
+        const cid = nid();
+        S.conflicts.push({ id: cid, pid: ev.pid, mine: r.t, theirs: ev.t });
+        S.lines.push({ id: cid, kind: 'conflict', pid: ev.pid, origin: 'other', sent: true, t: ev.t, mine: r.t });
+      } else if (r) {
+        delete S.rec[ev.pid];
+        S.lines.push({ id: nid(), kind: 'undo', pid: ev.pid, origin: 'other', sent: true, t: ev.t });
+      }
+    }
+  });
+}
+function resolve(cid, keep) {
+  const c = S.conflicts.find(x => x.id === cid); if (!c) return;
+  S.conflicts = S.conflicts.filter(x => x !== c);
+  const l = S.lines.find(x => x.id === cid); if (l) { l.kind = 'resolved'; l.keep = keep; }
+  const p = piece(c.pid);
+  if (keep) {
+    S.lines.push({ id: nid(), kind: 'recv', pid: c.pid, origin: 'this', sent: false, t: now(), note: 'kept' });
+    S.rec[c.pid] = { by: 'this', t: S.rec[c.pid] ? S.rec[c.pid].t : fmt(S.clock), sent: false };
+    say('Kept ' + p.sender + ' as received.');
+  } else {
+    delete S.rec[c.pid];
+    say(p.sender + ' is expected again.');
+  }
+  if (!S.conflicts.length) S.sheet = false;
+  if (S.net === 'online' && held().length) { S.net = 'sending'; schedulePump(); }
+}
+function otherActs(kind) {
+  if (!S.listLoaded) { say('This phone has no copy of the list, so it cannot show the other phone yet.'); return; }
+  let pid = null;
+  const mine = Object.keys(S.rec).filter(k => S.rec[k].by === 'this' && S.rec[k].t !== 'Yesterday');
+  const queued = new Set(S.remote.map(e => e.pid));
+  if (kind === 'recv-dup') pid = mine.find(k => !queued.has(k));
+  if (kind === 'undo') pid = mine.slice().reverse().find(k => !queued.has(k) && !S.conflicts.some(c => c.pid === k));
+  if (kind === 'recv-new') { const f = S.pieces.find(p => !S.rec[p.id] && !queued.has(p.id)); pid = f && f.id; }
+  if (!pid) { say(kind === 'recv-new' ? 'Nothing left for the other phone to mark.' : 'Mark a piece on this phone first.'); return; }
+  const ev = { kind: kind === 'undo' ? 'undo' : 'recv', pid, t: now() };
+  S.remote.push(ev);
+  if (S.net === 'online') { deliver(); say('The other phone acted, and this phone heard it at once.'); }
+  else say('The other phone acted. This phone cannot hear it until signal returns.');
+}
+function setSignal(on) {
+  if (!S.listLoaded) {
+    if (on) { S.listLoaded = true; S.net = 'online'; S.lines = []; S.rec = {}; addRecv('p0', 'Yesterday', 'this', true); S.lastHeard = fmt(S.clock); say('Signal on. The list loaded.'); }
+    return;
+  }
+  if (on) {
+    if (S.net === 'offline' || S.net === 'failed' || S.net === 'stopped') {
+      S.net = held().length ? 'sending' : 'online';
+      if (S.net === 'online') { deliver(); S.lastHeard = fmt(S.clock); }
+      else schedulePump();
+    }
+  } else {
+    if (pumpTimer) { clearTimeout(pumpTimer); pumpTimer = null; }
+    if (S.net !== 'offline') S.lastHeard = fmt(S.clock);
+    S.net = 'offline';
+  }
+}
+
+/* ---------- Glyphs ---------- */
+const svg = (cls, body, label) => `<svg class="g ${cls}" viewBox="0 0 28 28" ${label ? `role="img" aria-label="${label}"` : 'aria-hidden="true"'}>${body}</svg>`;
+const G = {
+  open: l => svg('g-open', '<circle cx="14" cy="14" r="11" fill="none" stroke="currentColor" stroke-width="2"/>', l),
+  held: l => svg('g-held', '<circle cx="14" cy="14" r="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-dasharray="4 3"/><path d="M8.5 14.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>', l),
+  sent: l => svg('g-sent', '<circle cx="14" cy="14" r="12" fill="currentColor"/><path d="M8.5 14.5l3.5 3.5 7.5-8" fill="none" stroke="var(--raised)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>', l),
+  both: l => svg('g-sent', '<circle cx="10" cy="14" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17" cy="14" r="9.5" fill="currentColor"/><path d="M12.8 14.5l2.8 2.8 5.4-6" fill="none" stroke="var(--raised)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>', l),
+  other: l => svg('g-other', '<rect x="8" y="3" width="12" height="22" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M11 14.5l2.3 2.3 4-4.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>', l),
+  otherUndo: l => svg('g-other', '<rect x="8" y="3" width="12" height="22" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M11 14h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>', l),
+  alert: l => svg('g-alert', '<path d="M14 2.5l11.5 11.5L14 25.5 2.5 14z" fill="currentColor"/><path d="M14 8.5v6.5" stroke="var(--raised)" stroke-width="2.6" stroke-linecap="round"/><circle cx="14" cy="19" r="1.6" fill="var(--raised)"/>', l),
+  undo: l => svg('g-open', '<path d="M9 11h9a5 5 0 010 10h-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M12 7l-4 4 4 4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>', l),
+  nosig: () => '<svg width="18" height="12" viewBox="0 0 18 12" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx="1" fill="currentColor" opacity=".35"/><rect x="5" y="5" width="3" height="7" rx="1" fill="currentColor" opacity=".35"/><rect x="10" y="2" width="3" height="10" rx="1" fill="currentColor" opacity=".35"/><rect x="15" y="0" width="3" height="12" rx="1" fill="currentColor" opacity=".35"/></svg>',
+  sig: () => '<svg width="18" height="12" viewBox="0 0 18 12" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx="1" fill="currentColor"/><rect x="5" y="5" width="3" height="7" rx="1" fill="currentColor"/><rect x="10" y="2" width="3" height="10" rx="1" fill="currentColor"/><rect x="15" y="0" width="3" height="12" rx="1" fill="currentColor"/></svg>',
+  spin: () => '<svg class="g g-held" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="10" fill="none" stroke="currentColor" stroke-opacity=".25" stroke-width="3"/><path d="M14 4a10 10 0 0110 10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" from="0 14 14" to="360 14 14" dur="1s" repeatCount="indefinite"/></path></svg>'
+};
+function stateOf(pid) {
+  if (S.conflicts.some(c => c.pid === pid)) return 'conflict';
+  const r = S.rec[pid]; if (!r) return 'open';
+  if (!r.sent) return 'held';
+  if (r.by === 'both') return 'both';
+  if (r.by === 'other') return 'other';
+  return 'sent';
+}
+function glyphFor(st, name) {
+  if (st === 'conflict') return G.alert(name + ': needs a choice');
+  if (st === 'held') return G.held(name + ': received, kept on this phone');
+  if (st === 'both') return G.both(name + ': received, both phones agree');
+  if (st === 'other') return G.other(name + ': received on your other phone');
+  if (st === 'sent') return G.sent(name + ': received and sent');
+  return G.open(name + ': expected');
+}
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const nl = (on, name) => (on ? ` data-new="${name}"` : '');
+
+/* ---------- Shared status (one sentence about where the marks are) ---------- */
+function status() {
+  const h = held().length, c = S.conflicts.length;
+  if (!S.listLoaded) return { cls: 'is-alert', g: G.alert(), main: 'This phone has no copy of the list yet.', meta: 'It needs signal once to load it. Marks cannot be matched before then.', act: '<button class="btn" data-act="retry-load">Try again</button>' };
+  if (S.net === 'sending') { return { cls: 'is-held', g: G.spin(), main: `Sending, ${h} left`, meta: 'Each mark stays on this phone until the server says it has it.', act: '<button class="btn quiet" data-act="stop">Stop</button>' }; }
+  if (S.net === 'failed') return { cls: 'is-alert', g: G.alert(), main: `Could not send. ${h} ${h === 1 ? 'mark' : 'marks'} kept on this phone.`, meta: '<details><summary>What the server said</summary>503 Service Unavailable, retry after 30 s</details>', act: '<button class="btn" data-act="retry">Try again</button>' };
+  if (S.net === 'stopped') return { cls: 'is-held', g: G.held(), main: `Sending stopped. ${h} kept on this phone.`, meta: 'Nothing is lost. Send when you are ready.', act: '<button class="btn" data-act="retry">Send now</button>' };
+  if (S.net === 'offline' && h) return { cls: 'is-held', g: G.held(), main: `No signal. ${h} ${h === 1 ? 'mark' : 'marks'} kept on this phone.`, meta: `They send when signal returns. Your other phone: last heard ${S.lastHeard}.`, act: '' };
+  if (S.net === 'offline') return { cls: 'is-held', g: G.nosig(), main: 'No signal.', meta: `Your other phone: last heard ${S.lastHeard}. Changes made there since then show when signal returns.`, act: '' };
+  if (c) return { cls: 'is-alert', g: G.alert(), main: `${c} ${c === 1 ? 'piece needs' : 'pieces need'} a choice.`, meta: 'Your phones disagree. Nothing changes until you pick.', act: S.concept === 'pocket' ? '<button class="btn" data-act="review">Review</button>' : '' };
+  return { cls: 'is-well', g: G.sent(), main: 'All is well.', meta: '', act: '' };
+}
+
+/* ---------- Concept: Pocket list ---------- */
+function statusBar(right) {
+  const on = S.net !== 'offline' && S.listLoaded;
+  return `<div class="statusbar" aria-hidden="true"><span>${fmt(S.clock)}</span><span class="sig">${on ? G.sig() : G.nosig()}${on ? '' : ' No signal'}</span></div>`;
+}
+function strip(f) {
+  const s = status();
+  const id = f.primary ? ' id="choice-pocket"' : '';
+  return `<div class="strip ${s.cls}"${id}${nl(f.primary, 'status strip')} role="status">
+    ${s.g}<div class="strip-text"><span class="strip-main">${s.main}</span>${s.meta ? `<span class="strip-meta">${s.meta}</span>` : ''}</div>${s.act || '<span></span>'}</div>`;
+}
+function visiblePieces() {
+  const q = S.q.trim().toLowerCase();
+  return S.pieces.filter(p => !(S.rec[p.id] && S.rec[p.id].t === 'Yesterday'))
+    .filter(p => !q || p.sender.toLowerCase().includes(q))
+    .sort((a, b) => a.n - b.n);
+}
+function pocketMail(f) {
+  let body;
+  const today = S.pieces.filter(p => !(S.rec[p.id] && S.rec[p.id].t === 'Yesterday'));
+  if (!S.listLoaded) body = `<div class="empty"><p>The list shows here once this phone has loaded it.</p></div>`;
+  else if (!today.length) body = `<div class="empty"><p>Nothing is expected right now. New orders show here.</p><button class="btn" data-act="check">Check for new</button></div>`;
+  else {
+    const list = visiblePieces();
+    const search = `<div class="search" role="search"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12.5 12.5L17 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><input type="search" data-key="q-${f.idx}" data-act-input="q" value="${esc(S.q)}" placeholder="Who is it from?" aria-label="Find by sender"></div>`;
+    if (!list.length) body = `<div class="navbar">${search}</div><div class="empty"><p>No sender matches “${esc(S.q)}”.</p><button class="btn quiet" data-act="clear-q">Clear search</button></div>`;
+    else body = `<div class="navbar">${search}</div><ul class="rows">${list.map((p, i) => pocketRow(p, f, i === 0)).join('')}</ul>`;
+  }
+  return `<div class="navbar"><h2 class="largetitle">Mail</h2>${strip(f)}</div>
+    <div class="scroll" data-scroll="pm-${f.idx}">${body}${f.layout === 'open' ? '' : '<div class="pad-tab"></div>'}</div>`;
+}
+function pocketRow(p, f, first) {
+  const st = stateOf(p.id); const r = S.rec[p.id];
+  let when = 'Due ' + p.due;
+  if (st === 'conflict') { const c = S.conflicts.find(x => x.pid === p.id); when = `You ${c.mine}, other phone ${c.theirs}`; }
+  else if (r) when = 'Today ' + r.t + (r.by === 'other' ? ', other phone' : '');
+  const label = r ? `Take back ${p.sender}` : `Mark ${p.sender} received`;
+  const act = st === 'conflict' ? 'review' : 'toggle';
+  return `<li class="row" data-st="${st}"><div class="row-text"><span class="sender">${esc(p.sender)}</span><span class="inside">${esc(p.inside)}</span><span class="due">${when}</span></div>
+    <button class="mark" data-act="${act}" data-id="${p.id}" aria-pressed="${!!r}" aria-label="${esc(label)}"${nl(f.primary && first, 'mark keeps a shape')}>${glyphFor(st, p.sender)}</button></li>`;
+}
+function syncItems() {
+  const items = { choice: [], wait: [], sent: [], other: [] };
+  S.lines.slice().reverse().forEach(l => {
+    const p = piece(l.pid); if (!p) return;
+    const name = esc(p.sender);
+    if (l.kind === 'conflict') items.choice.push(`<li class="sync-item">${G.alert()}<div><div class="t"><b>${name}</b></div><div class="m">You marked it received at ${l.mine}. Your other phone marked it not received at ${l.t}.</div><div class="acts"><button class="btn" data-act="keep" data-id="${l.id}">Keep received</button><button class="btn quiet" data-act="theirs" data-id="${l.id}">Mark not received</button></div></div></li>`);
+    else if (l.kind === 'resolved') items.sent.push(`<li class="sync-item">${G.undo()}<div><div class="t">${name}</div><div class="m">You chose: ${l.keep ? 'keep received' : 'not received'}.</div></div></li>`);
+    else if (l.origin === 'other') items.other.push(`<li class="sync-item">${l.kind === 'undo' ? G.otherUndo() : G.other()}<div><div class="t">${l.kind === 'undo' ? 'Not received' : 'Received'}: ${name}</div><div class="m">${l.t}</div></div></li>`);
+    else if (!l.sent) items.wait.push(`<li class="sync-item">${l.kind === 'undo' ? G.undo() : G.held()}<div><div class="t">${l.kind === 'undo' ? 'Took back' : 'Received'}: ${name}</div><div class="m">${l.t}${l.note === 'kept' ? ', your choice' : ''}</div></div></li>`);
+    else items.sent.push(`<li class="sync-item">${l.origin === 'both' ? G.both() : (l.kind === 'undo' ? G.undo() : G.sent())}<div><div class="t">${l.kind === 'undo' ? 'Took back' : 'Received'}: ${name}</div><div class="m">${l.t}${l.origin === 'both' ? '. Your other phone marked it too; counted once.' : ''}</div></div></li>`);
+  });
+  return items;
+}
+function pocketSync(f) {
+  const it = syncItems();
+  const sec = (h, arr) => arr.length ? `<h3 class="section-h">${h}</h3><ul class="sync-list">${arr.join('')}</ul>` : '';
+  let body = sec('Needs a choice', it.choice) + sec('Waiting to send', it.wait) + sec('From your other phone', it.other) + sec('Sent', it.sent);
+  if (!S.listLoaded) body = `<div class="empty"><p>Nothing to send yet.</p></div>`;
+  return `<div class="navbar"><h2 class="largetitle">Sync</h2>${f.layout === 'open' ? '' : strip({ ...f, primary: false })}</div>
+    <div class="scroll" data-scroll="ps-${f.idx}">${body}${f.layout === 'open' ? '' : '<div class="pad-tab"></div>'}</div>`;
+}
+function pocketSheet() {
+  if (!S.sheet || !S.conflicts.length) return '';
+  const cards = S.conflicts.map(c => { const p = piece(c.pid); return `<div class="choice-card"><p><b>${esc(p.sender)}</b>, ${esc(p.inside.toLowerCase())}. Is it in your hand?</p>
+    <button class="choice primary" data-act="keep" data-id="${c.id}"><b>Keep received</b><span>This phone, ${c.mine}, no signal</span></button>
+    <button class="choice" data-act="theirs" data-id="${c.id}"><b>Mark not received</b><span>Your other phone, ${c.theirs}</span></button></div>`; }).join('');
+  return `<div class="scrim" data-act="close-sheet"></div><div class="sheet" role="dialog" aria-label="Needs a choice"><div class="sheet-bar"><button class="btn plain" data-act="close-sheet">Close</button><h2>Needs a choice</h2><span></span></div><div class="sheet-body">${cards}</div></div>`;
+}
+function tabbar(f) {
+  const h = held().length, c = S.conflicts.length;
+  const badge = c ? `<span class="badge alert" aria-label="${c} need a choice">${c}</span>` : (h ? `<span class="badge" aria-label="${h} waiting">${h}</span>` : '');
+  return `<div class="tabbar" role="tablist"${nl(f.primary, 'Sync tab')}>
+    <button class="tab" role="tab" data-act="tab" data-id="mail" aria-selected="${S.tab === 'mail'}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 7l8.5 6 8.5-6" fill="none" stroke="currentColor" stroke-width="2"/></svg><span class="tl">Mail</span></button>
+    <button class="tab" role="tab" data-act="tab" data-id="sync" aria-selected="${S.tab === 'sync'}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0114-5.3M20 12a8 8 0 01-14 5.3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M18 3v4h-4M6 21v-4h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="tl">Sync</span>${badge}</button></div>`;
+}
+function renderPocket(f) {
+  if (f.layout === 'open') {
+    return `<div class="page">${statusBar()}${pocketMail(f)}<div class="home-ind"></div></div><div class="hinge" aria-hidden="true"></div><div class="page">${statusBar()}${pocketSync(f)}${pocketSheet()}<div class="home-ind"></div></div>`;
+  }
+  return `<div class="screen">${statusBar()}${S.tab === 'mail' ? pocketMail(f) : pocketSync(f)}${tabbar(f)}${pocketSheet()}<div class="home-ind"></div></div>`;
+}
+
+/* ---------- Concept: Receipt tape ---------- */
+function tapeLine(l, f) {
+  const p = piece(l.pid); if (!p) return '';
+  const name = `<b>${esc(p.sender)}</b>`;
+  let g, what, why = '', cls = '';
+  if (l.kind === 'conflict') {
+    return `<li><div class="line from-other is-alert" role="group">${'<span class="time">' + l.t + '</span>'}${G.alert()}<span class="what">Your other phone says ${name} did not come.<span class="why">You marked it received at ${l.mine}. Nothing changes until you pick.</span></span></div>
+      <div class="line-acts"><button class="btn" data-act="keep" data-id="${l.id}">Keep received</button><button class="btn quiet" data-act="theirs" data-id="${l.id}">Mark not received</button></div></li>`;
+  }
+  if (l.kind === 'resolved') { g = G.undo(); what = `You chose ${l.keep ? 'to keep' : 'not received for'} ${name}.`; }
+  else if (l.origin === 'other') { cls = 'from-other'; g = l.kind === 'undo' ? G.otherUndo() : G.other(); what = `${l.kind === 'undo' ? 'Not received' : 'Received'}: ${name}`; why = 'Your other phone'; }
+  else if (l.kind === 'undo') { g = G.undo(); what = `Took back ${name}`; }
+  else {
+    g = !l.sent ? G.held() : (l.origin === 'both' ? G.both() : G.sent());
+    what = `Received ${name}`;
+    why = l.origin === 'both' ? 'Your other phone marked it too. Counted once.' : (l.note === 'kept' ? 'Your choice' : esc(p.inside));
+  }
+  const canTake = l.kind === 'recv' && l.origin !== 'other' && S.rec[l.pid] && S.lines.filter(x => x.pid === l.pid && x.kind === 'recv').slice(-1)[0] === l;
+  const open = S.openLine === l.id && canTake;
+  const tag = canTake ? 'button' : 'div';
+  const attrs = canTake ? ` data-act="openline" data-id="${l.id}" aria-expanded="${open}"` : '';
+  return `<li><${tag} class="line ${cls}"${attrs}><span class="time">${l.t === 'Yesterday' ? 'Yesterday' : l.t}</span>${g}<span class="what">${what}${why ? `<span class="why">${why}</span>` : ''}</span></${tag}>
+    ${open ? `<div class="line-acts"><button class="btn quiet" data-act="toggle" data-id="${l.pid}">Take back</button></div>` : ''}</li>`;
+}
+function perf(f) {
+  const s = status();
+  const id = f.primary ? ' id="choice-tape"' : '';
+  let main = s.main, meta = s.meta;
+  if (S.net === 'offline' && held().length) { main = 'No signal. Below this line: kept on this phone.'; meta = `They send when signal returns. Your other phone: last heard ${S.lastHeard}.`; }
+  return `<li class="perf ${s.cls}"${id}${nl(f.primary, 'tear line')} role="status"><span class="perf-main">${s.g}${main}</span>${meta ? `<span class="perf-meta">${meta}</span>` : ''}${s.act}</li>`;
+}
+function tapeList(f) {
+  if (!S.listLoaded) return `<ol class="tape tape-paper" data-scroll="tl-${f.idx}" data-bottom="1">${perf(f)}</ol>`;
+  const sentLines = [], heldLines = [];
+  S.lines.forEach(l => { (l.origin !== 'other' && !l.sent && l.kind !== 'conflict' ? heldLines : sentLines).push(l); });
+  return `<ol class="tape tape-paper" data-scroll="tl-${f.idx}" data-bottom="1" aria-label="What happened today, newest last">
+    ${sentLines.map(l => tapeLine(l, f)).join('')}${perf(f)}${heldLines.length ? `<li><ol class="stack below-perf" style="list-style:none;padding:0;margin:0;gap:var(--space-2)">${heldLines.map(l => tapeLine(l, f)).join('')}</ol></li>` : ''}</ol>`;
+}
+function tray(f, full) {
+  if (!S.listLoaded) return '';
+  const q = S.q.trim().toLowerCase();
+  const exp = S.pieces.filter(p => !S.rec[p.id] && !S.conflicts.some(c => c.pid === p.id)).sort((a, b) => a.n - b.n);
+  const shown = exp.filter(p => !q || p.sender.toLowerCase().includes(q));
+  let list;
+  if (!exp.length) list = `<div class="empty"><p>Nothing is expected right now. New orders show here.</p><button class="btn" data-act="check">Check for new</button></div>`;
+  else if (!shown.length) list = `<div class="empty"><p>No sender matches “${esc(S.q)}”.</p><button class="btn quiet" data-act="clear-q">Clear search</button></div>`;
+  else list = `<ul class="tray-list" data-scroll="tr-${f.idx}">${shown.map(p => `<li><button class="tray-item" data-act="toggle" data-id="${p.id}" aria-label="Mark ${esc(p.sender)} received">${G.open()}<span class="row-text"><span class="sender">${esc(p.sender)}</span><span class="due">${esc(p.inside)}, due ${p.due}</span></span></button></li>`).join('')}</ul>`;
+  const search = exp.length ? `<div class="tray-search"><div class="search" role="search"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12.5 12.5L17 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><input type="search" data-key="q-${f.idx}" data-act-input="q" value="${esc(S.q)}" placeholder="Who is it from?" aria-label="Find by sender"></div></div>` : '';
+  return `<section class="tray ${full ? 'full' : 'folded'}"${nl(f.primary, 'tray, tap tears a line')} aria-label="Still expected"><div class="tray-h"><h2>Still expected</h2><span class="count">${exp.length}</span></div>${list}${search}</section>`;
+}
+function tapeHead() {
+  return `<div class="navbar"><h2 class="largetitle" style="font-size:var(--t-title2);line-height:var(--l-title2)">Today’s mail</h2></div>`;
+}
+function renderTape(f) {
+  if (f.layout === 'open') {
+    return `<div class="page">${statusBar()}${tapeHead()}<div class="tape-wrap">${tapeList(f)}</div><div class="home-ind"></div></div><div class="hinge" aria-hidden="true"></div><div class="page">${statusBar()}<div class="tape-wrap">${tray(f, true) || '<div class="empty"><p>Expected mail shows here once the list loads.</p></div>'}</div><div class="home-ind"></div></div>`;
+  }
+  const ax = f.ax5 ? ` data-scroll="ts-${f.idx}" data-bottom="1"` : '';
+  return `<div class="screen"${ax}>${statusBar()}${tapeHead()}<div class="tape-wrap">${tapeList(f)}</div>${tray(f, false)}<div class="home-ind"></div></div>`;
+}
+
+/* ---------- Page ---------- */
+const stage = document.getElementById('stage');
+function visibleConcepts() { return CONCEPTS.filter(c => !S.hidden.has(c.key)); }
+function renderControls() {
+  const ct = document.getElementById('concept-tabs');
+  ct.innerHTML = visibleConcepts().map(c => `<span class="concept-tab"><button class="chip" data-page="concept" data-id="${c.key}" aria-pressed="${S.concept === c.key}">${c.name}</button><button class="hide" data-page="hide" data-id="${c.key}" aria-label="Hide ${c.name}">✕</button></span>`).join('');
+  const sh = document.getElementById('show-hidden');
+  sh.hidden = !S.hidden.size; sh.textContent = `Show hidden (${S.hidden.size})`;
+  document.getElementById('state-tabs').innerHTML = STATES.map(s => `<button class="chip" data-page="state" data-id="${s.key}" aria-pressed="${S.st === s.key}">${s.name}</button>`).join('');
+  const sig = document.getElementById('sim-signal');
+  const on = S.net !== 'offline' && S.listLoaded;
+  sig.setAttribute('aria-pressed', String(on)); sig.textContent = on ? 'Signal: on' : 'Signal: off';
+  document.getElementById('sim-fail').setAttribute('aria-pressed', String(S.failNext));
+  document.getElementById('theme-btn').textContent = 'Theme: ' + S.theme;
+  document.getElementById('labels-btn').setAttribute('aria-pressed', String(S.labels));
+  document.body.classList.toggle('no-labels', !S.labels);
+  document.getElementById('press-note').textContent = note.text;
+}
+function render() {
+  const keep = {};
+  stage.querySelectorAll('[data-scroll]').forEach(el => { keep[el.dataset.scroll] = el.scrollTop; });
+  const a = document.activeElement; const fk = a && a.dataset && a.dataset.key; const caret = fk ? a.selectionStart : 0;
+  if (S.theme === 'system') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', S.theme);
+  renderControls();
+  const vc = visibleConcepts();
+  const allHidden = document.getElementById('all-hidden');
+  if (allHidden) allHidden.remove();
+  stage.querySelectorAll('figure.device').forEach(fig => { fig.hidden = !vc.length; });
+  if (!vc.length) { stage.insertAdjacentHTML('beforeend', '<p class="hidden-note" id="all-hidden">Every concept is hidden. Press Show hidden to bring them back.</p>'); return; }
+  if (S.hidden.has(S.concept)) S.concept = vc[0].key;
+  const fn = S.concept === 'pocket' ? renderPocket : renderTape;
+  stage.querySelectorAll('figure.device').forEach((fig, idx) => {
+    fig.querySelector('.frame').innerHTML = fn({ ...FRAMES[idx], idx });
+  });
+  stage.querySelectorAll('[data-scroll]').forEach(el => {
+    if (el.dataset.bottom) el.scrollTop = el.scrollHeight; else if (keep[el.dataset.scroll] != null) el.scrollTop = keep[el.dataset.scroll];
+  });
+  if (fk) { const el = stage.querySelector(`[data-key="${fk}"]`); if (el) { el.focus(); try { el.setSelectionRange(caret, caret); } catch (e) {} } }
+}
+
+function writeHash() {
+  const h = `#c=${S.concept}&s=${S.st}` + (S.theme !== 'system' ? `&t=${S.theme}` : '');
+  if (location.hash !== h) history.replaceState(null, '', h);
+}
+function readHash() {
+  const m = new URLSearchParams(location.hash.slice(1));
+  const c = m.get('c'), s = m.get('s'), t = m.get('t');
+  const st = STATES.some(x => x.key === s) ? s : 'offline';
+  S = S || null;
+  preset(st);
+  if (CONCEPTS.some(x => x.key === c)) S.concept = c;
+  if (t === 'dark' || t === 'light') S.theme = t;
+  if (st === 'conflict' && S.concept === 'pocket') S.sheet = false;
+  note.text = '';
+}
+
+document.addEventListener('click', e => {
+  const pg = e.target.closest('[data-page]');
+  if (pg) {
+    const k = pg.dataset.page, id = pg.dataset.id;
+    if (k === 'concept') { S.concept = id; S.q = ''; writeHash(); }
+    if (k === 'hide') { S.hidden.add(id); say(''); }
+    if (k === 'unhide') S.hidden.clear();
+    if (k === 'state') { const keepC = S.concept; preset(id); S.concept = keepC; note.text = ''; writeHash(); }
+    if (k === 'signal') { const on = !(S.net !== 'offline' && S.listLoaded); setSignal(on); say(on ? (S.listLoaded ? 'Signal on.' : note.text) : 'Signal off.'); }
+    if (k === 'other-dup') otherActs('recv-dup');
+    if (k === 'other-undo') otherActs('undo');
+    if (k === 'other-new') otherActs('recv-new');
+    if (k === 'failnext') { S.failNext = !S.failNext; say(S.failNext ? 'The next send will fail.' : 'Sends will work.'); }
+    if (k === 'reopen') { S.sheet = false; S.tab = 'mail'; S.q = ''; S.openLine = null; const h = held().length; say(`Reopened. ${h} ${h === 1 ? 'mark' : 'marks'} still kept on this phone.`); }
+    if (k === 'theme') { S.theme = S.theme === 'system' ? 'dark' : (S.theme === 'dark' ? 'light' : 'system'); writeHash(); }
+    if (k === 'labels') S.labels = !S.labels;
+    render(); return;
+  }
+  const el = e.target.closest('[data-act]'); if (!el || !stage.contains(el)) return;
+  const k = el.dataset.act, id = el.dataset.id;
+  if (k === 'toggle') { toggle(id); S.openLine = null; }
+  if (k === 'tab') S.tab = id;
+  if (k === 'review') { if (S.concept === 'pocket') { S.sheet = true; if (el.closest('.screen')) {} } }
+  if (k === 'close-sheet') S.sheet = false;
+  if (k === 'keep') resolve(id, true);
+  if (k === 'theirs') resolve(id, false);
+  if (k === 'stop') { if (pumpTimer) { clearTimeout(pumpTimer); pumpTimer = null; } S.net = 'stopped'; say('Sending stopped. Marks kept on this phone.'); }
+  if (k === 'retry') { S.net = 'sending'; schedulePump(); say(''); }
+  if (k === 'retry-load') say('Still no signal. The list loads when there is.');
+  if (k === 'check') say('Checked at ' + fmt(S.clock) + '. Nothing new.');
+  if (k === 'clear-q') S.q = '';
+  if (k === 'openline') S.openLine = S.openLine === id ? null : id;
+  render();
+});
+document.addEventListener('input', e => {
+  if (e.target.dataset && e.target.dataset.actInput === 'q') { S.q = e.target.value; render(); }
+});
+window.addEventListener('hashchange', () => { readHash(); render(); });
+
+readHash();
+render();
+})();
+</script>
+</body>
+</html>

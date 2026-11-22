@@ -1,0 +1,1023 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Envelope Gallery Wall</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light (UIUserInterfaceStyle),
+   so this page draws one theme. The photo pixels inside each sample photo are picture content, not interface colour. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961;
+  --accent:#6F5CA6; --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9;
+  --manila:#EADBBA; --manilaInk:#695832; --shadow:rgba(28,43,36,0.06); --scrim:rgba(28,43,36,0.92);
+  --cochin: Cochin, "Liberation Serif", Georgia, serif;
+  --mono: Menlo, "DejaVu Sans Mono", ui-monospace, monospace;
+  --sys: -apple-system, system-ui, "Helvetica Neue", sans-serif;
+  /* Dynamic Type factors. Default text size: 1. AX5 (the largest accessibility size) sets them from the
+     Typography page's tables, read 2026-11-21: Body 17 to 53, Footnote 13 to 44, Caption 1 12 to 43, Caption 2 11 to 40. */
+  --kb:1; --kf:1; --kc:1; --kc2:1;
+}
+* { box-sizing:border-box; }
+html { color-scheme: light; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+main { margin:0 auto; padding:16px; max-width:2200px; }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-weight:600; max-width:100ch; }
+h1 { font-family:var(--cochin); font-size:28px; margin:16px 0 4px; font-weight:700; }
+h2 { font-family:var(--cochin); font-size:22px; margin:0 0 4px; }
+.kind { margin:0 0 4px; max-width:100ch; }
+.sub { color:var(--inkSoft); margin:0 0 12px; max-width:90ch; }
+.ctl { display:flex; flex-direction:column; gap:8px; margin:16px 0; }
+.ctl .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.ctl .lab { font-size:13px; color:var(--inkSoft); min-width:5.5em; }
+.ctl a, .ctl button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+.ctl a[aria-current="true"], .ctl button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.ctl button.hide { color:var(--red); border-color:var(--redSoft); }
+a:focus-visible, button:focus-visible, input:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+section.concept { border-top:1px solid var(--line); padding-top:16px; margin-top:24px; }
+section.concept[hidden], [hidden] { display:none !important; }
+.frames { overflow-x:auto; padding:8px 4px 16px; }
+.frames-in { display:flex; gap:24px; align-items:flex-start; width:max-content; }
+figure { margin:0; }
+figcaption { margin-top:8px; font-size:13px; color:var(--inkSoft); max-width:466px; }
+figcaption b { color:var(--ink); font-family:var(--cochin); font-size:16px; display:block; }
+.phonesize { display:flex; gap:8px; align-items:center; font-size:13px; margin-bottom:8px; }
+.phonesize input { width:5.5em; min-height:44px; font:inherit; font-size:16px; padding:0 8px; border:1px solid var(--line); border-radius:8px; background:var(--card); }
+.notes-list { max-width:100ch; }
+code { font-family:var(--mono); font-size:0.9em; overflow-wrap:anywhere; }
+
+/* ================= device frames (1 CSS px = 1 pt) ================= */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); overflow:hidden; color:var(--ink);
+  font-family:var(--sys); line-height:1.3; container-type:inline-size; }
+.dev.single { border-radius:20px; }
+.dev.open { border-radius:12px; }
+.pg { position:absolute; top:0; bottom:0; overflow:hidden; background:var(--paper); container-type:inline-size; }
+.hinge { position:absolute; top:0; bottom:0; background:repeating-linear-gradient(90deg, var(--ink) 0 2px, transparent 2px 6px); opacity:.18; }
+.pane { position:absolute; inset:0; display:flex; flex-direction:column; }
+/* Status bar: drawn 20 pt, the floor DuoHandUITests.statusBarFloor reads (duo-hand-notice-match notes). Real height unmeasured. */
+.status { flex:none; height:calc(20px + env(safe-area-inset-top)); padding:env(safe-area-inset-top) 16px 0; display:flex; justify-content:space-between; align-items:center;
+  font:600 12px var(--sys); color:var(--ink); }
+.status.dark { color:var(--card); }
+.scroll { flex:1 1 auto; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; scrollbar-width:thin; }
+.pad { padding:0 16px; }
+.bottom-safe { padding-bottom:calc(env(safe-area-inset-bottom) + 16px); }
+
+/* Tab bars. Folded: the system bar, drawn as a floating pill sized like DuoBarMetrics (64 pt pill, 12 pt lift, 24 pt inset) as an estimate.
+   Open: DuoBar under the right page (DuoSpine.swift), at its real metrics. Tab text stays at the default size (DuoBar caps it at .large). */
+.tabbar { position:absolute; left:24px; right:24px; bottom:calc(12px + env(safe-area-inset-bottom)); height:64px; border-radius:32px; padding:4px;
+  display:flex; gap:4px; background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  border:1px solid var(--line); box-shadow:0 4px 16px var(--shadow); z-index:5; }
+.tab { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; border-radius:28px; color:var(--inkSoft);
+  font:12px var(--cochin); position:relative; border:0; background:transparent; }
+.tab.on { color:var(--accent); background:color-mix(in srgb, var(--card) 90%, transparent); }
+.tab svg { width:22px; height:22px; }
+.badge { position:absolute; top:4px; left:calc(50% + 6px); background:var(--red); color:var(--card); font:10px var(--mono); border-radius:8px; padding:1px 4px; }
+
+/* ===== chrome: navigation bars and toolbars, system font, 44 pt targets ===== */
+.navbar { flex:none; height:44px; display:flex; align-items:center; gap:8px; padding:0 8px; }
+.navbar .title { flex:1; text-align:center; font:600 calc(17px * var(--kb)) var(--sys); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nb { min-width:44px; min-height:44px; padding:0 8px; border:0; background:transparent; color:var(--accent); font:calc(17px * var(--kb)) var(--sys);
+  display:inline-flex; align-items:center; gap:4px; cursor:pointer; border-radius:8px; white-space:nowrap; }
+.nb.bold { font-weight:600; }
+.nb[disabled] { color:var(--inkSoft); opacity:.6; cursor:not-allowed; }
+.nb svg { width:20px; height:20px; flex:none; }
+.dev.ax .navbar { height:auto; min-height:44px; flex-wrap:wrap; }
+.dev.ax .navbar .title { flex-basis:100%; order:3; text-align:left; padding:0 8px 4px; white-space:normal; }
+
+.btn { min-height:44px; padding:8px 16px; border-radius:22px; border:1px solid var(--line); background:var(--card); color:var(--ink);
+  font:600 calc(15px * var(--kb)) var(--cochin); display:inline-flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; }
+.btn.primary { background:var(--ink); color:var(--card); border-color:var(--ink); }
+.btn.danger { color:var(--red); border-color:var(--redSoft); }
+.btn.armed { background:var(--red); color:var(--card); border-color:var(--red); }
+.btn[disabled] { color:var(--inkSoft); background:transparent; border-color:var(--line); cursor:not-allowed; }
+.btn svg { width:1.2em; height:1.2em; flex:none; }
+.why { font:calc(12px * var(--kc)) var(--sys); color:var(--inkSoft); }
+
+/* Record an envelope: the bottom accessory over the tab bar, in the thumb's reach (ux-thumb-zone). Fill: recordFill = ink, text card (OrphanedPaint). */
+.accessory { position:absolute; left:16px; right:16px; bottom:calc(12px + 64px + 8px + env(safe-area-inset-bottom)); z-index:4; display:flex; gap:8px; }
+.accessory .btn { flex:1; box-shadow:0 4px 12px var(--shadow); }
+.pg .accessory.noBar { bottom:calc(16px + env(safe-area-inset-bottom)); }
+.accessory.inflow { position:static; padding:0 16px 8px; }
+.accessory.inflow .btn { box-shadow:none; }
+
+/* segmented control and menus */
+.seg { display:flex; background:color-mix(in srgb, var(--line) 55%, transparent); border-radius:9px; padding:2px; gap:2px; }
+.seg button { flex:1; min-height:44px; border:0; border-radius:7px; background:transparent; color:var(--ink); font:calc(13px * var(--kf)) var(--sys); cursor:pointer; white-space:nowrap; }
+.seg button[aria-pressed="true"] { background:var(--card); box-shadow:0 1px 2px var(--shadow); font-weight:600; }
+.seg .n { font-family:var(--mono); font-size:calc(11px * var(--kc2)); color:var(--inkSoft); margin-left:4px; }
+.wallbar { display:flex; flex-direction:column; gap:8px; padding:8px 16px; }
+.wallbar .row { display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+.menu { position:relative; }
+.menu-pop { position:absolute; z-index:8; top:calc(100% + 4px); left:0; min-width:220px; background:var(--card); border:1px solid var(--line); border-radius:12px;
+  box-shadow:0 8px 24px color-mix(in srgb, var(--ink) 16%, transparent); padding:4px 0; }
+.menu-pop.right { left:auto; right:0; }
+.menu-pop button { display:flex; width:100%; min-height:44px; align-items:center; gap:8px; padding:0 16px; border:0; background:transparent; color:var(--ink);
+  font:calc(17px * var(--kb)) var(--sys); text-align:left; cursor:pointer; }
+.menu-pop button .ck { width:20px; color:var(--accent); flex:none; }
+.menu-pop hr { border:0; border-top:1px solid var(--line); margin:4px 0; }
+
+/* ===== the wall ===== */
+.masthead-today { margin:8px 16px 0; border:1px dashed var(--inkSoft); border-radius:8px; padding:8px 12px; font:12px var(--sys); color:var(--inkSoft); }
+.masthead-today .mh { font:700 15px var(--cochin); letter-spacing:.2em; color:var(--ink); display:block; }
+/* Contact sheet: the house Grid primitive. --tile is the smallest tile; the column count comes from the space. */
+.grid { display:grid; gap:12px 8px; padding:4px 16px 16px; grid-template-columns:repeat(auto-fill, minmax(min(var(--tile, 128px), 100%), 1fr)); }
+.dev.ax .grid { --tile:160px; }
+.tile { all:unset; display:flex; flex-direction:column; gap:4px; cursor:pointer; position:relative; min-width:0; border-radius:8px; }
+.tile:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.cover { position:relative; aspect-ratio:1; border-radius:8px; overflow:hidden; background:var(--manila); box-shadow:0 1px 2px var(--shadow); }
+.cover svg.ph, .cover .ph { position:absolute; inset:0; width:100%; height:100%; display:block; }
+.chip { position:absolute; left:6px; bottom:6px; display:inline-flex; align-items:center; gap:4px; padding:2px 8px 2px 6px; border-radius:10px;
+  background:color-mix(in srgb, var(--card) 90%, transparent); color:var(--ink); font:calc(11px * var(--kc2)) var(--mono); }
+.chip svg { width:14px; height:14px; }
+.cap { display:flex; justify-content:space-between; gap:4px; font:calc(11px * var(--kc2)) var(--mono); color:var(--inkSoft); flex-wrap:wrap; }
+.capnote { font:italic calc(13px * var(--kf)) var(--cochin); color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-height:1.2em; }
+.dev.ax .capnote { display:none; }
+/* An envelope with no photo: an index card face, not a picture. Dashed edge, the note in Cochin. */
+.face { position:absolute; inset:0; padding:12px; display:flex; flex-direction:column; gap:8px; justify-content:space-between; background:var(--card);
+  border:1.5px dashed var(--inkSoft); border-radius:8px; }
+.face .fnote { font:italic calc(14px * var(--kb)) var(--cochin); color:var(--ink); overflow:hidden; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; }
+.face .fno { display:inline-flex; gap:4px; align-items:center; font:calc(11px * var(--kc2)) var(--mono); color:var(--inkSoft); }
+.face .fno svg { width:14px; height:14px; }
+/* A photo this device does not hold yet: unknown, never empty (ux-unknown-is-not-empty). */
+.remote { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:8px; text-align:center;
+  background:repeating-linear-gradient(135deg, var(--card) 0 8px, var(--paper) 8px 16px); color:var(--inkSoft); font:calc(12px * var(--kc)) var(--sys); }
+.remote svg { width:22px; height:22px; }
+.missing { background:var(--manila); color:var(--manilaInk); }
+.picked { outline:2px solid var(--accent); outline-offset:2px; }
+/* Today: OrphanedView.errorBar, the refusal line over the foot of the list. */
+.errbar { position:absolute; left:0; right:0; z-index:4; padding:12px 16px; background:var(--card); border-top:1px solid var(--line); font:calc(13px * var(--kf)) var(--cochin); color:var(--ink); text-align:center; }
+
+/* Stacks: the wall as a pinboard. Tiles hang a degree off true, with a gold tape corner (gold is ornament only). */
+.board { display:grid; gap:20px 16px; padding:12px 20px 16px; grid-template-columns:repeat(auto-fill, minmax(min(var(--tile, 180px), 100%), 1fr)); }
+.dev.ax .board { --tile:100%; }
+.pin { transform:rotate(var(--tilt, 0deg)); }
+.pin .cover { border-radius:3px; box-shadow:0 2px 6px color-mix(in srgb, var(--ink) 14%, transparent); border:4px solid var(--card); }
+.pin .tape { position:absolute; top:-8px; left:50%; width:44px; height:14px; margin-left:-22px; background:color-mix(in srgb, var(--gold) 55%, transparent); transform:rotate(-4deg); z-index:2; pointer-events:none; }
+.pin .face { border-radius:3px; }
+.stackpile { position:relative; aspect-ratio:1; }
+.stackpile .cover { position:absolute; inset:10px; }
+.stackpile .cover:nth-child(1) { transform:rotate(-6deg) translate(-6px, 2px); }
+.stackpile .cover:nth-child(2) { transform:rotate(4deg) translate(5px, -2px); }
+.stackname { font:700 calc(14px * var(--kb)) var(--cochin); }
+.check { position:absolute; right:8px; top:8px; width:28px; height:28px; border-radius:14px; border:2px solid var(--card); background:color-mix(in srgb, var(--ink) 35%, transparent);
+  display:flex; align-items:center; justify-content:center; z-index:3; }
+.check.on { background:var(--accent); }
+.check svg { width:16px; height:16px; color:var(--card); }
+
+/* ===== notices and empty states ===== */
+.notice { margin:4px 16px 8px; display:flex; gap:8px; align-items:center; padding:4px 4px 4px 12px; background:var(--greenSoft); border:1px solid var(--green); border-radius:8px;
+  font:calc(13px * var(--kf)) var(--cochin); color:var(--ink); }
+.notice span { flex:1; }
+.empty { padding:40px 24px; display:flex; flex-direction:column; gap:16px; align-items:center; text-align:center; font:calc(15px * var(--kb)) var(--cochin); color:var(--inkSoft); }
+
+/* ===== envelope page ===== */
+.hero { all:unset; display:block; position:relative; width:100%; aspect-ratio:4/3; border-radius:8px; overflow:hidden; cursor:zoom-in; background:var(--manila); box-shadow:0 1px 3px var(--shadow); }
+.hero:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.hero .ph { position:absolute; inset:0; width:100%; height:100%; }
+.dots { display:flex; gap:6px; justify-content:center; padding:4px 0; }
+.dots i { width:6px; height:6px; border-radius:3px; background:var(--line); }
+.dots i.on { background:var(--ink); }
+.strip { display:flex; gap:8px; overflow-x:auto; padding:2px; }
+/* 56 pt thumbnails: photo-thumbnails-and-viewer. Their hit region is 56 pt, over the 44 pt floor. */
+.thumb { all:unset; display:block; flex:none; width:56px; height:56px; border-radius:6px; overflow:hidden; position:relative; cursor:pointer; background:var(--manila); }
+.thumb:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.thumb.on { box-shadow:0 0 0 2px var(--accent); }
+.thumb .ph { position:absolute; inset:0; width:100%; height:100%; }
+.thumb.add { background:var(--card); border:1.5px dashed var(--inkSoft); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; color:var(--ink); font:11px var(--sys); }
+.thumb.add svg { width:20px; height:20px; }
+.thumbwrap { position:relative; flex:none; display:block; }
+.rm { position:absolute; right:0; top:0; width:44px; height:44px; border:0; background:transparent; cursor:pointer; display:flex; align-items:flex-start; justify-content:flex-end; padding:0; }
+.rm span { width:22px; height:22px; margin:2px; border-radius:11px; background:var(--red); color:var(--card); display:flex; align-items:center; justify-content:center; }
+.rm svg { width:12px; height:12px; }
+.micro { font:calc(11px * var(--kc)) var(--mono); text-transform:uppercase; letter-spacing:.12em; color:var(--inkSoft); }
+.entries { display:flex; flex-direction:column; gap:4px; font:calc(13.5px * var(--kb)) var(--cochin); }
+.envnote { font:calc(11px * var(--kc)) var(--mono); color:var(--inkSoft); }
+.rule { height:1px; background:var(--line); }
+.cardbox { background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 2px var(--shadow); padding:12px; display:flex; flex-direction:column; gap:8px; }
+.cand { display:flex; align-items:center; gap:8px; padding:8px; border:1px solid var(--line); border-radius:8px; }
+.cand .col { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.seller { font:700 calc(14px * var(--kb)) var(--cochin); }
+.cmeta, .fit { font:calc(11px * var(--kc)) var(--mono); color:var(--inkSoft); overflow-wrap:anywhere; }
+.fit.exact { color:var(--green); font-weight:700; }
+.tie { font:calc(12.5px * var(--kf)) var(--cochin); background:var(--manila); color:var(--manilaInk); border-radius:6px; padding:4px 8px; }
+.mini { min-width:44px; min-height:44px; padding:0 10px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--ink); font:calc(11.5px * var(--kc)) var(--mono); cursor:pointer; }
+.stack-link { all:unset; cursor:pointer; display:flex; gap:8px; align-items:center; min-height:44px; padding:0 12px; border-radius:8px; background:var(--card); border:1px solid var(--line);
+  font:calc(14px * var(--kb)) var(--cochin); }
+.stack-link .go { margin-left:auto; color:var(--inkSoft); }
+.dz { display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+
+/* ===== viewer: full page, scrim (photo-thumbnails-and-viewer) ===== */
+.viewer { position:absolute; inset:0; z-index:40; background:var(--scrim); display:flex; flex-direction:column; color:var(--card); }
+.viewer .nb { color:var(--card); }
+.vstage { flex:1; position:relative; overflow:hidden; touch-action:none; cursor:grab; }
+.vstage.zoomed { cursor:move; }
+.vimg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; transition:transform .2s ease-out; }
+.vimg.drag { transition:none; }
+.vimg svg { width:100%; height:auto; max-height:100%; display:block; }
+.vbar { flex:none; display:flex; align-items:center; gap:8px; padding:8px 12px calc(12px + env(safe-area-inset-bottom)); }
+.vfilm { display:flex; gap:6px; flex:1; overflow-x:auto; padding:2px; }
+.vfilm .thumb { width:44px; height:44px; }
+.vcount { font:12px var(--mono); }
+.vhint { position:absolute; left:0; right:0; bottom:8px; text-align:center; font:12px var(--sys); color:color-mix(in srgb, var(--card) 80%, transparent); pointer-events:none; }
+.vdel { min-width:44px; min-height:44px; border-radius:22px; border:1px solid color-mix(in srgb, var(--card) 40%, transparent); background:transparent; color:var(--card);
+  display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; font:calc(15px * var(--kb)) var(--sys); cursor:pointer; }
+.vdel svg { width:20px; height:20px; }
+.vdel.armed { background:var(--red); border-color:var(--red); font-weight:600; }
+.zoomlab { position:absolute; right:12px; top:8px; font:12px var(--mono); background:color-mix(in srgb, var(--ink) 60%, transparent); padding:2px 8px; border-radius:8px; }
+
+/* ===== camera: the system camera, drawn plainly (UIImagePickerController). Surround in the ink token. ===== */
+.camera { position:absolute; inset:0; z-index:42; background:var(--ink); display:flex; flex-direction:column; color:var(--card); }
+.vf { flex:1; position:relative; margin:0; overflow:hidden; }
+.vf svg { position:absolute; inset:0; width:100%; height:100%; }
+.vf .frame-guide { position:absolute; inset:12% 8%; border:1.5px solid color-mix(in srgb, var(--card) 70%, transparent); border-radius:8px; pointer-events:none; }
+.cambar { flex:none; display:flex; align-items:center; justify-content:space-between; padding:16px 16px calc(20px + env(safe-area-inset-bottom)); }
+.cambar .nb { color:var(--card); }
+.shutter { width:72px; height:72px; border-radius:36px; border:4px solid var(--card); background:transparent; padding:4px; cursor:pointer; }
+.shutter span { display:block; width:100%; height:100%; border-radius:50%; background:var(--card); }
+
+/* ===== composer sheet ===== */
+.sheetdim { position:absolute; inset:0; z-index:40; background:color-mix(in srgb, var(--ink) 25%, transparent); }
+.sheet { position:absolute; left:0; right:0; bottom:0; top:calc(20px + 10px + env(safe-area-inset-top)); z-index:41; background:var(--paper); border-radius:12px 12px 0 0;
+  display:flex; flex-direction:column; box-shadow:0 -4px 16px var(--shadow); }
+.field { width:100%; min-height:48px; padding:12px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink);
+  font:calc(16px * var(--kb)) var(--cochin); }
+.sugg { border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--card); }
+.sugg button { all:unset; box-sizing:border-box; display:flex; width:100%; min-height:44px; padding:8px 12px; gap:8px; align-items:center; cursor:pointer;
+  font:calc(14px * var(--kb)) var(--cochin); border-top:1px solid var(--line); }
+.sugg button:first-child { border-top:0; }
+.sugg button:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+.sugg .q { margin-left:auto; font:calc(11px * var(--kc)) var(--mono); color:var(--inkSoft); }
+.sugg .typed { background:var(--manila); color:var(--manilaInk); }
+.erow { display:flex; align-items:center; border-bottom:1px solid var(--line); padding-left:12px; font:calc(14px * var(--kb)) var(--cochin); }
+.erow .nm { flex:1; }
+.step { width:44px; height:44px; border:0; background:transparent; font:calc(15px * var(--kb)) var(--mono); color:var(--ink); cursor:pointer; }
+.qty { min-width:20px; text-align:center; font:calc(13px * var(--kc)) var(--mono); }
+/* Keys: the system keyboard, not drawn. Open pose: keys top at 405 pt (duo-fold-and-keyboard, via duo-hand-notice-match notes).
+   Folded: the same 264 pt height, an estimate. */
+.keys { flex:none; height:264px; background:color-mix(in srgb, var(--line) 70%, var(--paper)); border-top:1px solid var(--line); display:flex; align-items:center; justify-content:center;
+  font:12px var(--sys); color:var(--inkSoft); }
+
+/* ===== compare across the fold ===== */
+.cmp { padding:8px 16px; display:flex; flex-direction:column; gap:8px; }
+.cmpimg { position:relative; width:100%; aspect-ratio:4/3; border-radius:8px; overflow:hidden; background:var(--manila); }
+.cmpimg .ph { position:absolute; inset:0; width:100%; height:100%; }
+
+/* ===== Today / New labels (toggle on the page) ===== */
+.showtags [data-tag] { outline:2px dashed var(--tagc, var(--green)); outline-offset:1px; }
+.showtags [data-tag]::before { content:attr(data-tag); position:absolute; z-index:30; left:2px; top:2px; font:600 11px var(--sys);
+  background:var(--card); color:var(--tagc, var(--green)); border:1.5px dashed var(--tagc, var(--green)); border-radius:4px; padding:0 4px; white-space:nowrap; pointer-events:none; }
+.showtags [data-tag^="Today"] { --tagc:var(--red); }
+:where([data-tag]) { position:relative; }
+.tagkey { display:inline-flex; gap:12px; font-size:13px; }
+.tagkey span { border:2px dashed var(--red); color:var(--red); border-radius:4px; padding:0 6px; font-weight:600; }
+.tagkey span.n { border-color:var(--green); color:var(--green); }
+
+/* AX5: Dynamic Type at the largest accessibility size (Typography page, read 2026-11-21). */
+.dev.ax { --kb:3.118; --kf:3.385; --kc:3.583; --kc2:3.636; }
+
+@media (prefers-reduced-motion: reduce) { .vimg { transition:none; } }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No envelope, photo, card, seller, date, order number or count on this page is real. Photos are drawn shapes. Sizes come from the brief, the code and Apple's pages, not from a simulator.</div>
+<h1>Envelope photos: the gallery wall</h1>
+<p class="kind"><b>Designer kind: directed.</b> Direction: gallery wall: all unmatched envelopes as a photo grid you sort by eye.</p>
+<p class="sub">Two concepts for the native Orphaned tab with photos. Each frame works: open an envelope, take a photo, look, zoom (double-tap the photo, then drag), delete a photo, add a note and cards, and match it to an order. iPhone Duo folded first, then open, then the large phone, then the folded pose at the largest text size. Light theme only: the native app is held to light. Notes: <code>envelope-photos-directed-2-notes.md</code>.</p>
+
+<div class="ctl" id="ctl">
+  <div class="row"><span class="lab">Concept</span>
+    <a href="#c=sheet" data-c="sheet">Contact sheet</a><a href="#c=stacks" data-c="stacks">Stacks</a><a href="#c=all" data-c="all">Both</a></div>
+  <div class="row"><span class="lab">State</span>
+    <a href="#s=wall" data-s="wall">Wall</a><a href="#s=loading" data-s="loading">Photos loading</a><a href="#s=sync" data-s="sync">Not on this phone</a><a href="#s=error" data-s="error">Failed</a>
+    <a href="#s=empty" data-s="empty">Empty</a><a href="#s=filtered" data-s="filtered">Filter emptied</a><a href="#s=detail" data-s="detail">Envelope</a>
+    <a href="#s=viewer" data-s="viewer">Viewer</a><a href="#s=zoom" data-s="zoom">Zoomed</a><a href="#s=delete" data-s="delete">Delete armed</a>
+    <a href="#s=camera" data-s="camera">Camera</a><a href="#s=composer" data-s="composer">New envelope</a><a href="#s=colour" data-s="colour">Sorted by colour</a>
+    <a href="#s=matched" data-s="matched">Matched (Undo)</a><a href="#s=select" data-s="select">Select to stack</a><a href="#s=stack" data-s="stack">A stack</a><a href="#s=compare" data-s="compare">Compare across the fold</a></div>
+  <div class="row"><span class="lab">Device</span>
+    <a href="#d=all" data-d="all">All</a><a href="#d=folded" data-d="folded">Duo folded</a><a href="#d=open" data-d="open">Duo open</a><a href="#d=phone" data-d="phone">Large phone</a><a href="#d=ax5" data-d="ax5">Folded, AX5 text</a></div>
+  <div class="row"><span class="lab">Labels</span>
+    <button type="button" id="tagsbtn" aria-pressed="true">Show Today and New</button>
+    <span class="tagkey"><span>Today: part</span><span class="n">New: part</span></span></div>
+  <div class="row"><span class="lab">Hide</span>
+    <button type="button" class="hide" data-hide="sheet">Hide Contact sheet</button>
+    <button type="button" class="hide" data-hide="stacks">Hide Stacks</button>
+    <button type="button" class="hide" data-opt="cameraFirst">Hide Camera first</button>
+    <button type="button" class="hide" data-opt="colourSort">Hide Sort by colour</button>
+    <button type="button" class="hide" data-opt="viewerTools">Hide Zoom and delete in the viewer</button>
+    <button type="button" class="hide" data-opt="photoOnly">Hide Save with a photo only</button>
+    <button type="button" class="hide" data-opt="compare">Hide Compare across the fold</button>
+    <button type="button" id="resetbtn">Reset all frames</button></div>
+</div>
+
+<section class="concept" id="sec-sheet" data-concept="sheet">
+  <h2>Contact sheet</h2>
+  <p class="sub">Every unmatched envelope is one square on a sheet, newest first. A photo is the face; an envelope with no photo shows its note on a dashed index card, so the gaps stand out. Filter to the ones with or without photos, sort by date or by colour, and make the squares larger. Tap one to see its photos, cards, note and the orders it could have come from.</p>
+  <div class="frames"><div class="frames-in" data-row="sheet">
+    <figure data-dev="folded"><div class="dev single" data-device="iphone-duo-folded" id="focus-sheet"></div>
+      <figcaption><b>iPhone Duo, folded</b>466 x 678 pt, one screen, one hand.<span class="na"></span></figcaption></figure>
+    <figure data-dev="open"><div class="dev open" data-device="iphone-duo-unfolded" id="sheet-open"></div>
+      <figcaption><b>iPhone Duo, open</b>951 x 669 pt. The sheet on the left page, the envelope on the right. Nothing sits on the 40 pt hinge.<span class="na"></span></figcaption></figure>
+    <figure data-dev="phone"><div class="phonesize"><label>Width <input type="number" min="320" max="600" value="466" data-ph="w"></label><label>Height <input type="number" min="480" max="1000" value="678" data-ph="h"></label> pt</div>
+      <div class="dev single" data-device="iphone-regular" id="sheet-phone"></div>
+      <figcaption><b>Large phone</b>No size is written for it, so it is drawn at the folded Duo size. Type its size above and the frame reflows.<span class="na"></span></figcaption></figure>
+    <figure data-dev="ax5"><div class="dev single ax" data-device="iphone-duo-folded-ax5" id="sheet-ax5"></div>
+      <figcaption><b>iPhone Duo, folded, AX5 text</b>The largest accessibility size. One column; the filter becomes a menu; Record sits in the flow.<span class="na"></span></figcaption></figure>
+  </div></div>
+</section>
+
+<section class="concept" id="sec-stacks" data-concept="stacks">
+  <h2>Stacks</h2>
+  <p class="sub">The same envelopes pinned up as a wall you sort by eye. When two envelopes look like the same sender, select them and stack them; a stack fans its photos and takes a name. A stack is only for your eye: each envelope still matches its own order. On the open Duo, Compare puts two envelopes side by side, one on each page.</p>
+  <div class="frames"><div class="frames-in" data-row="stacks">
+    <figure data-dev="folded"><div class="dev single" data-device="iphone-duo-folded" id="focus-stacks"></div>
+      <figcaption><b>iPhone Duo, folded</b>466 x 678 pt, one screen, one hand.<span class="na"></span></figcaption></figure>
+    <figure data-dev="open"><div class="dev open" data-device="iphone-duo-unfolded" id="stacks-open"></div>
+      <figcaption><b>iPhone Duo, open</b>951 x 669 pt. The wall on the left page; the envelope, a stack or Compare on the right. Nothing sits on the 40 pt hinge.<span class="na"></span></figcaption></figure>
+    <figure data-dev="phone"><div class="phonesize"><label>Width <input type="number" min="320" max="600" value="466" data-ph="w"></label><label>Height <input type="number" min="480" max="1000" value="678" data-ph="h"></label> pt</div>
+      <div class="dev single" data-device="iphone-regular" id="stacks-phone"></div>
+      <figcaption><b>Large phone</b>No size is written for it, so it is drawn at the folded Duo size. Type its size above and the frame reflows.<span class="na"></span></figcaption></figure>
+    <figure data-dev="ax5"><div class="dev single ax" data-device="iphone-duo-folded-ax5" id="stacks-ax5"></div>
+      <figcaption><b>iPhone Duo, folded, AX5 text</b>The largest accessibility size. One column; Record sits in the flow.<span class="na"></span></figcaption></figure>
+  </div></div>
+</section>
+
+</main>
+
+<script>
+"use strict";
+/* ---------------- sample data (no real record) ---------------- */
+const TODAY = "2026-11-21";
+const SELLERS = ["Northgate Cards", "Lantern Games", "Copper Kettle TCG", "Fieldstone Collectibles", "Harbor Light Cards"];
+const OUTSTANDING = [
+  ["Lightning Bolt", 4, 3], ["Counterspell", 2, 2], ["Sol Ring", 1, 1], ["Brainstorm", 3, 2], ["Ponder", 2, 2], ["Opt", 5, 3],
+  ["Llanowar Elves", 4, 1], ["Path to Exile", 2, 2], ["Dark Ritual", 2, 1], ["Fatal Push", 1, 1], ["Thoughtseize", 1, 1],
+  ["Swords to Plowshares", 2, 2], ["Duress", 3, 1], ["Lotus Petal", 1, 1], ["Lightning Helix", 2, 1]];
+function cand(seller, date, order, matched, total, left, exact, untracked) { return { seller, date, order, matched, total, left, exact, untracked }; }
+const BASE = [
+  { id:"e1", date:"2026-11-20", hue:"blue", entries:[["Lightning Bolt",2],["Counterspell",1]], note:"Blue bubble mailer, cat sticker on the back",
+    photos:[["blue","front",1],["blue","back",1],["blue","inside",1]], cands:[cand(SELLERS[0],"2026-11-09","7F2A-1C3D",3,3,0,true), cand(SELLERS[1],"2026-11-10","19BE-77A0",3,3,0,true)] },
+  { id:"e2", date:"2026-11-19", hue:"white", entries:[["Sol Ring",1]], note:"White envelope, flag stamp, blue pen",
+    photos:[["pwe","front",2],["pwe","inside",2]], cands:[cand(SELLERS[2],"2026-11-08","C0DE-4411",1,1,2,false)] },
+  { id:"e3", date:"2026-11-19", hue:null, entries:[["Brainstorm",1],["Ponder",1],["Opt",1]], note:"Got wet in the rain, label torn off", photos:[],
+    cands:[cand(SELLERS[3],"2026-11-07","A9F0-2B6C",2,3,1,false), cand(SELLERS[0],"2026-11-09","7F2A-1C3D",1,3,4,false,true)] },
+  { id:"e4", date:"2026-11-18", hue:"kraft", entries:[["Llanowar Elves",4]], note:"Kraft mailer, typed label, no return address",
+    photos:[["kraft","front",4]], cands:[cand(SELLERS[4],"2026-11-05","55D2-9E31",4,4,0,true)] },
+  { id:"e5", date:"2026-11-17", hue:"white", entries:[["Path to Exile",1]], note:"White envelope, flag stamp, black pen",
+    photos:[["pwe","front",5],["pwe","back",5]], cands:[cand(SELLERS[2],"2026-11-08","C0DE-4411",1,1,1,false), cand(SELLERS[1],"2026-11-10","19BE-77A0",1,1,3,false)] },
+  { id:"e6", date:"2026-11-16", hue:"yellow", entries:[["Dark Ritual",2],["Fatal Push",1]], note:"",
+    photos:[["yellow","front",6]], cands:[cand(SELLERS[3],"2026-11-07","A9F0-2B6C",3,3,1,false)] },
+  { id:"e7", date:"2026-11-15", hue:null, entries:[["Thoughtseize",1]], note:"Toploader only, envelope thrown out", photos:[],
+    cands:[cand(SELLERS[0],"2026-11-09","7F2A-1C3D",1,1,0,true)] },
+  { id:"e8", date:"2026-11-14", hue:"blue", entries:[["Swords to Plowshares",1]], note:"Blue mailer again, same cat sticker",
+    photos:[["blue","front",8],["blue","inside",8]], cands:[cand(SELLERS[1],"2026-11-10","19BE-77A0",1,1,2,false)] },
+  { id:"e9", date:"2026-11-12", hue:"pink", entries:[["Duress",3]], note:"Pink envelope, heart sticker",
+    photos:[["pink","front",9]], cands:[cand(SELLERS[4],"2026-11-05","55D2-9E31",3,3,0,true)] },
+];
+const HUE_ORDER = ["white","grey","yellow","kraft","pink","blue"];
+const HUE_NAME = { white:"White", grey:"Grey", yellow:"Yellow", kraft:"Brown", pink:"Pink", blue:"Blue" };
+const KIND_HUE = { pwe:"white", kraft:"kraft", blue:"blue", yellow:"yellow", pink:"pink", grey:"grey" };
+
+/* ---------------- sample photos: drawn SVG, picture content ---------------- */
+function rnd(seed) { let s = seed * 9301 + 49297; return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; }; }
+function scrawl(r, x0, x1, y, amp, col, w) {
+  let d = `M${x0} ${y}`; let x = x0;
+  while (x < x1) { const nx = x + 6 + r() * 8; d += ` Q${(x + nx) / 2} ${y + (r() - .5) * amp * 2} ${nx} ${y + (r() - .5) * amp}`; x = nx; }
+  return `<path d="${d}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round"/>`;
+}
+const PHOTO_CACHE = new Map();
+function photo(kind, view, seed) {
+  const key = kind + view + seed; if (PHOTO_CACHE.has(key)) return PHOTO_CACHE.get(key);
+  const r = rnd(seed * 7 + view.length);
+  const desk = ["#8a7360","#7b6a5d","#93806a","#6f6259"][seed % 4];
+  const base = { pwe:"#F3F0E8", kraft:"#C49A6C", blue:"#7FA6CF", yellow:"#E3C766", pink:"#E6B7BC", grey:"#A3A7AB" }[kind];
+  const edge = { pwe:"#D5CFC2", kraft:"#A57D52", blue:"#5F87B1", yellow:"#C4A846", pink:"#C9969C", grey:"#888C90" }[kind];
+  const pen = seed % 2 ? "#2B3F8C" : "#222";
+  const tilt = (r() - .5) * 8;
+  let s = `<svg class="ph" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">`;
+  s += `<rect width="400" height="300" fill="${desk}"/>`;
+  for (let i = 0; i < 7; i++) s += `<path d="M0 ${20 + i * 42 + r() * 10} C120 ${10 + i * 42} 280 ${34 + i * 42} 400 ${18 + i * 42}" stroke="#000" stroke-opacity=".07" stroke-width="3" fill="none"/>`;
+  s += `<g transform="rotate(${tilt.toFixed(1)} 200 150)">`;
+  if (view === "inside") {
+    s += `<rect x="40" y="150" width="320" height="120" rx="6" fill="${base}" stroke="${edge}"/>`;
+    s += `<path d="M40 150 L200 205 L360 150" fill="${edge}" fill-opacity=".35"/>`;
+    const cc = ["#B8433A","#3E6FA8","#2F7A4E","#6B5A8E","#C9A23E"][seed % 5];
+    s += `<g transform="rotate(${(r() - .5) * 10} 200 130)"><rect x="135" y="22" width="130" height="182" rx="6" fill="#E8EDF0" fill-opacity=".85" stroke="#C5CDD3"/>`;
+    s += `<rect x="147" y="34" width="106" height="152" rx="6" fill="${cc}"/><rect x="155" y="48" width="90" height="62" fill="#EFE7D6"/>`;
+    s += `<rect x="155" y="118" width="90" height="8" fill="#EFE7D6" fill-opacity=".8"/><rect x="155" y="132" width="90" height="40" fill="#EFE7D6" fill-opacity=".6"/></g>`;
+  } else {
+    const mailer = kind !== "pwe" && kind !== "pink";
+    s += `<rect x="45" y="50" width="310" height="200" rx="${mailer ? 10 : 4}" fill="${base}" stroke="${edge}" stroke-width="2"/>`;
+    if (mailer) for (let i = 0; i < 34; i++) s += `<circle cx="${60 + r() * 280}" cy="${64 + r() * 172}" r="${4 + r() * 4}" fill="#fff" fill-opacity=".14"/>`;
+    if (view === "back") {
+      s += `<path d="M45 52 L200 150 L355 52" fill="none" stroke="${edge}" stroke-width="2"/>`;
+      s += `<rect x="160" y="120" width="80" height="30" fill="#fff" fill-opacity=".45" transform="rotate(-8 200 135)"/>`;
+      if (kind === "blue") s += `<g transform="translate(250 190)"><circle r="18" fill="#2F2B30"/><path d="M-14 -10 L-10 -26 L-2 -14 Z M14 -10 L10 -26 L2 -14 Z" fill="#2F2B30"/><circle cx="-6" cy="-2" r="3" fill="#E9D36A"/><circle cx="6" cy="-2" r="3" fill="#E9D36A"/></g>`;
+      if (kind === "pwe") s += scrawl(r, 260, 330, 225, 3, pen, 1.6);
+    } else {
+      if (mailer) {
+        s += `<rect x="120" y="105" width="170" height="90" rx="4" fill="#F7F4EC" stroke="#D9D3C6"/>`;
+        if (kind === "kraft" || kind === "grey") { for (let i = 0; i < 4; i++) s += `<rect x="134" y="${120 + i * 17}" width="${90 + r() * 50}" height="7" fill="#3A3A3A" fill-opacity=".75"/>`; }
+        else for (let i = 0; i < 3; i++) s += scrawl(r, 134, 270, 128 + i * 22, 4, pen, 2.2);
+        if (kind === "blue") s += `<g transform="translate(320 78)"><circle r="12" fill="#2F2B30"/><path d="M-9 -6 L-7 -17 L-1 -9 Z M9 -6 L7 -17 L1 -9 Z" fill="#2F2B30"/></g>`;
+      } else {
+        const st = seed % 2 ? "#B2443D" : "#3F5E9C";
+        s += `<rect x="300" y="64" width="40" height="48" fill="#fff" stroke="#ccc"/><rect x="304" y="68" width="32" height="40" fill="${st}"/>`;
+        s += `<path d="M304 78 h32 M304 88 h32 M304 98 h32" stroke="#fff" stroke-width="3" stroke-opacity=".7"/>`;
+        s += `<path d="M260 70 q12 -6 24 0 q12 6 24 0 M260 80 q12 -6 24 0 q12 6 24 0" stroke="#555" stroke-width="1.2" fill="none" stroke-opacity=".6"/>`;
+        for (let i = 0; i < 3; i++) s += scrawl(r, 140, 290, 150 + i * 24, 4, pen, 2.2);
+        if (kind === "pink") s += `<path d="M90 200 c-12 -14 -30 0 -16 14 l16 16 l16 -16 c14 -14 -4 -28 -16 -14z" fill="#C2414F"/>`;
+      }
+    }
+  }
+  s += `</g></svg>`;
+  PHOTO_CACHE.set(key, s); return s;
+}
+
+/* ---------------- glyphs ---------------- */
+const G = {
+  cam:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>`,
+  lib:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 16l5-5 4 4 3-3 4 4"/></svg>`,
+  back:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>`,
+  x:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>`,
+  trash:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13"/></svg>`,
+  check:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>`,
+  cloud:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 18h10a4 4 0 0 0 0-8 6 6 0 0 0-11.5 1.5A3.5 3.5 0 0 0 7 18z"/></svg>`,
+  grid:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="7" height="7"/><rect x="13" y="4" width="7" height="7"/><rect x="4" y="13" width="7" height="7"/><rect x="13" y="13" width="7" height="7"/></svg>`,
+  big:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="1"/></svg>`,
+  sort:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M7 5v14M4 16l3 3 3-3M17 19V5M14 8l3-3 3 3"/></svg>`,
+  gear:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>`,
+  env:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="1.5"/><path d="M3 7l9 6 9-6"/></svg>`,
+  num:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 4L7 20M17 4l-2 16M4 9h16M3 15h16"/></svg>`,
+  box:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg>`,
+  stack:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="6" y="8" width="13" height="11" rx="1" transform="rotate(6 12 13)"/><rect x="4" y="5" width="13" height="11" rx="1" transform="rotate(-6 10 10)"/></svg>`,
+};
+
+/* ---------------- options (each has a Hide control) ---------------- */
+const OPT = { cameraFirst:true, colourSort:true, viewerTools:true, photoOnly:true, compare:true };
+
+/* ---------------- per-frame state ---------------- */
+function freshEnvs() {
+  return BASE.map(e => ({ ...e, entries:e.entries.map(x => [...x]), photos:e.photos.map(p => ({ kind:p[0], view:p[1], seed:p[2], st:"ok" })), cands:e.cands.map(c => ({ ...c })) }));
+}
+let UID = 100;
+function initState(concept, dev, s) {
+  const st = { screen:"wall", envs:freshEnvs(), picked:"e1", idx:0, zoom:1, panX:0, panY:0, armed:false, discard:false,
+    filter:"all", sort:"new", big:false, menu:null, selecting:false, sel:[], stacks:[], openStack:null, cmpB:"e8",
+    comp:null, camFor:null, camShot:false, undo:null, ret:"wall", state:s };
+  if (concept === "stacks") st.stacks = [{ id:"k1", name:"", members:["e2","e5"] }];
+  if (s === "loading") st.loading = true;
+  if (s === "sync") { st.envs[0].photos[1].st = "remote"; st.envs[3].photos[0].st = "remote"; st.envs[5].photos[0].st = "missing"; }
+  if (s === "empty") st.envs = [];
+  if (s === "filtered") { st.filter = "none"; st.envs.forEach(e => { if (!e.photos.length) e.photos = [{ kind:"grey", view:"front", seed:11, st:"ok" }]; }); }
+  if (s === "colour") st.sort = "colour";
+  if (s === "error") { st.envs[3].photos[0].st = "broken"; st.err = "The ledger changed while you tapped. Nothing was checked in; try again."; }
+  if (s === "detail") st.screen = "detail";
+  if (s === "viewer") { st.screen = "viewer"; st.ret = "detail"; }
+  if (s === "zoom") { st.screen = "viewer"; st.ret = "detail"; st.zoom = 2.5; st.panX = -30; st.panY = 10; }
+  if (s === "delete") { st.screen = "viewer"; st.ret = "detail"; st.armed = true; }
+  if (s === "camera") { st.screen = "camera"; st.camFor = "new"; }
+  if (s === "composer") { st.screen = "composer"; st.comp = { photos:[{ kind:"grey", view:"front", seed:12, st:"ok" }], entries:[["Lightning Bolt",1]], input:"Coun", note:"" }; }
+  if (s === "matched") { const e = st.envs.splice(3, 1)[0]; st.undo = { env:e, at:3, line:`Checked in 4 cards against ${e.cands[0].seller}.` }; }
+  if (s === "select" && concept === "stacks") { st.selecting = true; st.sel = ["e1","e8"]; }
+  if (s === "stack" && concept === "stacks") { st.screen = "stack"; st.openStack = "k1"; st.stacks[0].name = "White envelope, flag stamp"; }
+  if (s === "compare" && concept === "stacks" && dev === "open" && OPT.compare) st.screen = "compare";
+  return st;
+}
+
+/* ---------------- helpers ---------------- */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+const cards = n => `${n} card${n === 1 ? "" : "s"}`;
+const total = e => e.entries.reduce((a, x) => a + x[1], 0);
+const envById = (st, id) => st.envs.find(e => e.id === id);
+const shortDate = d => d.slice(5);
+function stackOf(st, id) { return st.stacks.find(k => k.members.includes(id)); }
+function ordered(st) {
+  let list = st.envs.slice();
+  if (st.sort === "old") list.reverse();
+  if (st.sort === "colour" && OPT.colourSort) {
+    const rank = e => { const h = e.photos.length ? KIND_HUE[e.photos[0].kind] : null; return h ? HUE_ORDER.indexOf(h) : 99; };
+    list = list.map((e, i) => [e, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(x => x[0]);
+  }
+  return list;
+}
+function filtered(st, list) {
+  if (st.filter === "photo") return list.filter(e => e.photos.length);
+  if (st.filter === "none") return list.filter(e => !e.photos.length);
+  return list;
+}
+function photoHTML(st, p, small) {
+  if (!p) return "";
+  if (st.loading) return "";
+  if (p.st === "remote") return `<div class="remote">${G.cloud}${small ? "" : "<span>On another device</span>"}</div>`;
+  if (p.st === "broken") return `<div class="remote missing">${G.x}${small ? "" : "<span>This photo can\u2019t be opened</span>"}</div>`;
+  if (p.st === "missing") return `<div class="remote missing">${G.cloud}${small ? "" : "<span>Missing 9 days</span>"}</div>`;
+  return photo(p.kind, p.view, p.seed);
+}
+
+/* ---------------- panes ---------------- */
+function statusBar(dark) { return `<div class="status${dark ? " dark" : ""}"><span>9:41</span><span aria-hidden="true">&#9679;&#9679;&#9679;</span></div>`; }
+function tabBar(st, left) {
+  const t = (g, l, on, b) => `<span class="tab${on ? " on" : ""}" role="tab" aria-selected="${on}">${g}${b ? `<span class="badge">${b}</span>` : ""}<span>${l}</span></span>`;
+  return `<div class="tabbar" role="tablist" data-tag="Today: tab bar"${left ? ` style="left:24px"` : ""}>${t(G.gear,"Ledger")}${t(G.env,"Orphaned",true, st.envs.length || "")}${t(G.num,"Tally")}${t(G.box,"Packages")}</div>`;
+}
+
+function tileSheet(st, e, inst) {
+  const p = e.photos[0];
+  const picked = inst.dev === "open" && st.picked === e.id ? " picked" : "";
+  const face = p ? `<div class="cover">${photoHTML(st, p)}${p ? `<span class="chip">${G.cam}${e.photos.length}</span>` : ""}</div>`
+    : `<div class="cover"><div class="face"><span class="fnote">${esc(e.note || "No note")}</span></div></div>`;
+  return `<button class="tile${picked}" data-act="open" data-id="${e.id}" aria-label="Envelope ${e.date}, ${cards(total(e))}, ${e.photos.length ? e.photos.length + " photos" : "no photo"}">${face}
+    <span class="cap"><span>${shortDate(e.date)}</span><span>${cards(total(e))}</span></span><span class="capnote">${esc(e.note || " ")}</span></button>`;
+}
+
+function tilePin(st, e, inst, i) {
+  const p = e.photos[0];
+  const tilt = [-1.5, 1, -0.5, 1.5, -1, 0.5][i % 6];
+  const on = st.sel.includes(e.id);
+  const ck = st.selecting ? `<span class="check${on ? " on" : ""}">${on ? G.check : ""}</span>` : "";
+  const picked = inst.dev === "open" && st.picked === e.id && !st.selecting ? " picked" : "";
+  const face = p ? `<div class="cover">${photoHTML(st, p)}<span class="chip">${G.cam}${e.photos.length}</span></div>`
+    : `<div class="cover"><div class="face"><span class="fnote">${esc(e.note || "No note")}</span></div></div>`;
+  return `<button class="tile pin${picked}" style="--tilt:${tilt}deg" data-act="${st.selecting ? "sel" : "open"}" data-id="${e.id}" aria-pressed="${st.selecting ? on : ""}"
+    aria-label="Envelope ${e.date}, ${cards(total(e))}">${ck}<span class="tape"></span>${face}
+    <span class="cap"><span>${shortDate(e.date)}</span><span>${cards(total(e))}</span></span><span class="capnote">${esc(e.note || " ")}</span></button>`;
+}
+function tileStack(st, k, inst, i) {
+  const ms = k.members.map(id => envById(st, id)).filter(Boolean);
+  const covers = ms.slice(0, 3).map(e => `<div class="cover">${e.photos[0] ? photoHTML(st, e.photos[0]) : `<div class="face"><span class="fnote">${esc(e.note)}</span></div>`}</div>`).join("");
+  const n = ms.reduce((a, e) => a + total(e), 0);
+  const picked = inst.dev === "open" && st.openStack === k.id ? " picked" : "";
+  return `<button class="tile pin${picked}" style="--tilt:${i % 2 ? 1 : -1}deg" data-act="stack" data-id="${k.id}" data-tag="New: a stack" aria-label="Stack of ${ms.length} envelopes">
+    <span class="tape"></span><div class="stackpile">${covers}</div>
+    <span class="cap"><span>${ms.length} envelopes</span><span>${cards(n)}</span></span><span class="capnote">${esc(k.name || "Unnamed stack")}</span></button>`;
+}
+
+function wallPane(inst, w, hasBar) {
+  const st = inst.st, stacks = inst.concept === "stacks";
+  const all = ordered(st);
+  if (!st.envs.length) {
+    return `<div class="scroll"><div class="masthead-today" data-tag="Today: masthead"><span class="mh">MANIFEST</span>Letterhead and running head, unchanged, not drawn to size.</div>
+      <div class="empty" data-tag="New: empty wall"><span>Nothing waiting: record a package here when you can’t tell who sent it.</span>
+      <button class="btn primary" data-act="record">${G.cam}Record an envelope</button></div></div>`;
+  }
+  let list = stacks ? all : filtered(st, all);
+  const ax = inst.dev === "ax5";
+  const nPhoto = st.envs.filter(e => e.photos.length).length, nNone = st.envs.length - nPhoto;
+  const sortLab = { new:"Newest first", old:"Oldest first", colour:"By colour" }[st.sort];
+  const sortMenu = `<div class="menu"><button class="nb" data-act="menu" data-m="sort" aria-expanded="${st.menu === "sort"}" aria-haspopup="true">${G.sort}${sortLab}</button>
+    ${st.menu === "sort" ? `<div class="menu-pop" role="menu">${["new","old"].concat(OPT.colourSort ? ["colour"] : []).map(k => `<button role="menuitemradio" aria-checked="${st.sort === k}" data-act="sort" data-v="${k}"><span class="ck">${st.sort === k ? "✓" : ""}</span>${{ new:"Newest first", old:"Oldest first", colour:"By colour" }[k]}</button>`).join("")}</div>` : ""}</div>`;
+  let bar = "";
+  if (!stacks) {
+    const segs = [["all","All",st.envs.length],["photo","With photo",nPhoto],["none","No photo",nNone]];
+    const filterCtl = ax
+      ? `<div class="menu"><button class="nb" data-act="menu" data-m="filter" aria-haspopup="true">Show: ${segs.find(x => x[0] === st.filter)[1]} <span aria-hidden="true" style="font-size:.6em">&#9662;</span></button>
+         ${st.menu === "filter" ? `<div class="menu-pop" role="menu">${segs.map(x => `<button role="menuitemradio" aria-checked="${st.filter === x[0]}" data-act="filter" data-v="${x[0]}"><span class="ck">${st.filter === x[0] ? "✓" : ""}</span>${x[1]} (${x[2]})</button>`).join("")}</div>` : ""}</div>`
+      : `<div class="seg" role="group" aria-label="Show">${segs.map(x => `<button aria-pressed="${st.filter === x[0]}" data-act="filter" data-v="${x[0]}">${x[1]}<span class="n">${x[2]}</span></button>`).join("")}</div>`;
+    bar = `<div class="wallbar" data-tag="New: filter, sort, size">${filterCtl}<div class="row">${sortMenu}
+      ${ax ? "" : `<button class="nb" data-act="big" aria-pressed="${st.big}">${st.big ? G.grid : G.big}${st.big ? "Smaller" : "Larger"}</button>`}</div></div>`;
+  } else {
+    bar = `<div class="wallbar" data-tag="New: select and sort"><div class="row">${sortMenu}
+      <button class="nb bold" data-act="selmode">${st.selecting ? "Done" : "Select"}</button></div>
+      ${st.selecting ? `<span class="why">Tap the envelopes that look like one sender.</span>` : ""}</div>`;
+  }
+  const notice = st.undo ? `<div class="notice" role="status" data-tag="Today: Undo notice"><span>${esc(st.undo.line)}</span><button class="mini" data-act="undo">Undo</button><button class="nb" data-act="undo-dismiss" aria-label="Dismiss" style="color:var(--inkSoft)">${G.x}</button></div>` : "";
+  let body;
+  if (!list.length) {
+    body = `<div class="empty"><span>${st.filter === "none" ? "Every envelope here has a photo." : "No envelope here has a photo yet."}</span><button class="btn" data-act="filter" data-v="all">Show all envelopes</button></div>`;
+  } else if (!stacks) {
+    body = `<div class="grid" style="--tile:${ax ? "160px" : st.big ? "200px" : "128px"}" data-tag="New: contact sheet">${list.map(e => tileSheet(st, e, inst)).join("")}</div>`;
+  } else {
+    const seen = new Set(); let i = 0; const parts = [];
+    for (const e of list) {
+      const k = stackOf(st, e.id);
+      if (k && !st.selecting) { if (seen.has(k.id)) continue; seen.add(k.id); parts.push(tileStack(st, k, inst, i++)); }
+      else parts.push(tilePin(st, e, inst, i++));
+    }
+    body = `<div class="board" style="--tile:${ax ? "160px" : w < 300 ? "100%" : "180px"}" data-tag="New: the wall">${parts.join("")}</div>`;
+  }
+  const colourHead = st.sort === "colour" && OPT.colourSort && !stacks ? `<p class="why pad" style="margin:0">Grouped by the main colour of the first photo: ${HUE_ORDER.filter(h => st.envs.some(e => e.photos[0] && KIND_HUE[e.photos[0].kind] === h)).map(h => HUE_NAME[h]).join(", ")}, then no photo.</p>` : "";
+  const padB = hasBar ? 64 + 12 + 8 + 48 + 16 : 48 + 32;
+  let acc;
+  if (stacks && st.selecting) {
+    const n = st.sel.length;
+    acc = `<div class="accessory${hasBar ? "" : " noBar"}" style="flex-direction:column;align-items:stretch;gap:4px"><button class="btn primary" data-act="dostack" ${n < 2 ? "disabled aria-describedby=\"why-" + inst.key + "\"" : ""}>${G.stack}Stack ${n || ""} as one sender</button>
+      ${n < 2 ? `<span class="why" id="why-${inst.key}" style="text-align:center;background:var(--paper);border-radius:8px">Pick two or more envelopes.</span>` : ""}</div>`;
+  } else {
+    acc = `<div class="accessory${hasBar ? "" : " noBar"}" data-tag="${OPT.cameraFirst ? "New: opens the camera" : "Today: record control"}"><button class="btn primary" data-act="record">${OPT.cameraFirst ? G.cam : ""}${OPT.cameraFirst ? "Record an envelope" : "+ Record an envelope"}</button></div>`;
+  }
+  const errBar = st.err ? `<div class="errbar" role="alert" data-tag="Today: error bar" style="bottom:${ax ? (hasBar ? 76 : 0) : hasBar ? 140 : 72}px">${esc(st.err)}</div>` : "";
+  /* At an accessibility size the control would cover half the screen if it floated, so it sits in the flow under the bar. */
+  if (ax) acc = acc.replace('class="accessory', 'class="accessory inflow');
+  return `<div class="scroll" data-sk="wall" style="padding-bottom:${ax ? 96 : padB}px"><div class="masthead-today" data-tag="Today: masthead"><span class="mh">MANIFEST</span>Letterhead and running head, unchanged, not drawn to size.</div>
+    ${bar}${ax ? acc : ""}${colourHead}${notice}${body}</div>${ax ? "" : acc}${errBar}`;
+}
+
+function heroBlock(inst, e, w) {
+  const st = inst.st;
+  if (!e.photos.length) {
+    return `<div class="hero" style="cursor:default" data-tag="New: no photo yet"><div class="face" style="align-items:flex-start;justify-content:center">
+      <span class="fnote" style="color:var(--inkSoft)">No photo of this envelope yet.</span><button class="btn primary" data-act="addphoto">${G.cam}Take photo</button></div></div>`;
+  }
+  const i = Math.min(st.idx, e.photos.length - 1), p = e.photos[i];
+  const ok = p.st === "ok" && !st.loading;
+  const extra = p.st === "broken" ? `<div style="position:absolute;left:12px;right:12px;bottom:12px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap" data-tag="New: a photo that fails">${st.heroArmed
+      ? `<button class="btn" data-act="hdel-cancel">Cancel</button><button class="btn armed" data-act="hdel-go">Tap again to delete photo</button>`
+      : `<button class="btn danger" data-act="hdel">Delete photo</button><button class="btn" data-act="addphoto">${G.cam}Retake</button>`}</div>`
+    : p.st !== "ok" ? `<div style="position:absolute;left:12px;right:12px;bottom:12px;display:flex;justify-content:center"><button class="btn" data-act="opensync">Open Sync</button></div>` : "";
+  const hero = `<button class="hero" ${ok ? `data-act="view"` : `style="cursor:default"`} aria-label="Photo ${i + 1} of ${e.photos.length}. Open it full screen" data-tag="New: large photo">${photoHTML(st, p)}</button>${extra}`;
+  const dots = e.photos.length > 1 ? `<div class="dots" aria-hidden="true">${e.photos.map((_, j) => `<i class="${j === i ? "on" : ""}"></i>`).join("")}</div>` : "";
+  const strip = `<div class="strip" data-tag="Today: 56 pt thumbnails">${e.photos.map((q, j) => `<button class="thumb${j === i ? " on" : ""}" data-act="idx" data-v="${j}" aria-label="Photo ${j + 1}">${photoHTML(st, q, true)}</button>`).join("")}
+    <button class="thumb add" data-act="addphoto" aria-label="Add photo" data-tag="New: add photo">${G.cam}<span>Add</span></button></div>`;
+  return `<div style="position:relative">${hero}</div>${dots}${strip}`;
+}
+
+function detailPane(inst, e, opts) {
+  const st = inst.st;
+  if (!e) return st.envs.length ? `${statusBar()}<div class="scroll"><div class="empty"><span>Pick an envelope on the left page.</span></div></div>` : statusBar();
+  const n = total(e);
+  const stk = inst.concept === "stacks" ? stackOf(st, e.id) : null;
+  const tied = e.cands.filter(c => c.exact).length;
+  const cands = e.cands.map(c => `<div class="cand"><div class="col"><span class="seller">${esc(c.seller)}</span>
+      <span class="cmeta">${c.date}${c.untracked ? " · ○ untracked" : ""} · ${c.order}</span>
+      <span class="fit${c.exact && tied < 2 ? " exact" : ""}">${c.exact ? `explains all ${c.matched} · nothing left over` : `${c.matched} of ${n} cards${c.left > 0 ? ` · ${c.left} more still owed` : " · whole package"}`}</span></div>
+      <button class="mini" data-act="assign" data-v="${esc(c.seller)}" aria-label="This one, ${esc(c.seller)}">This one</button></div>`).join("");
+  const nav = `<div class="navbar">${opts.back ? `<button class="nb" data-act="back">${G.back}${opts.backLabel || "Orphaned"}</button>` : `<span style="width:44px"></span>`}
+    <span class="title">Envelope</span><button class="nb" data-act="edit">Edit</button></div>`;
+  const cmp = inst.concept === "stacks" && inst.dev === "open" && OPT.compare && e.photos.length
+    ? `<button class="btn" data-act="compare" data-tag="New: compare across the fold">Compare with another envelope</button>` : "";
+  return `${statusBar()}${nav}<div class="scroll" data-sk="detail"><div class="pad" style="display:flex;flex-direction:column;gap:12px;padding-bottom:${opts.bottom}px">
+    ${heroBlock(inst, e, opts.w)}
+    ${stk ? `<button class="stack-link" data-act="stack" data-id="${stk.id}" data-tag="New: in a stack">${G.stack}<span>In stack: ${esc(stk.name || "Unnamed stack")}</span><span class="go">${stk.members.length} envelopes</span></button>` : ""}
+    ${cmp}
+    <div class="cardbox" data-tag="Today: envelope card">
+      <span class="micro">Envelope · ${e.date} · ${cards(n)}</span>
+      <div class="entries">${e.entries.map(x => `<span>${x[1] > 1 ? "×" + x[1] + " " : ""}${esc(x[0])}</span>`).join("") || `<span style="color:var(--inkSoft)">No cards yet. Add them with Edit to see matches.</span>`}</div>
+      ${e.note ? `<span class="envnote">${esc(e.note)}</span>` : ""}
+      <div class="rule"></div>
+      ${e.entries.length ? `<span class="micro" style="font-size:calc(10.5px * var(--kc))">Could have come from</span>
+      ${tied > 1 ? `<span class="tie">${tied} packages fit these cards equally well — pick the right one yourself.</span>` : ""}${cands}` : ""}
+      <div class="dz">${st.discard ? `<button class="btn" data-act="discard-cancel">Cancel</button><button class="btn armed" data-act="discard-go">Tap again to discard ${cards(n)}</button>`
+        : `<button class="btn danger" data-act="discard">Discard</button>`}</div>
+    </div></div></div>`;
+}
+
+function viewerPane(inst, e) {
+  const st = inst.st;
+  if (!e || !e.photos.length) return "";
+  const i = Math.min(st.idx, e.photos.length - 1), p = e.photos[i];
+  const tools = OPT.viewerTools;
+  const z = tools ? st.zoom : 1;
+  const film = e.photos.length > 1 ? `<div class="vfilm">${e.photos.map((q, j) => `<button class="thumb${j === i ? " on" : ""}" data-act="vidx" data-v="${j}" aria-label="Photo ${j + 1}">${photoHTML(st, q, true)}</button>`).join("")}</div>` : `<div class="vfilm"></div>`;
+  const del = tools ? (st.armed
+      ? `<button class="vdel" data-act="del-cancel">Cancel</button><button class="vdel armed" data-act="del-go">Tap again to delete photo</button>`
+      : `<button class="vdel" data-act="del" aria-label="Delete photo" style="color:var(--redSoft)">${G.trash}</button>`) : "";
+  return `<div class="viewer" role="dialog" aria-modal="true" aria-label="Label photo ${i + 1} of ${e.photos.length}" data-tag="${tools ? "New: viewer with zoom and delete" : "Today: viewer"}">
+    ${statusBar(true)}
+    <div class="navbar">${tools ? `<button class="nb" data-act="vclose" aria-label="Close">${G.x}</button>` : `<span style="width:44px"></span>`}<span class="title" style="color:var(--card)"><span class="vcount">${i + 1} of ${e.photos.length}</span></span><span style="width:44px"></span></div>
+    <div class="vstage${z > 1 ? " zoomed" : ""}" data-stage="1">
+      <div class="vimg" style="transform:translate(${st.panX}px, ${st.panY}px) scale(${z})">${photoHTML(st, p)}</div>
+      ${z > 1 ? `<span class="zoomlab">${z}×</span>` : ""}
+      <span class="vhint">${tools ? (z > 1 ? "Drag to look around. Double-tap to fit." : "Double-tap or pinch to zoom. Swipe for the next photo.") : "Tap anywhere to close."}</span>
+    </div>
+    <div class="vbar">${film}${del}</div></div>`;
+}
+
+function cameraPane(inst) {
+  const st = inst.st;
+  const kinds = ["grey","kraft","pwe","yellow","blue"];
+  const k = kinds[(UID + inst.key.length) % kinds.length];
+  st.camKind = st.camKind || k;
+  return `<div class="camera" role="dialog" aria-label="Camera" data-tag="New: camera (system)">${statusBar(true)}
+    <div class="vf">${photo(st.camKind, "front", 20 + inst.key.length)}${st.camShot ? "" : `<div class="frame-guide"></div>`}</div>
+    <div class="cambar">${st.camShot
+      ? `<button class="nb" data-act="retake">Retake</button><span></span><button class="nb bold" data-act="usephoto">Use Photo</button>`
+      : `<button class="nb" data-act="camcancel">Cancel</button><button class="shutter" data-act="shoot" aria-label="Take photo"><span></span></button><button class="nb" data-act="library" aria-label="Choose from library">${G.lib}</button>`}</div></div>`;
+}
+
+function composerPane(inst, keysTop, pageH) {
+  const st = inst.st, c = st.comp;
+  const typed = c.input.trim();
+  const found = typed ? OUTSTANDING.filter(o => o[0].toLowerCase().includes(typed.toLowerCase())).slice(0, 3) : [];
+  const asTyped = typed && !found.some(o => o[0].toLowerCase() === typed.toLowerCase());
+  const n = c.entries.reduce((a, x) => a + x[1], 0);
+  const ready = c.entries.length > 0 || (OPT.photoOnly && c.photos.length > 0);
+  const why = ready ? "" : (OPT.photoOnly ? "Add a card or a photo to save." : "Add a card to save.");
+  const strip = `<div class="strip" style="padding:8px 2px 2px" data-tag="New: photos in the composer">${c.photos.map((p, j) => `<span class="thumbwrap"><span class="thumb" style="cursor:default">${photo(p.kind, p.view, p.seed)}</span>
+      <button class="rm" data-act="crm" data-v="${j}" aria-label="Remove photo ${j + 1}"><span>${G.x}</span></button></span>`).join("")}
+      <button class="thumb add" data-act="caddphoto" aria-label="Take photo">${G.cam}<span>Photo</span></button>
+      <button class="thumb add" data-act="clib" aria-label="Choose from library">${G.lib}<span>Library</span></button></div>`;
+  const sugg = (found.length || asTyped) ? `<div class="sugg">${found.map(o => `<button data-act="cadd" data-v="${esc(o[0])}">${esc(o[0])}<span class="q">${o[1]} out · ${o[2]} seller${o[2] === 1 ? "" : "s"}</span></button>`).join("")}
+      ${asTyped ? `<button class="typed" data-act="cadd" data-v="${esc(typed)}">Add “${esc(typed)}” as typed</button>` : ""}</div>` : "";
+  const ents = c.entries.length ? `<div style="border-top:1px solid var(--line)">${c.entries.map((x, j) => `<div class="erow"><span class="nm">${esc(x[0])}</span>
+      <button class="step" data-act="cqty" data-v="${j}" data-d="-1" aria-label="${x[1] > 1 ? "One fewer " : "Remove "}${esc(x[0])}">–</button><span class="qty">${x[1]}</span>
+      <button class="step" data-act="cqty" data-v="${j}" data-d="1" aria-label="One more ${esc(x[0])}">+</button></div>`).join("")}</div>` : "";
+  const keysH = keysTop ? pageH - keysTop : 264;
+  return `<div class="sheetdim"></div><div class="sheet" role="dialog" aria-label="New envelope" data-tag="New: composer as a sheet">
+    <div class="navbar"><button class="nb" data-act="ccancel">Cancel</button><span class="title">${c.edit ? "Edit envelope" : "New envelope"}</span>
+      <button class="nb bold" data-act="csave" ${ready ? "" : `disabled aria-describedby="cwhy-${inst.key}"`}>Save</button></div>
+    <div class="scroll" data-sk="comp"><div class="pad" style="display:flex;flex-direction:column;gap:8px;padding-bottom:16px">
+      ${why ? `<span class="why" id="cwhy-${inst.key}" style="text-align:right">${why}</span>` : ""}
+      ${strip}
+      <input class="field" data-field="input" value="${esc(c.input)}" placeholder="Type a card name…" aria-label="Card name" autocomplete="off" data-tag="Today: card name field">
+      ${sugg}${ents}
+      <input class="field" data-field="note" value="${esc(c.note)}" placeholder="Note (optional) — tracking #, sender, mailer…" aria-label="Note" style="font-size:calc(16px * var(--kb))">
+      <span class="envnote">${cards(n)} · ${c.photos.length} photo${c.photos.length === 1 ? "" : "s"}</span>
+    </div></div>
+    <div class="keys" style="height:${keysH}px">Keys (system keyboard, not drawn)</div></div>`;
+}
+
+function stackPane(inst, k, opts) {
+  const st = inst.st;
+  if (!k) return detailPane(inst, null, opts);
+  const ms = k.members.map(id => envById(st, id)).filter(Boolean);
+  return `${statusBar()}<div class="navbar">${opts.back ? `<button class="nb" data-act="back">${G.back}Orphaned</button>` : `<span style="width:44px"></span>`}<span class="title">Stack</span>
+    <button class="nb" data-act="unstack">Unstack</button></div>
+    <div class="scroll" data-sk="stack"><div class="pad" style="display:flex;flex-direction:column;gap:12px;padding-bottom:${opts.bottom}px" data-tag="New: stack page">
+    <input class="field" data-field="stackname" value="${esc(k.name)}" placeholder="Name this stack, e.g. blue mailer, cat sticker" aria-label="Stack name">
+    <span class="why">A stack groups envelopes for your eye only. Each envelope still matches its own order, one at a time.</span>
+    <div class="board" style="--tile:${opts.w < 300 ? "100%" : "150px"};padding:12px 4px">${ms.map((e, i) => tilePin(st, e, inst, i)).join("")}</div></div></div>`;
+}
+
+function comparePane(inst, which, w, bottom) {
+  const st = inst.st;
+  const A = envById(st, st.picked), B = envById(st, st.cmpB);
+  const e = which === "A" ? A : B;
+  const others = st.envs.filter(x => x.photos.length && x.id !== st.picked);
+  const big = e && e.photos[0] ? `<div class="cmpimg">${photoHTML(st, e.photos[0])}</div>` : "";
+  const cap = e ? `<span class="micro">${which === "A" ? "This envelope" : "Compared with"} · ${e.date} · ${cards(total(e))}</span><span class="envnote">${esc(e.note)}</span>` : "";
+  if (which === "B") {
+    return `${statusBar()}<div class="navbar"><span style="width:44px"></span><span class="title">Compare</span><span style="width:44px"></span></div>
+      <div class="scroll"><div class="cmp" data-tag="New: compare, left page">${big}${cap}
+      <span class="why">Pick another envelope to compare.</span>
+      <div class="strip">${others.map(x => `<button class="thumb${x.id === st.cmpB ? " on" : ""}" data-act="cmpb" data-v="${x.id}" aria-label="Envelope ${x.date}">${photoHTML(st, x.photos[0], true)}</button>`).join("")}</div></div></div>`;
+  }
+  const same = A && B && stackOf(st, A.id) && stackOf(st, A.id) === stackOf(st, B.id);
+  return `${statusBar()}<div class="navbar"><button class="nb" data-act="cmpdone">Done</button><span class="title">Compare</span><span style="width:44px"></span></div>
+    <div class="scroll" style="padding-bottom:${bottom}px"><div class="cmp" data-tag="New: compare, right page">${big}${cap}
+    ${same ? `<span class="why">These two are in one stack already.</span>` : `<button class="btn primary" data-act="cmpstack">${G.stack}Stack these two</button>`}</div></div>`;
+}
+
+/* ---------------- frame render ---------------- */
+const INST = [];
+function single(inst, W, H) {
+  const st = inst.st;
+  let html = `<div class="pane">`;
+  const base = st.screen === "detail" || st.screen === "viewer" && st.ret === "detail" ? "detail" : st.screen === "stack" || (st.screen === "viewer" && st.ret === "stack") ? "stack" : "wall";
+  if (base === "detail") html += detailPane(inst, envById(st, st.picked), { back:true, w:W, bottom:64 + 12 + 16 + (inst.st.openStack && inst.concept === "stacks" ? 0 : 0), backLabel:st.fromStack ? "Stack" : "Orphaned" });
+  else if (base === "stack") html += stackPane(inst, st.stacks.find(k => k.id === st.openStack), { back:true, w:W, bottom:96 });
+  else html += statusBar() + wallPane(inst, W, true);
+  html += tabBar(st) + `</div>`;
+  if (st.screen === "viewer") html += viewerPane(inst, envById(st, st.picked));
+  if (st.screen === "camera") html += cameraPane(inst);
+  if (st.screen === "composer") html += composerPane(inst, null, H);
+  return html;
+}
+function openPose(inst) {
+  const st = inst.st, PW = 455.5, H = 669;
+  let L, R, overL = "", overR = "";
+  if (st.screen === "compare") { L = comparePane(inst, "B", PW, 0); R = comparePane(inst, "A", PW, 96); }
+  else {
+    L = statusBar() + wallPane(inst, PW, false);
+    if (st.openStack && (st.screen === "stack")) R = stackPane(inst, st.stacks.find(k => k.id === st.openStack), { back:false, w:PW, bottom:96 });
+    else R = detailPane(inst, envById(st, st.picked), { back:false, w:PW, bottom:96 });
+  }
+  if (st.screen === "viewer") overR = viewerPane(inst, envById(st, st.picked));
+  if (st.screen === "camera") overL = cameraPane(inst);
+  if (st.screen === "composer") overL = composerPane(inst, 405, H);
+  return `<div class="pg" style="left:0;width:${PW}px"><div class="pane">${L}</div>${overL}</div>
+    <div class="hinge" style="left:${PW}px;width:40px" aria-hidden="true"></div>
+    <div class="pg" style="left:495.5px;width:${PW}px"><div class="pane">${R}</div>${overR}${tabBar(st)}</div>`;
+}
+
+function render(inst) {
+  const el = inst.el;
+  const keep = {};
+  el.querySelectorAll("[data-sk]").forEach(s => keep[s.dataset.sk] = s.scrollTop);
+  const act = document.activeElement && el.contains(document.activeElement) ? document.activeElement : null;
+  const actKey = act ? (act.dataset.field ? "f:" + act.dataset.field : act.dataset.act ? "a:" + act.dataset.act + ":" + (act.dataset.id || act.dataset.v || "") : null) : null;
+  const caret = act && act.selectionStart != null ? act.selectionStart : null;
+  const dev = inst.dev;
+  let W = 466, H = 678;
+  if (dev === "phone") { W = PHONE.w; H = PHONE.h; }
+  let html = dev === "open" ? openPose(inst) : single(inst, W, H);
+  el.innerHTML = html;
+  el.style.width = (dev === "open" ? 951 : W) + "px";
+  el.style.height = (dev === "open" ? 669 : H) + "px";
+  el.querySelectorAll("[data-sk]").forEach(s => { if (keep[s.dataset.sk]) s.scrollTop = keep[s.dataset.sk]; });
+  if (actKey) {
+    const sel = actKey.startsWith("f:") ? `[data-field="${actKey.slice(2)}"]` : null;
+    let t = sel ? el.querySelector(sel) : null;
+    if (!t && actKey.startsWith("a:")) { const [, a, v] = actKey.split(":"); t = [...el.querySelectorAll(`[data-act="${a}"]`)].find(x => (x.dataset.id || x.dataset.v || "") === v); }
+    if (t) { t.focus({ preventScroll:true }); if (caret != null && t.setSelectionRange) try { t.setSelectionRange(caret, caret); } catch (_) {} }
+  }
+}
+
+/* ---------------- actions ---------------- */
+function act(inst, a, d, ev) {
+  const st = inst.st;
+  const e = envById(st, st.picked);
+  const single = inst.dev !== "open";
+  if (a !== "menu" && st.menu && !["sort","filter"].includes(a)) st.menu = null;
+  switch (a) {
+    case "open": st.picked = d.id; st.idx = 0; st.discard = false; st.fromStack = false; if (single) st.screen = "detail"; else { st.screen = "wall"; st.openStack = null; } break;
+    case "back": if (st.fromStack && st.openStack) { st.screen = "stack"; st.fromStack = false; } else { st.screen = "wall"; st.openStack = null; } st.discard = false; break;
+    case "menu": st.menu = st.menu === d.m ? null : d.m; break;
+    case "sort": st.sort = d.v; st.menu = null; break;
+    case "filter": st.filter = d.v; st.menu = null; break;
+    case "big": st.big = !st.big; break;
+    case "idx": st.idx = +d.v; break;
+    case "view": st.ret = "detail"; st.screen = "viewer"; st.zoom = 1; st.panX = st.panY = 0; st.armed = false; break;
+    case "vidx": st.idx = +d.v; st.zoom = 1; st.panX = st.panY = 0; st.armed = false; break;
+    case "vclose": st.screen = single ? "detail" : "wall"; st.zoom = 1; st.panX = st.panY = 0; st.armed = false; break;
+    case "del": st.armed = true; break;
+    case "del-cancel": st.armed = false; break;
+    case "hdel": st.heroArmed = true; break;
+    case "hdel-cancel": st.heroArmed = false; break;
+    case "hdel-go": st.heroArmed = false; e.photos.splice(Math.min(st.idx, e.photos.length - 1), 1); st.idx = 0; break;
+    case "err-dismiss": st.err = null; break;
+    case "del-go": {
+      st.armed = false; e.photos.splice(st.idx, 1);
+      if (!e.photos.length) { st.screen = single ? "detail" : "wall"; st.idx = 0; } else st.idx = Math.min(st.idx, e.photos.length - 1);
+      st.zoom = 1; st.panX = st.panY = 0; break; }
+    case "discard": st.discard = true; break;
+    case "discard-cancel": st.discard = false; break;
+    case "discard-go": {
+      const i = st.envs.indexOf(e); st.envs.splice(i, 1); st.discard = false;
+      st.stacks.forEach(k => k.members = k.members.filter(x => x !== e.id)); st.stacks = st.stacks.filter(k => k.members.length > 1);
+      st.picked = st.envs[0] ? st.envs[0].id : null; st.screen = "wall"; break; }
+    case "assign": {
+      const i = st.envs.indexOf(e); st.envs.splice(i, 1);
+      st.undo = { env:e, at:i, line:`Checked in ${cards(total(e))} against ${d.v}.` };
+      st.stacks.forEach(k => k.members = k.members.filter(x => x !== e.id)); st.stacks = st.stacks.filter(k => k.members.length > 1);
+      st.picked = st.envs[Math.min(i, st.envs.length - 1)] ? st.envs[Math.min(i, st.envs.length - 1)].id : null; st.screen = "wall"; break; }
+    case "undo-dismiss": st.undo = null; break;
+    case "undo": if (st.undo) { st.envs.splice(st.undo.at, 0, st.undo.env); st.picked = st.undo.env.id; st.undo = null; } break;
+    case "opensync": alert_inline(inst, "Opens the Sync panel on the Ledger tab (today's openSync)."); return;
+    case "edit": st.comp = { edit:e.id, photos:e.photos.filter(p => p.st === "ok").map(p => ({ ...p })), entries:e.entries.map(x => [...x]), input:"", note:e.note }; st.screen = "composer"; break;
+    case "record":
+      st.comp = { photos:[], entries:[], input:"", note:"" };
+      if (OPT.cameraFirst) { st.screen = "camera"; st.camFor = "new"; st.camShot = false; st.camKind = null; } else st.screen = "composer";
+      break;
+    case "addphoto": st.screen = "camera"; st.camFor = "env"; st.camShot = false; st.camKind = null; break;
+    case "caddphoto": st.screen = "camera"; st.camFor = "comp"; st.camShot = false; st.camKind = null; break;
+    case "shoot": st.camShot = true; break;
+    case "retake": st.camShot = false; st.camKind = ["grey","kraft","pwe","yellow","blue"][(++UID) % 5]; break;
+    case "camcancel": st.screen = st.camFor === "env" ? (single ? "detail" : "wall") : st.camFor === "comp" ? "composer" : "wall"; break;
+    case "library": case "usephoto": {
+      const p = { kind:st.camKind || "grey", view:"front", seed:(++UID), st:"ok" };
+      if (st.camFor === "env" && e) { e.photos.push(p); st.idx = e.photos.length - 1; if (!e.hue) e.hue = KIND_HUE[p.kind]; st.screen = single ? "detail" : "wall"; }
+      else { st.comp.photos.push(p); st.screen = "composer"; }
+      st.camShot = false; st.camKind = null; break; }
+    case "clib": st.comp.photos.push({ kind:["pink","kraft","blue"][(++UID) % 3], view:"front", seed:UID, st:"ok" }); break;
+    case "crm": st.comp.photos.splice(+d.v, 1); break;
+    case "cadd": { const nm = d.v; const ex = st.comp.entries.find(x => x[0].toLowerCase() === nm.toLowerCase()); if (ex) ex[1]++; else st.comp.entries.push([nm, 1]); st.comp.input = ""; render(inst); const f = inst.el.querySelector('[data-field="input"]'); if (f) f.focus(); return; }
+    case "cqty": { const x = st.comp.entries[+d.v]; x[1] += +d.d; if (x[1] < 1) st.comp.entries.splice(+d.v, 1); break; }
+    case "ccancel": st.screen = st.comp.edit ? (single ? "detail" : "wall") : "wall"; break;
+    case "csave": {
+      const c = st.comp;
+      if (c.edit) { const t = envById(st, c.edit); t.entries = c.entries; t.note = c.note; t.photos = c.photos; st.screen = single ? "detail" : "wall"; }
+      else {
+        const id = "n" + (++UID);
+        const ne = { id, date:TODAY, hue:c.photos[0] ? KIND_HUE[c.photos[0].kind] : null, entries:c.entries, note:c.note, photos:c.photos,
+          cands:c.entries.length ? [cand(SELLERS[UID % 5], "2026-11-11", "B7E1-" + (1000 + UID), Math.min(1, c.entries.length), c.entries.reduce((a, x) => a + x[1], 0), 2, false)] : [] };
+        st.envs.unshift(ne); st.picked = id; st.idx = 0; st.screen = "wall";
+      }
+      st.comp = null; break; }
+    case "selmode": st.selecting = !st.selecting; st.sel = []; break;
+    case "sel": { const i = st.sel.indexOf(d.id); if (i >= 0) st.sel.splice(i, 1); else st.sel.push(d.id); break; }
+    case "dostack": {
+      if (st.sel.length < 2) break;
+      const into = st.stacks.find(k => st.sel.some(id => k.members.includes(id)));
+      if (into) { st.sel.forEach(id => { if (!into.members.includes(id)) into.members.push(id); }); st.stacks = st.stacks.filter(k => k === into || !st.sel.some(id => k.members.includes(id))); }
+      else st.stacks.push({ id:"k" + (++UID), name:"", members:st.sel.slice() });
+      st.selecting = false; st.sel = []; break; }
+    case "stack": st.openStack = d.id; st.fromStack = false; st.screen = "stack"; break;
+    case "unstack": st.stacks = st.stacks.filter(k => k.id !== st.openStack); st.openStack = null; st.screen = "wall"; break;
+    case "compare": st.screen = "compare"; if (st.cmpB === st.picked || !envById(st, st.cmpB) || !envById(st, st.cmpB).photos.length) { const o = st.envs.find(x => x.photos.length && x.id !== st.picked); st.cmpB = o ? o.id : null; } break;
+    case "cmpb": st.cmpB = d.v; break;
+    case "cmpdone": st.screen = "wall"; break;
+    case "cmpstack": {
+      const a = st.picked, b = st.cmpB, ka = stackOf(st, a), kb = stackOf(st, b);
+      if (ka && kb && ka !== kb) { kb.members.forEach(id => ka.members.push(id)); st.stacks = st.stacks.filter(k => k !== kb); }
+      else if (ka) ka.members.push(b); else if (kb) kb.members.push(a); else st.stacks.push({ id:"k" + (++UID), name:"", members:[a, b] });
+      break; }
+  }
+  // inside a stack page, opening an envelope returns there
+  if (a === "open" && inst.st.openStack && ev && ev.target.closest(".board") && inst.st.screen === "detail" && inst.el.querySelector('[data-sk="stack"]')) inst.st.fromStack = true;
+  render(inst);
+}
+function alert_inline(inst, msg) {
+  const host = inst.el.querySelector(".hero") ? inst.el.querySelector(".hero").parentElement : inst.el;
+  let n = host.querySelector(".tmpmsg"); if (!n) { n = document.createElement("div"); n.className = "tmpmsg why"; n.setAttribute("role", "status"); n.style.cssText = "background:var(--card);padding:4px 8px;border-radius:6px;margin-top:4px"; host.appendChild(n); }
+  n.textContent = msg;
+}
+
+document.addEventListener("click", ev => {
+  const t = ev.target.closest("[data-act]"); if (!t || t.disabled) return;
+  const fr = ev.target.closest(".dev"); if (!fr) return;
+  const inst = INST.find(i => i.el === fr); if (!inst) return;
+  if (inst.st.screen === "viewer" && t.dataset.act === undefined) return;
+  act(inst, t.dataset.act, t.dataset, ev);
+});
+document.addEventListener("input", ev => {
+  const f = ev.target.closest("[data-field]"); if (!f) return;
+  const inst = INST.find(i => i.el === ev.target.closest(".dev")); if (!inst) return;
+  const st = inst.st;
+  if (f.dataset.field === "input") { st.comp.input = f.value; render(inst); }
+  else if (f.dataset.field === "note") st.comp.note = f.value;
+  else if (f.dataset.field === "stackname") { const k = st.stacks.find(x => x.id === st.openStack); if (k) k.name = f.value; }
+});
+document.addEventListener("keydown", ev => {
+  const f = ev.target.closest && ev.target.closest('[data-field="input"]');
+  if (f && ev.key === "Enter") { const inst = INST.find(i => i.el === f.closest(".dev")); const v = f.value.trim(); if (v) act(inst, "cadd", { v }); ev.preventDefault(); return; }
+  const fr = ev.target.closest && ev.target.closest(".dev"); if (!fr) return;
+  const inst = INST.find(i => i.el === fr); if (!inst || inst.st.screen !== "viewer") return;
+  const e = envById(inst.st, inst.st.picked);
+  if (ev.key === "Escape") act(inst, "vclose", {});
+  if (ev.key === "ArrowRight" && e && inst.st.idx < e.photos.length - 1) act(inst, "vidx", { v:inst.st.idx + 1 });
+  if (ev.key === "ArrowLeft" && inst.st.idx > 0) act(inst, "vidx", { v:inst.st.idx - 1 });
+});
+/* viewer gestures: double-tap zooms, drag pans when zoomed, swipe changes photo, a tap closes only in today's viewer */
+let drag = null;
+document.addEventListener("pointerdown", ev => {
+  const stage = ev.target.closest("[data-stage]"); if (!stage) return;
+  const inst = INST.find(i => i.el === stage.closest(".dev")); if (!inst) return;
+  drag = { inst, x:ev.clientX, y:ev.clientY, px:inst.st.panX, py:inst.st.panY, img:stage.querySelector(".vimg"), moved:false };
+  drag.img.classList.add("drag");
+});
+document.addEventListener("pointermove", ev => {
+  if (!drag) return; const st = drag.inst.st; const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
+  if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
+  const z = OPT.viewerTools ? st.zoom : 1;
+  if (z > 1) { st.panX = drag.px + dx; st.panY = drag.py + dy; drag.img.style.transform = `translate(${st.panX}px, ${st.panY}px) scale(${z})`; }
+  else drag.img.style.transform = `translate(${dx}px, 0) scale(1)`;
+});
+document.addEventListener("pointerup", ev => {
+  if (!drag) return; const { inst } = drag; const st = inst.st; const dx = ev.clientX - drag.x;
+  drag.img.classList.remove("drag");
+  const e = envById(st, st.picked);
+  const z = OPT.viewerTools ? st.zoom : 1;
+  const moved = drag.moved; drag = null;
+  if (z === 1 && moved && Math.abs(dx) > 40 && e) {
+    const ni = st.idx + (dx < 0 ? 1 : -1);
+    if (ni >= 0 && ni < e.photos.length) { act(inst, "vidx", { v:ni }); return; }
+  }
+  if (!moved && !OPT.viewerTools) { act(inst, "vclose", {}); return; }
+  /* No re-render here: a re-render between the two taps of a double-tap would lose the dblclick. */
+  const img = inst.el.querySelector(".vimg");
+  if (img && z === 1) img.style.transform = "translate(0px, 0px) scale(1)";
+});
+document.addEventListener("dblclick", ev => {
+  const stage = ev.target.closest("[data-stage]"); if (!stage || !OPT.viewerTools) return;
+  const inst = INST.find(i => i.el === stage.closest(".dev")); const st = inst.st;
+  st.zoom = st.zoom > 1 ? 1 : 2.5; st.panX = st.panY = 0; render(inst);
+});
+
+/* ---------------- page: frames, hash, hide controls ---------------- */
+const PHONE = { w:466, h:678 };
+function parseHash() { const o = {}; location.hash.slice(1).split("&").forEach(kv => { const [k, v] = kv.split("="); if (k) o[k] = decodeURIComponent(v || ""); }); return o; }
+let H0 = {};
+function build() {
+  H0 = parseHash();
+  const c = H0.c || "all", s = H0.s || "wall", d = H0.d || "all";
+  INST.length = 0;
+  for (const concept of ["sheet","stacks"]) {
+    document.getElementById("sec-" + concept).hidden = HIDDEN.has(concept) || (c !== "all" && c !== concept);
+    /* The frames are static in the page (data-device on each), so a reader sees the poses in order without the script. */
+    document.querySelectorAll(`[data-row="${concept}"] figure`).forEach(fig => {
+      const dev = fig.dataset.dev;
+      fig.hidden = d !== "all" && d !== dev;
+      const na = fig.querySelector(".na");
+      na.textContent = (s === "select" || s === "stack" || s === "compare") && concept === "sheet" ? " This state belongs to Stacks; the Contact sheet shows its wall." :
+        (s === "compare" && dev !== "open") ? " Compare needs two pages; this frame shows the wall." : "";
+      const inst = { concept, dev, key:concept + dev, el:fig.querySelector(".dev"), st:null };
+      inst.st = initState(concept, dev, s);
+      INST.push(inst); render(inst);
+    });
+  }
+  document.querySelectorAll("#ctl [data-c]").forEach(a => a.setAttribute("aria-current", String(a.dataset.c === c)));
+  document.querySelectorAll("#ctl [data-s]").forEach(a => a.setAttribute("aria-current", String(a.dataset.s === s)));
+  document.querySelectorAll("#ctl [data-d]").forEach(a => a.setAttribute("aria-current", String(a.dataset.d === d)));
+  document.querySelectorAll("#ctl a").forEach(a => { const k = Object.keys(a.dataset)[0]; const o = { ...H0 }; o[k] = a.dataset[k]; a.href = "#" + Object.entries(o).map(([x, y]) => x + "=" + y).join("&"); });
+}
+const HIDDEN = new Set();
+document.getElementById("ctl").addEventListener("click", ev => {
+  const b = ev.target.closest("button"); if (!b) return;
+  if (b.id === "tagsbtn") { const on = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", String(on)); document.body.classList.toggle("showtags", on); return; }
+  if (b.id === "resetbtn") { build(); return; }
+  if (b.dataset.hide) { HIDDEN.add(b.dataset.hide); b.hidden = true; build(); return; }
+  if (b.dataset.opt) { OPT[b.dataset.opt] = false; b.hidden = true; build(); return; }
+});
+document.addEventListener("change", ev => {
+  const f = ev.target.closest("[data-ph]"); if (!f) return;
+  const v = Math.max(+f.min, Math.min(+f.max, +f.value || 0)); PHONE[f.dataset.ph] = v;
+  INST.filter(i => i.dev === "phone").forEach(render);
+});
+document.body.classList.add("showtags");
+window.addEventListener("hashchange", build);
+build();
+</script>
+</body>
+</html>

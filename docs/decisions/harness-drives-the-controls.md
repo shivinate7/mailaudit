@@ -13,5 +13,5 @@ The ruled head replaced the native select and the chip disclosures. The harness 
 ## See also
 
 - `ruled-head-masthead-vocabulary`, the head these helpers drive.
-- `ruled-head-panels-carry-no-fill`, the panels that `openRange` opens.
+- `head-panels-carry-paper-fill`, the panels that `openRange` opens.
 - `the-token-is-a-credential`, the reason the key field is uncontrolled.

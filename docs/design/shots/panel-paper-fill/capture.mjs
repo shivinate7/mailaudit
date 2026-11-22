@@ -1,7 +1,7 @@
 // Takes the panel-paper-fill shots again: the built index.html, Ledger tab, with the
 // Sorted by or History panel open, at 375 and 760 px, light, device scale 2.
 //   inflow: the page as built (the panel pushes the rows down).
-//   none:   the overlay drawn by a style override (a guess at its geometry), panelWrap as built.
+//   none:   the overlay drawn by a style override (a guess at its geometry), background forced transparent (the no-fill state).
 //   paper:  the same overlay, plus background: paper on the panel.
 //   rule:   paper, plus a 1px line rule at the panel's foot.
 // Run from the repo root after `npm install`:
@@ -21,9 +21,10 @@ const STORE_KEY = "mailday:mailday:v1"; // STORE_KEY in test/screens.mjs
 const OVERLAY = `
 .mdl-lcard:has(> .mdl-panel) { position: relative; overflow: visible; }
 .mdl-lcard > .mdl-panel { position: absolute; left: 0; right: 0; z-index: 4; }`;
+const NOFILL = `.mdl-lcard > .mdl-panel { background: transparent !important; }`; // beats the panel's inline panelWrap style
 const FILL = `.mdl-lcard > .mdl-panel { background: ${C.paper}; }`;
 const RULE = `.mdl-lcard > .mdl-panel { border-bottom: 1px solid ${C.line}; }`;
-const STYLE = { inflow: null, none: OVERLAY, paper: OVERLAY + FILL, rule: OVERLAY + FILL + RULE };
+const STYLE = { inflow: null, none: OVERLAY + NOFILL, paper: OVERLAY + FILL, rule: OVERLAY + FILL + RULE };
 const PANELS = { sort: /^Sorted by/, history: /^History/ };
 const ROWS = ["Showing", "Sorted by", "Orders from", "Sync", "History", "Re-import CSV", "Backup", "Reset"];
 
@@ -68,6 +69,7 @@ for (const width of [375, 760]) {
         const p = document.querySelector(".mdl-panel");
         if (p) {
           const q = p.getBoundingClientRect();
+          out.panelBg = getComputedStyle(p).backgroundColor;
           out.panel = { top: Math.round(q.top + window.scrollY), height: Math.round(q.height), width: Math.round(q.width) };
           const card = p.closest(".mdl-lcard");
           if (card) out.cardBottom = Math.round(card.getBoundingClientRect().bottom + window.scrollY);

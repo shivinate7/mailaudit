@@ -1,0 +1,921 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Date and Stamp Editing</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The app and the native client are held to light, so this page draws one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832; --gold:#C9A961; --amber:#846008;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+  /* Status bar foot and home-indicator band: no Apple page read gives them. Drawn at the Duo UI test floor of 20 pt (DuoHandUITests.statusBarFloor), unmeasured. */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: max(env(safe-area-inset-bottom), 20px);
+  --new:#2E7A5E; --today:#A8443C;
+  --k: 1; /* Dynamic Type multiplier: 1 at Large (body 17 pt), 53/17 at AX5 (typography page) */
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+main { max-width:1100px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:26px; margin:4px 0 0; }
+h2 { font-family:var(--cochin); font-size:22px; margin:0; }
+.sub { color:var(--inkSoft); margin:0; max-width:75ch; }
+.kind { font:600 12px var(--mono); color:var(--accent); }
+.bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.bar a, .bar button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+.bar a[aria-current="true"], .bar button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.bar .lab { font-size:12px; color:var(--inkSoft); min-width:72px; }
+section.concept { display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--line); padding-top:16px; }
+section.concept[hidden], figure[hidden] { display:none; }
+.frames { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; max-width:100%; }
+figcaption { font-size:13px; color:var(--inkSoft); max-width:470px; }
+figcaption b { color:var(--ink); font-family:var(--cochin); font-size:16px; }
+.fit { max-width:100%; overflow:hidden; }
+
+/* ---- devices: 1 CSS px = 1 pt ---- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:12px; overflow:hidden; font-family:var(--sys); flex:none; }
+.dev.f { width:466px; height:678px; }
+.dev.o { width:951px; height:669px; }
+.dev.p { width:375px; height:812px; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center; padding:0 16px;
+  font:600 12px var(--sys); z-index:9; pointer-events:none; }
+.pg { position:absolute; top:0; bottom:0; overflow:hidden; }
+.dev.f .pg, .dev.p .pg { left:0; right:0; }
+.dev.o .pg.l { left:0; width:455.5px; } .dev.o .pg.r { left:495.5px; width:455.5px; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:8; }
+.fold span { position:absolute; top:300px; left:50%; transform:translateX(-50%) rotate(-90deg); font:10.5px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; }
+.scroll { position:absolute; left:0; right:0; top:var(--sat); bottom:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none; }
+.scroll::-webkit-scrollbar { display:none; }
+.stack { display:flex; flex-direction:column; gap:12px; padding:12px 16px calc(12px + 64px + 24px + var(--sab)); }
+.nopad { padding-bottom:16px; }
+
+/* the floating glass tab bar (phone-nav-is-bottom-bar): 64 tall, inset 24, 12 above the bottom plus the inset */
+.tabbar { position:absolute; left:24px; right:24px; bottom:calc(12px + var(--sab)); height:64px; max-width:480px; margin:0 auto; border-radius:32px; z-index:7;
+  background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(16px) saturate(1.4); -webkit-backdrop-filter:blur(16px) saturate(1.4);
+  border:1px solid var(--line); display:flex; padding:4px; gap:4px; }
+.tabbar button { flex:1; border:0; background:transparent; border-radius:28px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:2px; font:10px var(--sys); color:var(--inkSoft); min-height:44px; cursor:pointer; }
+.tabbar button[aria-current="page"] { background:color-mix(in srgb, var(--card) 90%, transparent); color:var(--accent); font-weight:600; }
+.tabbar svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.6; }
+
+/* ---- app content: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono) ---- */
+.title { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.title b { font:700 calc(28px * var(--k))/1.15 var(--cochin); }
+.title span { font:calc(11px * var(--k)) var(--mono); color:var(--inkSoft); }
+.micro { font:calc(10px * var(--k))/1.3 var(--mono); letter-spacing:.16em; text-transform:uppercase; color:var(--inkSoft); }
+.rule { display:flex; align-items:center; gap:8px; } .rule::after { content:""; flex:1; height:1px; background:var(--line); }
+.card { background:var(--card); border:1px solid var(--line); border-radius:8px; }
+.card.sel { border-color:var(--accent); box-shadow:inset 3px 0 0 var(--accent); }
+.ch { display:flex; gap:12px; padding:12px; align-items:flex-start; }
+.who { flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
+.who b { font:700 calc(17px * var(--k))/1.25 var(--cochin); }
+.meta { font:calc(11px * var(--k))/1.4 var(--mono); color:var(--inkSoft); overflow-wrap:anywhere; }
+.pill { font:700 calc(12.5px * var(--k)) var(--cochin); color:var(--red); background:var(--redSoft); border-radius:999px; padding:4px 8px; white-space:nowrap; }
+.hit { min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; border:0; background:transparent; padding:0; cursor:pointer; color:inherit; font:inherit; }
+.rstamp { font:700 calc(10.5px * var(--k)) var(--mono); letter-spacing:.1em; color:var(--green); border:2px solid var(--green); border-radius:4px; padding:4px 8px;
+  transform:rotate(-4deg); --rest:-4deg; background:var(--card); white-space:nowrap; display:inline-block; }
+.schip { font:700 calc(10.5px * var(--k)) var(--mono); letter-spacing:.1em; color:var(--manilaInk); border:2px solid var(--manilaInk); border-radius:4px; padding:4px 8px;
+  transform:rotate(-3deg); --rest:-3deg; background:var(--card); white-space:nowrap; display:inline-block; }
+.band { width:100%; display:flex; align-items:center; gap:8px; padding:0 12px 12px; min-height:44px; border:0; background:transparent; text-align:left; cursor:pointer; color:var(--ink); }
+.band .note { flex:1; min-width:0; font:italic calc(13.5px * var(--k))/1.3 var(--cochin); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.caret { font:calc(12px * var(--k)) var(--mono); color:var(--inkSoft); }
+.items { border-top:1px solid var(--line); }
+.it { display:flex; align-items:center; gap:8px; min-height:48px; padding:0 12px 0 4px; border-top:1px solid var(--line); }
+.it:first-child { border-top:0; }
+.it.done { background:var(--greenSoft); }
+.it .box { flex:0 0 44px; height:44px; display:grid; place-items:center; }
+.it .box i { width:24px; height:24px; border:1.5px solid var(--inkSoft); border-radius:6px; display:block; position:relative; }
+.it.done .box i { background:var(--green); border-color:var(--green); }
+.it.done .box i::after { content:""; position:absolute; left:7px; top:2px; width:6px; height:12px; border:solid var(--card); border-width:0 2.5px 2.5px 0; transform:rotate(45deg); }
+.it .nm { flex:1; min-width:0; font:calc(14px * var(--k))/1.3 var(--cochin); }
+.it .nm small { display:block; font-size:calc(11.5px * var(--k)); color:var(--inkSoft); }
+.it .pr { font:calc(12px * var(--k)) var(--mono); color:var(--inkSoft); }
+
+/* the in-card editor */
+.ed { padding:0 12px 12px; display:flex; flex-direction:column; gap:8px; }
+.wk { display:flex; align-items:center; gap:4px; }
+.wk .lbl { flex:1; text-align:center; font:calc(12px * var(--k)) var(--mono); color:var(--ink); }
+.arrow { min-width:44px; min-height:44px; border:1px solid var(--line); border-radius:8px; background:var(--card); font:calc(15px * var(--k)) var(--mono); color:var(--ink); cursor:pointer; }
+.arrow[aria-disabled="true"] { color:color-mix(in srgb, var(--inkSoft) 55%, transparent); }
+.days { display:grid; grid-template-columns:repeat(7, 1fr); gap:4px; }
+.day { min-height:52px; border:1px solid var(--line); border-radius:8px; background:var(--card); display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:2px; cursor:pointer; color:var(--ink); padding:4px 0; position:relative; }
+.day small { font:calc(10px * var(--k)) var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--inkSoft); }
+.day span { font:600 calc(15px * var(--k)) var(--mono); }
+.day.cur { border:1.5px solid var(--ink); }
+.day.cur::after { content:"now"; position:absolute; top:-7px; left:50%; transform:translateX(-50%); font:calc(9.5px * var(--k)) var(--mono); background:var(--card); padding:0 2px; color:var(--ink); }
+.day.ord::before { content:""; position:absolute; bottom:4px; width:4px; height:4px; border-radius:2px; background:var(--inkSoft); }
+.day.on { background:var(--accent); border-color:var(--accent); } .day.on small, .day.on span { color:var(--card); }
+.day[aria-disabled="true"] { background:transparent; border-style:dashed; } .day[aria-disabled="true"] span { color:var(--inkSoft); font-weight:400; }
+.kinds { display:flex; flex-wrap:wrap; column-gap:4px; row-gap:8px; }
+.kc { min-height:44px; padding:0 12px; border:1px solid var(--line); border-radius:8px; background:var(--card); font:calc(11.5px * var(--k)) var(--mono); color:var(--ink); cursor:pointer; }
+.kc[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:var(--card); }
+.field { min-height:44px; border:1px solid var(--line); border-radius:8px; background:var(--card); padding:8px 12px; font:calc(16px * var(--k)) var(--cochin); color:var(--ink); }
+/* the slip: what will change, before it changes. Fixed height, so no state of it moves the buttons below. */
+.slip { height:calc(76px * var(--k)); background:color-mix(in srgb, var(--manila) 45%, transparent); border-radius:8px; padding:8px 12px; display:flex; flex-direction:column; gap:4px;
+  overflow:hidden; font:calc(13.5px * var(--k))/1.35 var(--cochin); }
+.slip .ba { font:600 calc(12px * var(--k))/1.4 var(--mono); color:var(--ink); }
+.slip .ba s { color:var(--inkSoft); font-weight:400; }
+.slip .ba em { font-style:normal; color:var(--accent); }
+.slip .fx { color:var(--manilaInk); }
+.slip.warn .fx { color:var(--red); }
+.acts { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.acts .gap { flex:1; }
+.btn { min-height:44px; padding:0 12px; border:1px solid var(--line); border-radius:8px; background:var(--card); font:calc(12px * var(--k)) var(--mono); color:var(--ink); cursor:pointer; }
+.btn.pri { background:var(--ink); border-color:var(--ink); color:var(--card); font-weight:700; }
+.btn.pri[aria-disabled="true"] { background:var(--card); color:var(--inkSoft); border-color:var(--line); font-weight:400; }
+.btn.rm { color:var(--red); border-color:var(--redSoft); }
+.btn.rm.armed { background:var(--red); border-color:var(--red); color:var(--card); font-weight:700; }
+.btn.undo { color:var(--accent); text-decoration:underline; text-underline-offset:3px; border-color:transparent; background:transparent; font-weight:700; }
+.why { font:calc(12px * var(--k)) var(--cochin); color:var(--inkSoft); }
+.btn.pri { min-width:calc(160px * var(--k)); } /* keeps the box of its widest label: "Move to Nov 30", "Post 2 corrections" */
+.rmrow { border-top:1px dashed var(--line); padding-top:8px; } /* the armed label grows here, where nothing else sits */
+.receipt { height:calc(52px * var(--k)); display:flex; align-items:center; gap:8px; padding:0 12px 8px; font:calc(11.5px * var(--k)) var(--mono); color:var(--inkSoft); }
+.receipt b { color:var(--ink); font-weight:600; }
+
+/* Ledger tab (ledger-tab-holds-options) */
+.lcard { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.lrow { width:100%; min-height:52px; display:flex; align-items:center; gap:8px; padding:8px 12px; border:0; border-top:1px solid var(--line); background:transparent; text-align:left; color:var(--ink); cursor:pointer; }
+.lrow:first-child { border-top:0; }
+.lrow .l { flex:1; display:flex; flex-direction:column; gap:2px; font:calc(16px * var(--k)) var(--cochin); }
+.lrow .l small { font:calc(11px * var(--k)) var(--mono); color:var(--inkSoft); }
+.lrow .v { font:calc(12px * var(--k)) var(--mono); color:var(--accent); border-bottom:1px solid var(--line); }
+.lrow[aria-expanded="true"] .v { border-color:var(--accent); }
+.panel { padding:4px 8px 12px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:8px; }
+.opts { display:grid; grid-template-columns:repeat(4, 1fr); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.opts button { min-height:44px; border:0; background:var(--card); font:calc(11.5px * var(--k)) var(--mono); color:var(--ink); cursor:pointer; }
+.opts button[aria-pressed="true"] { background:var(--accent); color:var(--card); }
+.opts .span2 { grid-column:span 2; }
+.months { display:flex; flex-wrap:wrap; gap:4px; }
+.months button { min-height:44px; padding:0 8px; border:1px solid var(--line); border-radius:8px; background:var(--card); font:calc(11.5px * var(--k)) var(--mono); color:var(--ink); cursor:pointer; }
+.months button[aria-pressed="true"] { border-color:var(--accent); background:var(--accent); color:var(--card); }
+.disc { min-height:44px; border:0; background:transparent; font:calc(12px * var(--k)) var(--mono); color:var(--ink); display:flex; align-items:center; gap:8px; cursor:pointer; padding:0; }
+.disc i { color:var(--accent); font-style:normal; width:10px; }
+.calhd { display:flex; align-items:center; gap:4px; }
+.calhd .lbl { flex:1; text-align:center; font:600 calc(13px * var(--k)) var(--cochin); }
+.cal { display:grid; grid-template-columns:repeat(7, 1fr); gap:2px; }
+.cal .wd { text-align:center; font:calc(10px * var(--k)) var(--mono); color:var(--inkSoft); padding:2px 0; }
+.cal button { min-height:44px; border:0; border-radius:6px; background:transparent; font:calc(13px * var(--k)) var(--mono); color:var(--ink); cursor:pointer; position:relative; }
+.cal button.has::after { content:""; position:absolute; bottom:6px; left:50%; width:4px; height:4px; margin-left:-2px; border-radius:2px; background:var(--accent); }
+.cal button.in { background:color-mix(in srgb, var(--accent) 14%, transparent); border-radius:0; }
+.cal button.end { background:var(--accent); color:var(--card); border-radius:6px; }
+.cal button.end::after { background:var(--card); }
+.cal button[aria-disabled="true"] { color:color-mix(in srgb, var(--inkSoft) 60%, transparent); }
+.cal .blank { min-height:44px; }
+
+/* Recent rows (recent-checks-can-be-undone, What a row shows) */
+.rec { display:flex; align-items:stretch; border-top:1px solid var(--line); min-height:72px; }
+.rec:first-child { border-top:0; }
+.rec .t { flex:1; min-width:0; padding:8px 0 8px 12px; display:flex; flex-direction:column; gap:2px; }
+.rec .t .micro { display:flex; justify-content:space-between; gap:8px; color:var(--ink); }
+.rec .t b { font:calc(15px * var(--k)) var(--cochin); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:400; }
+.rec .t small { font:calc(13px * var(--k)) var(--cochin); color:var(--inkSoft); }
+.rec .r { flex:0 0 72px; display:flex; align-items:center; justify-content:center; text-align:center; }
+.rec .r button { width:72px; min-height:72px; border:0; background:transparent; font:700 calc(11px * var(--k)) var(--mono); color:var(--accent); text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
+.rec .r span { font:calc(10px * var(--k))/1.3 var(--mono); color:var(--inkSoft); }
+
+/* ---- Daybook ---- */
+.sheet { position:absolute; left:0; right:0; top:var(--sat); bottom:0; background:var(--card); border-radius:12px 12px 0 0; border-top:1px solid var(--line); display:flex; flex-direction:column; z-index:8; }
+.still .fade, .still .land { animation:none; }
+.dev.o .pg .sheet { border-radius:0; }
+.tb { flex:none; min-height:52px; display:flex; align-items:center; gap:8px; padding:4px 8px; border-bottom:1px solid var(--line); }
+.tb .lead, .tb .spacer { flex:0 0 calc(112px * var(--k)); }
+.tb .lead { line-height:1.1; min-height:44px; border:0; background:transparent; font:calc(17px * var(--k)) var(--sys); color:var(--accent); text-align:left; padding:0 8px; cursor:pointer; }
+.tb .lead.armed { color:var(--red); font-weight:600; font-size:calc(14px * var(--k)); }
+.tb .ttl { flex:1; text-align:center; font:600 calc(17px * var(--k))/1.2 var(--sys); }
+.tb .ttl small { display:block; font:calc(11px * var(--k)) var(--mono); color:var(--inkSoft); font-weight:400; }
+.ax5 .tb { flex-wrap:wrap; } .ax5 .tb .spacer { display:none; } .ax5 .tb .lead { flex-basis:auto; }
+.dbrows { flex:1; overflow-y:auto; position:relative; scrollbar-width:none; overscroll-behavior:contain; }
+.dbrows::-webkit-scrollbar { display:none; }
+.mh { position:sticky; top:0; z-index:2; background:var(--card); height:28px; display:flex; align-items:center; padding:0 12px; }
+.dr { display:grid; grid-template-columns:calc(64px * var(--k)) 1fr; min-height:52px; border-top:1px solid var(--line); width:100%; border-left:0; border-right:0; border-bottom:0;
+  background:transparent; text-align:left; padding:0; cursor:pointer; color:var(--ink); font:inherit; }
+.dr .dd { padding:8px 0 8px 12px; font:calc(11px * var(--k))/1.3 var(--mono); color:var(--inkSoft); display:flex; flex-direction:column; justify-content:center; }
+.dr .dd b { font-size:calc(15px * var(--k)); color:var(--ink); font-weight:600; }
+.dr .en { display:flex; align-items:center; gap:8px; padding:4px 12px 4px 0; flex-wrap:wrap; min-width:0; }
+.dr.today .dd b { color:var(--accent); }
+.dr.today .dd::after { content:"today"; font-size:calc(10px * var(--k)); color:var(--accent); }
+.dr .here { margin-left:auto; font:calc(11px * var(--k)) var(--mono); color:var(--accent); visibility:hidden; }
+.lifting .dr .here { visibility:visible; }
+.lifting .dr.src .here { visibility:hidden; }
+.dr.inrange { background:color-mix(in srgb, var(--accent) 12%, transparent); }
+.dr.rend { background:color-mix(in srgb, var(--accent) 24%, transparent); }
+.dr .cnt { font:calc(12px * var(--k)) var(--mono); color:var(--ink); }
+.dr .cnt.z { color:color-mix(in srgb, var(--inkSoft) 70%, transparent); }
+.ent { border:0; background:transparent; padding:0; min-height:44px; display:inline-flex; align-items:center; cursor:pointer; }
+.ent .ord { font:calc(10.5px * var(--k)) var(--mono); letter-spacing:.1em; color:var(--inkSoft); border:1px solid var(--line); border-radius:4px; padding:4px 8px; display:inline-flex; align-items:center; gap:6px; }
+/* a drawn padlock, not an emoji: it reads as fixed in the ledger's own ink */
+.ent .ord::after { content:""; width:8px; height:7px; border:1.5px solid currentColor; border-radius:1px; box-shadow:0 -4px 0 -1.5px var(--card), 0 -5px 0 -1.5px currentColor; }
+.ent.lift > span { outline:2px dashed var(--accent); outline-offset:3px; }
+.ent.ghost > span { opacity:.45; text-decoration:line-through; }
+.ent.pend > span { border-style:dashed; color:var(--accent); border-color:var(--accent); }
+.dock { flex:none; border-top:1px solid var(--line); background:var(--paper); padding:12px 16px calc(12px + var(--sab)); display:flex; flex-direction:column; gap:8px; }
+.dock .slip { height:calc(120px * var(--k)); }
+.dock.tall .slip { height:auto; min-height:calc(96px * var(--k)); }
+
+/* landing: the stamp rocks down and settles (motion-the-stamp-lands) */
+.land { animation:land 380ms cubic-bezier(.32,.7,.3,1) both; }
+@keyframes land { 0% { transform:rotate(-13deg) scale(1.15); opacity:0; } 60% { transform:rotate(0deg) scale(.98); opacity:1; } 100% { transform:rotate(var(--rest)); } }
+.fade { animation:fade 160ms ease-out both; }
+@keyframes fade { from { opacity:0; } to { opacity:1; } }
+@media (prefers-reduced-motion: reduce) { .land, .fade { animation:none; } }
+
+/* ---- AX5: ViewThatFits picks the stacked form ---- */
+.ax5 { --k: 3.1176; }
+.ax5 .days { grid-template-columns:1fr; }
+.ax5 .day { flex-direction:row; justify-content:flex-start; gap:12px; padding:8px 12px; }
+.ax5 .day.cur::after { position:static; transform:none; margin-left:auto; }
+.ax5 .day.ord::before { display:none; }
+.ax5 .ch, .ax5 .title { flex-direction:column; align-items:flex-start; }
+.ax5 .sheet { overflow-y:auto; overflow-x:hidden; display:block; }
+.ax5 .dr .dd { justify-content:flex-start; }
+.ax5 .btn, .ax5 .btn.pri { min-width:0; max-width:100%; white-space:normal; padding:8px 12px; }
+.ax5 .dbrows { overflow:visible; }
+/* the drop slot: a shape, not a word, so "put here" is said once, in the slip (ux-label-once) */
+.slot { margin-left:auto; width:calc(56px * var(--k)); height:calc(28px * var(--k)); border:1.5px dashed var(--accent); border-radius:4px; visibility:hidden; }
+.lifting .dr .slot { visibility:visible; }
+.lifting .dr.src .slot { visibility:hidden; }
+.ax5 .dock { padding-bottom:calc(88px + var(--sab)); }
+.ax5 .slip, .ax5 .receipt { height:auto; min-height:52px; flex-wrap:wrap; }
+.ax5 .acts { flex-direction:column; align-items:stretch; }
+.ax5 .wk .lbl { font-size:calc(11px * var(--k)); }
+.ax5 .dr { grid-template-columns:1fr; }
+.ax5 .dr .dd { flex-direction:row; gap:12px; align-items:baseline; }
+.ax5 .tb .ttl small { display:none; }
+.ax5 .tabbar button { font-size:10px; } /* capped at the default size (duo-card-in-hand, Tab bar text) */
+
+/* tags: dashed outline on what exists today, and on what an option adds */
+.tags-off [data-tag] { outline:none !important; } .tags-off [data-tag]::before { display:none; }
+[data-tag] { position:relative; }
+[data-tag]::before { content:attr(data-tag); position:absolute; right:4px; top:-9px; font:600 10.5px/14px var(--sys); padding:0 4px; background:var(--paper); z-index:4; white-space:nowrap; pointer-events:none; }
+.tag-new { outline:2px dashed var(--new); outline-offset:2px; } .tag-new::before { color:var(--new); }
+.tag-today { outline:2px dashed var(--today); outline-offset:2px; } .tag-today::before { color:var(--today); }
+.ax5 [data-tag]::before { display:none; } .ax5 [data-tag] { outline:none; }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No figure, seller, card, order id, date or count on this page is real.</div>
+<h1>Date and stamp editing: correct the day, see it first, undo it</h1>
+<p class="kind">Designer kind: informed · date-and-stamp-editing-informed-1</p>
+<p class="sub">The pain, in the owner's words: "I marked it on the wrong day." Today the app records when a card was checked (<code>receivedAt</code>) but shows it nowhere and lets no one move it; a stamp's date is the day it was set, and a new kind re-dates it to today; the range picker takes months, or two native date fields. Two concepts fix it. Each is a working prototype: tap through it in any frame. Light theme only: the app and the native client are held to light.</p>
+
+<div class="bar" role="group" aria-label="Concepts">
+  <span class="lab">Concepts</span>
+  <button type="button" data-hide="slip" aria-pressed="false">Hide Correction slip</button>
+  <button type="button" data-hide="daybook" aria-pressed="false">Hide Daybook</button>
+</div>
+<div class="bar" role="group" aria-label="Devices">
+  <span class="lab">Devices</span>
+  <button type="button" data-dev="all" aria-pressed="true">All</button>
+  <button type="button" data-dev="f" aria-pressed="false">Duo folded</button>
+  <button type="button" data-dev="o" aria-pressed="false">Duo open</button>
+  <button type="button" data-dev="p" aria-pressed="false">Large phone</button>
+  <button type="button" data-dev="ax" aria-pressed="false">Folded, AX5 text</button>
+</div>
+<div class="bar" role="group" aria-label="Kind change rule">
+  <span class="lab">New kind</span>
+  <button type="button" data-kd="redate" aria-pressed="true">Takes today's date (today's rule)</button>
+  <button type="button" data-kd="keep" aria-pressed="false">Keeps the stamp's date</button>
+  <button type="button" id="tagsbtn" aria-pressed="true">Today / New tags</button>
+</div>
+<div class="bar" role="group" aria-label="Exact dates">
+  <span class="lab">Exact dates</span>
+  <button type="button" data-ex="cal" aria-pressed="true">Two-tap calendar</button>
+  <button type="button" data-ex="fields" aria-pressed="false">Two date fields (today)</button>
+</div>
+
+<section class="concept" id="concept-slip" data-concept="slip">
+  <h2>Correction slip: fix it in the card</h2>
+  <p class="sub">The quiet concept. The RECEIVED stamp gains its day and becomes a control, as the stamp band already is. Each editor gets a week of day cells and a slip that states the change before Save. After Save, a receipt line in the card and a Recent row each offer one-tap Undo. The range panel's two native date fields become a two-tap calendar that previews its count before it applies.</p>
+  <div class="bar" role="group" aria-label="Correction slip states">
+    <span class="lab">States</span>
+    <a href="#c=slip&s=rest">Rest</a>
+    <a href="#c=slip&s=recv">Received: open</a>
+    <a href="#c=slip&s=recv-picked">Received: day picked</a>
+    <a href="#c=slip&s=recv-saved">Received: saved</a>
+    <a href="#c=slip&s=stamp-kind">Stamp: new kind</a>
+    <a href="#c=slip&s=stamp-day">Stamp: day moved</a>
+    <a href="#c=slip&s=remove-armed">Stamp: remove armed</a>
+    <a href="#c=slip&s=recent">Recent: undo</a>
+    <a href="#c=slip&s=range">Range: calendar</a>
+    <a href="#c=slip&s=range-picked">Range: picked</a>
+    <a href="#c=slip&s=range-applied">Range: applied</a>
+  </div>
+  <div class="frames">
+    <figure data-d="f"><div class="fit"><div class="dev f" data-device="iphone-duo-folded" id="slip-duo-folded" data-c="slip" data-k="f"></div></div>
+      <figcaption><b>Duo folded, 466 × 678 pt.</b> One page. The editor opens in the card, under the header.</figcaption></figure>
+    <figure data-d="o"><div class="fit"><div class="dev o" data-device="iphone-duo-unfolded" id="slip-duo-open" data-c="slip" data-k="o"></div></div>
+      <figcaption><b>Duo open, 951 × 669 pt, fold at x 455.5 to 495.5.</b> Packages on the left page; the editor and Recent on the right, beside the card they change. The Ledger keeps one layout as two columns, so the range never crosses the fold.</figcaption></figure>
+    <figure data-d="p"><div class="fit"><div class="dev p" data-device="iphone-large" id="slip-phone" data-c="slip" data-k="p"></div></div>
+      <figcaption><b>Large phone, drawn at 375 × 812.</b> No size is written for it; this is the narrowest width <code>test/screens.mjs</code> checks.</figcaption></figure>
+    <figure data-d="ax"><div class="fit"><div class="dev f ax5" data-device="iphone-duo-folded-ax5" id="slip-duo-folded-ax5" data-c="slip" data-k="f"></div></div>
+      <figcaption><b>Duo folded at AX5 (body 53 pt).</b> The week becomes a list of days; buttons stack. The frame scrolls.</figcaption></figure>
+  </div>
+</section>
+
+<section class="concept" id="concept-daybook" data-concept="daybook">
+  <h2>Daybook: every date is an entry you can pick up</h2>
+  <p class="sub">The bold concept. One screen holds every date a package has, one ruled row per day, from its order to today. Tap a stamp to pick it up, tap a day to put it down. The old place stays as a struck ghost, so nothing moves. The slip lists every change waiting; Post writes them all, and one Undo takes them all back. The same rows pick a range: tap the first day, tap the last.</p>
+  <div class="bar" role="group" aria-label="Daybook states">
+    <span class="lab">States</span>
+    <a href="#c=daybook&s=rest">Rest</a>
+    <a href="#c=daybook&s=open">Daybook open</a>
+    <a href="#c=daybook&s=lifted">Received: picked up</a>
+    <a href="#c=daybook&s=moved">Received: put down</a>
+    <a href="#c=daybook&s=stamp-lifted">Stamp: picked up</a>
+    <a href="#c=daybook&s=two">Two changes waiting</a>
+    <a href="#c=daybook&s=posted">Posted</a>
+    <a href="#c=daybook&s=undone">Undone</a>
+    <a href="#c=daybook&s=range">Range: rows</a>
+    <a href="#c=daybook&s=range-picked">Range: picked</a>
+  </div>
+  <div class="frames">
+    <figure data-d="f"><div class="fit"><div class="dev f" data-device="iphone-duo-folded" id="daybook-duo-folded" data-c="daybook" data-k="f"></div></div>
+      <figcaption><b>Duo folded, 466 × 678 pt.</b> The Daybook is a sheet over Packages. Recent days sit at the bottom, by the thumb; the slip is pinned under them.</figcaption></figure>
+    <figure data-d="o"><div class="fit"><div class="dev o" data-device="iphone-duo-unfolded" id="daybook-duo-open" data-c="daybook" data-k="o"></div></div>
+      <figcaption><b>Duo open, 951 × 669 pt.</b> The card stays on the left page and shows each change as it waits; the Daybook fills the right page.</figcaption></figure>
+    <figure data-d="p"><div class="fit"><div class="dev p" data-device="iphone-large" id="daybook-phone" data-c="daybook" data-k="p"></div></div>
+      <figcaption><b>Large phone, drawn at 375 × 812.</b> The same sheet as folded.</figcaption></figure>
+    <figure data-d="ax"><div class="fit"><div class="dev f ax5" data-device="iphone-duo-folded-ax5" id="daybook-duo-folded-ax5" data-c="daybook" data-k="f"></div></div>
+      <figcaption><b>Duo folded at AX5.</b> A day row is already a list row, so it grows down; the slip grows with its text.</figcaption></figure>
+  </div>
+</section>
+</main>
+
+<script>
+/* ---------- dates: local calendar days only, never UTC (one-stamp-per-package) ---------- */
+const TODAY = '2026-11-21';
+const D = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const iso = dt => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+const add = (s, n) => { const d = D(s); d.setDate(d.getDate() + n); return iso(d); };
+const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MOL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const long = s => { const d = D(s); return `${WD[d.getDay()]} ${MO[d.getMonth()]} ${d.getDate()}`; };
+const md = s => { const d = D(s); return `${MO[d.getMonth()]} ${d.getDate()}`; };
+const short = s => s.slice(5);
+const weekStart = s => add(s, -D(s).getDay());
+const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+/* ---------- sample ledger ---------- */
+const PKG = { seller: 'Gamma Cards', orderId: 'SAMPLE-7C2E-41', date: '2026-11-02', cards: 4, basis: '$1.46',
+  items: [['Lightning Bolt', 'Sample Set · NM', '$0.42'], ['Path to Exile', 'Sample Set · NM', '$0.31'], ['Swords to Plowshares', 'Sample Set · LP', '$0.55'], ['Ponder', 'Sample Set · NM', '$0.18']] };
+const KINDS = [['claim', 'Claim filed'], ['refunded', 'Refunded'], ['contacted', 'Seller contacted'], ['reshipped', 'Reshipped'], ['partial', 'Partial refund'], ['other', 'Other']];
+const KL = Object.fromEntries(KINDS);
+const isRefund = k => k === 'refunded' || k === 'partial';   // isRefundStamp in src/view-rules.mjs
+const bandText = s => `${KL[s.kind].toUpperCase()} · ${short(s.at)}`; // stampBandText
+const SELLERS = ['Delta Games', 'Harbor TCG', 'Ninth Street Cards', 'Owl and Anvil', 'Cardhouse North', 'Riverbend Hobby', 'Low Tide Games', 'Gamma Cards'];
+const ORDERS = [];
+for (let s = '2026-09-14'; s <= TODAY; s = add(s, 1)) {
+  const d = D(s), k = d.getDate() * 7 + d.getMonth() * 3;
+  let n = [0, 1, 0, 2, 1, 0, 1, 3, 0, 1][k % 10];
+  if (s === PKG.date) n = Math.max(n, 1);
+  ORDERS.push({ day: s, n });
+}
+const ORDER_N = Object.fromEntries(ORDERS.map(o => [o.day, o.n]));
+const TOTAL = ORDERS.reduce((a, o) => a + o.n, 0);
+const countIn = (f, t) => ORDERS.filter(o => o.day >= f && o.day <= t).reduce((a, o) => a + o.n, 0);
+const MONTHS = ['2026-11', '2026-10', '2026-09'];
+const lastOf = k => { const [y, m] = k.split('-').map(Number); return `${k}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`; };
+const PRESETS = [['all', 'All time'], [30, '30 days'], [45, '45 days'], [60, '60 days'], [90, '90 days'], ['days', 'Last…'], ['custom', 'By month']];
+const presetRange = p => p === 'all' ? { from: ORDERS[0].day, to: TODAY } : { from: add(TODAY, -(p - 1)), to: TODAY };
+let clockMin = 14 * 60 + 32;
+const clock = () => { const m = clockMin++; return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`; };
+
+const ICON = {
+  Ledger: '<svg viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/></svg>',
+  Orphaned: '<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',
+  Tally: '<svg viewBox="0 0 24 24"><path d="M6 20V10M12 20V4M18 20v-7"/></svg>',
+  Packages: '<svg viewBox="0 0 24 24"><path d="M3 8 12 3l9 5v8l-9 5-9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg>',
+};
+const tabbar = cur => `<nav class="tabbar" aria-label="Views">${['Ledger', 'Orphaned', 'Tally', 'Packages'].map(t =>
+  `<button type="button" data-act="tab" data-arg="${t}" ${t === cur ? 'aria-current="page"' : ''}>${ICON[t]}${t}</button>`).join('')}</nav>`;
+const status = () => `<div class="status"><span>9:41</span><span>●●● 100%</span></div>`;
+const fold = () => `<div class="fold" aria-hidden="true"><span>FOLD</span></div>`;
+
+/* ---------- shared pieces ---------- */
+function weekCells(st, pick, cur, minDay, act) {
+  const ws = st.wk, cells = [];
+  for (let i = 0; i < 7; i++) {
+    const s = add(ws, i), dis = s > TODAY || s < minDay;
+    const cls = ['day', s === cur ? 'cur' : '', s === pick ? 'on' : '', ORDER_N[s] && s === PKG.date ? 'ord' : ''].join(' ');
+    cells.push(`<button type="button" class="${cls}" data-act="${act}" data-arg="${s}" ${dis ? 'aria-disabled="true"' : ''} aria-pressed="${s === pick}" aria-label="${long(s)}${dis ? (s > TODAY ? ', after today' : ', before the order') : ''}"><small>${WD[D(s).getDay()]}</small><span>${D(s).getDate()}</span></button>`);
+  }
+  const prevDis = ws <= weekStart(minDay), nextDis = add(ws, 7) > TODAY;
+  return `<div class="wk"><button type="button" class="arrow" data-act="wk" data-arg="-7" aria-label="Earlier week" ${prevDis ? 'aria-disabled="true"' : ''}>‹</button>
+    <span class="lbl">${md(ws)} – ${md(add(ws, 6))}</span>
+    <button type="button" class="arrow" data-act="wk" data-arg="7" aria-label="Later week" ${nextDis ? 'aria-disabled="true"' : ''}>›</button></div>
+    <div class="days">${cells.join('')}</div>`;
+}
+function itemsHTML(done = true) {
+  return `<div class="items">${PKG.items.map(([n, s, p]) => `<div class="it ${done ? 'done' : ''}"><span class="box"><i></i></span><span class="nm">${n}<small>${s}</small></span><span class="pr">${p}</span></div>`).join('')}</div>`;
+}
+function otherCard() {
+  return `<div class="card"><div class="ch"><div class="who"><b>Harbor TCG</b><span class="meta">2026-11-09 · ○ untracked</span><span class="meta">SAMPLE-19AF-07</span></div><span class="pill">2 of 5</span></div></div>`;
+}
+function recentRows(st) {
+  if (!st.recent.length) return `<div class="rec"><div class="t"><span class="micro"><span>Nothing to undo</span></span><small>Corrections you save show here, newest first.</small></div></div>`;
+  return st.recent.slice().reverse().map(r => {
+    const live = !r.undone && r.check();
+    const right = r.undone ? `<span>UNDONE<br>${r.undone}</span>` : live ? `<button type="button" data-act="undoRow" data-arg="${r.id}" aria-label="Undo ${esc(r.label.toLowerCase())}, ${PKG.seller}">UNDO</button>` : `<span>CHANGED<br>SINCE</span>`;
+    return `<div class="rec"><div class="t"><span class="micro"><span>${r.label}</span><span>${r.time}</span></span><b ${r.undone ? 'style="text-decoration:line-through"' : ''}>${PKG.seller} · ${PKG.orderId}</b><small>${r.sub}</small></div><div class="r">${right}</div></div>`;
+  }).join('');
+}
+
+/* ======================= Correction slip ======================= */
+function slipInit(s, kd) {
+  const st = { view: 'packages', ed: null, recv: '2026-11-18', pick: null, wk: weekStart('2026-11-18'),
+    stamp: { kind: 'contacted', at: '2026-11-12', note: 'Asked about tracking' }, dk: null, da: null, dateTouched: false, armed: false,
+    receipt: null, recent: [], range: { p: 30, ...presetRange(30) }, prev: null, panel: false, exact: false, rs: null, re: null, cal: '2026-11', msg: null, land: false, kd };
+  if (s === 'recv' || s === 'recv-picked' || s === 'recv-saved' || s === 'recent') { slipAct(st, 'openRecv'); }
+  if (s === 'recv-picked' || s === 'recv-saved' || s === 'recent') slipAct(st, 'pickRecv', '2026-11-16');
+  if (s === 'recv-saved' || s === 'recent') { slipAct(st, 'saveRecv'); st.land = false; }
+  if (s === 'recent') { slipAct(st, 'openStamp'); slipAct(st, 'kind', 'claim'); slipAct(st, 'saveStamp'); st.land = false; if (st.k !== 'o') { st.view = 'ledger'; st.recOpen = true; } }
+  if (s === 'stamp-kind' || s === 'stamp-day' || s === 'remove-armed') slipAct(st, 'openStamp');
+  if (s === 'stamp-kind') slipAct(st, 'kind', 'claim');
+  if (s === 'stamp-day') { st.wk = weekStart('2026-11-10'); slipAct(st, 'pickStamp', '2026-11-10'); }
+  if (s === 'remove-armed') st.armed = true;
+  if (s && s.startsWith('range')) { st.view = 'ledger'; st.panel = true; st.range = { p: 'custom', from: '2026-11-01', to: '2026-11-30' }; st.exact = true; }
+  if (s === 'range-picked' || s === 'range-applied') { st.cal = '2026-10'; slipAct(st, 'cal', '2026-10-27'); st.cal = '2026-11'; slipAct(st, 'cal', '2026-11-14'); }
+  if (s === 'range-applied') slipAct(st, 'applyRange');
+  return st;
+}
+function slipAct(st, a, arg) {
+  st.msg = null; st.land = false;
+  if (a !== 'rm') st.armed = false;
+  switch (a) {
+    case 'tab': st.view = arg === 'Ledger' ? 'ledger' : 'packages'; st.ed = null; break;
+    case 'openRecv': st.ed = 'recv'; st.pick = null; st.wk = weekStart(st.recv); break;
+    case 'pickRecv':
+      if (arg > TODAY) { st.msg = `${long(arg)} has not come yet.`; break; }
+      if (arg < PKG.date) { st.msg = `${long(arg)} is before the order, ${long(PKG.date)}.`; break; }
+      st.pick = arg === st.recv ? null : arg; break;
+    case 'wk': { const n = add(st.wk, +arg); if (+arg < 0 && n < weekStart(st.ed === 'stamp' ? PKG.date : PKG.date)) break; if (+arg > 0 && n > TODAY) break; st.wk = n; break; }
+    case 'cancel': st.ed = null; st.pick = null; break;
+    case 'saveRecv': {
+      if (!st.pick) { st.msg = 'Pick the day the mail came first.'; break; }
+      const before = st.recv, after = st.pick; st.recv = after; st.ed = null; st.pick = null; st.land = true;
+      const r = { id: 'r' + st.recent.length, label: `RECEIVED ${short(before)} → ${short(after)}`, sub: `4 cards · was ${long(before)}`, time: clock(), check: () => st.recv === after,
+        undo: () => { st.recv = before; } };
+      st.recent.push(r); st.receipt = { row: r.id, text: `Moved from ${long(before)}.` }; break; }
+    case 'openStamp': st.ed = 'stamp'; st.dk = st.stamp.kind; st.da = st.stamp.at; st.dn = st.stamp.note; st.dateTouched = false; st.wk = weekStart(st.stamp.at); break;
+    case 'kind':
+      st.dk = arg;
+      if (!st.dateTouched) st.da = (arg !== st.stamp.kind && st.kd === 'redate') ? TODAY : st.stamp.at;
+      if (!st.dateTouched) st.wk = weekStart(st.da); break;
+    case 'pickStamp':
+      if (arg > TODAY) { st.msg = `${long(arg)} has not come yet.`; break; }
+      if (arg < PKG.date) { st.msg = `${long(arg)} is before the order, ${long(PKG.date)}.`; break; }
+      st.da = arg; st.dateTouched = true; break;
+    case 'saveStamp': {
+      const b = { ...st.stamp }, n = { kind: st.dk, at: st.da, note: st.dn };
+      if (b.kind === n.kind && b.at === n.at) { st.msg = 'Nothing has changed yet.'; break; }
+      st.stamp = n; st.ed = null; st.land = true;
+      const r = { id: 'r' + st.recent.length, label: `STAMP · ${KL[n.kind].toUpperCase()}`, sub: `was ${KL[b.kind]}, ${long(b.at)} · now ${long(n.at)}`, time: clock(),
+        check: () => st.stamp.kind === n.kind && st.stamp.at === n.at, undo: () => { st.stamp = b; } };
+      st.recent.push(r); st.receipt = { row: r.id, text: `Was ${KL[b.kind]}, ${md(b.at)}.` }; break; }
+    case 'rm':
+      if (st.armed) { st.stamp = null; st.ed = null; st.armed = false; st.receipt = null; st.msg = null; break; }
+      st.armed = true; clearTimeout(st.t); st.t = setTimeout(() => { st.armed = false; st.redraw(); }, 4000); break;  // the web's setTimeout(disarm, 4000)
+    case 'undoRow': case 'undoReceipt': {
+      const id = a === 'undoReceipt' ? st.receipt.row : arg, r = st.recent.find(x => x.id === id);
+      if (!r || r.undone || !r.check()) break;
+      r.undo(); r.undone = clock(); st.land = true;
+      if (st.receipt && st.receipt.row === id) st.receipt.done = true; break; }
+    case 'panel': st.panel = !st.panel; break;
+    case 'preset':
+      st.prev = { ...st.range };
+      st.range = arg === 'custom' ? { p: 'custom', from: `${MONTHS[0]}-01`, to: lastOf(MONTHS[0]) } : arg === 'days' ? { p: 'days', ...presetRange(21) } : { p: arg === 'all' ? 'all' : +arg, ...presetRange(arg === 'all' ? 'all' : +arg) };
+      st.rs = st.re = null; break;
+    case 'month': st.prev = { ...st.range }; st.range = { p: 'custom', from: `${arg}-01`, to: lastOf(arg) }; st.rs = st.re = null; break;
+    case 'exact': st.exact = !st.exact; break;
+    case 'calm': { const [y, m] = st.cal.split('-').map(Number); const d = new Date(y, m - 1 + +arg, 1); const k = iso(d).slice(0, 7); if (k > TODAY.slice(0, 7) || k < ORDERS[0].day.slice(0, 7)) break; st.cal = k; break; }
+    case 'cal':
+      if (arg > TODAY) { st.msg = `${long(arg)} has not come yet.`; break; }
+      if (!st.rs || st.re) { st.rs = arg; st.re = null; }
+      else if (arg < st.rs) { st.re = st.rs; st.rs = arg; } else st.re = arg;
+      break;
+    case 'applyRange': if (!st.rs || !st.re) break; st.prev = { ...st.range }; st.range = { p: 'exact', from: st.rs, to: st.re }; st.rs = st.re = null; break;
+    case 'clearPick': st.rs = st.re = null; break;
+    case 'back': if (st.prev) { const p = st.prev; st.prev = null; st.range = p; } break;
+    case 'recOpen': st.recOpen = !st.recOpen; break;
+  }
+}
+const rangeLabel = r => r.p === 'all' ? 'All time' : typeof r.p === 'number' ? `${r.p} days` : r.p === 'days' ? 'Last 21 days' : r.p === 'custom' ? `${MOL[D(r.from).getMonth()]} ${D(r.from).getFullYear()}` : `${md(r.from)} – ${md(r.to)}`;
+
+function recvEditor(st) {
+  const p = st.pick;
+  const slip = p
+    ? `<span class="ba"><s>${long(st.recv)}</s> → <em>${long(p)}</em></span><span>4 cards move to ${md(p)}. Counts, cost and lost-mail flags do not change.</span>`
+    : `<span class="ba">RECEIVED ${long(st.recv).toUpperCase()}</span><span>${st.msg ? esc(st.msg) : 'Tap the day the mail really came.'}</span>`;
+  return `<div class="ed fade" id="${st.id}-recv-editor">
+    <span class="micro rule">Received on</span>
+    ${weekCells(st, p, st.recv, PKG.date, 'pickRecv')}
+    <div class="slip tag-new" id="${st.id}-rslip" data-tag="New: the change, before it happens" aria-live="polite">${p && st.msg ? `<span class="ba">${esc(st.msg)}</span>` : slip}</div>
+    <div class="acts"><span class="gap"></span>
+      <button type="button" class="btn" data-act="cancel">Cancel</button>
+      <button type="button" class="btn pri" data-act="saveRecv" ${p ? '' : 'aria-disabled="true"'} aria-describedby="${st.id}-rslip">${p ? `Move to ${md(p)}` : 'Move'}</button>
+    </div>
+  </div>`;
+}
+function stampEditor(st) {
+  const b = st.stamp, kChange = st.dk !== b.kind, dChange = st.da !== b.at;
+  let lines = [];
+  if (kChange) lines.push(`<span class="ba"><s>${KL[b.kind]}</s> → <em>${KL[st.dk]}</em></span>`);
+  if (dChange) lines.push(`<span class="ba">DATED <s>${md(b.at)}</s> → <em>${md(st.da)}</em>${st.da === TODAY ? ' (today)' : ''}</span>`);
+  let fx = '';
+  if (st.msg) fx = esc(st.msg);
+  else if (kChange && isRefund(st.dk) && !isRefund(b.kind)) fx = `4 cards, ${PKG.basis}, leave every count and the list.`;
+  else if (kChange && !isRefund(st.dk) && isRefund(b.kind)) fx = `4 cards, ${PKG.basis}, come back into every count.`;
+  else if (kChange && st.kd === 'redate' && !st.dateTouched && dChange) fx = `A new kind takes today's date. Tap ${WD[D(b.at).getDay()]} ${D(b.at).getDate()} to keep ${md(b.at)}.`;
+  else if (kChange || dChange) fx = 'Counts and flags do not change.';
+  if (!lines.length) { lines.push(`<span class="ba">${bandText(b)}</span>`); if (!fx) fx = 'Pick a new kind, or tap the day it really happened.'; }
+  const warn = kChange && (isRefund(st.dk) !== isRefund(b.kind));
+  return `<div class="ed fade" id="${st.id}-stamp-editor">
+    <span class="micro rule">Stamp</span>
+    <div class="kinds tag-today" data-tag="Today: six kinds">${KINDS.map(([k, l]) => `<button type="button" class="kc" data-act="kind" data-arg="${k}" aria-pressed="${st.dk === k}">${l}</button>`).join('')}</div>
+    <div class="field" aria-label="Stamp note">${esc(st.dn || '')}</div>
+    <span class="micro rule">Dated</span>
+    <div class="tag-new" data-tag="New: the stamp's day can move">${weekCells(st, st.da, b.at, PKG.date, 'pickStamp')}</div>
+    <div class="slip ${warn ? 'warn' : ''} tag-new" id="${st.id}-swhy" data-tag="New: the change, before it happens" aria-live="polite">${lines.join('')}<span class="fx">${fx}</span></div>
+    <div class="acts">
+      <span class="gap"></span>
+      <button type="button" class="btn" data-act="cancel">Cancel</button>
+      <button type="button" class="btn pri" data-act="saveStamp" ${(kChange || dChange) ? '' : 'aria-disabled="true"'} aria-describedby="${st.id}-swhy">Save</button>
+    </div>
+    <div class="acts rmrow"><button type="button" class="btn rm ${st.armed ? 'armed' : ''}" data-act="rm">${st.armed ? 'Tap again to remove stamp from 4 cards' : 'Remove stamp'}</button></div>
+  </div>`;
+}
+function slipCard(st, withEditor) {
+  const s = st.stamp;
+  const rstamp = `<button type="button" class="hit" data-act="openRecv" aria-label="Received ${long(st.recv)}. Change the day" id="${st.id}-rstamp">
+     <span class="rstamp ${st.land && st.lastLand !== 'stamp' ? 'land' : ''} tag-new" data-tag="New: day on the stamp, and it opens">RECEIVED · ${short(st.recv)} ›</span></button>`;
+  const band = s && (st.ed !== 'stamp' || !withEditor) ?`<button type="button" class="band tag-today" data-tag="Today: band opens the editor" data-act="openStamp" aria-label="Edit stamp: ${bandText(s)} ${esc(s.note)}">
+     <span class="schip ${st.land ? 'land' : ''}">${bandText(s)}</span><span class="note">${esc(s.note)}</span><span class="caret">›</span></button>` :
+    (!s ? `<div class="acts" style="padding:0 12px 12px"><button type="button" class="btn" data-act="openStampNew" aria-disabled="true">Stamp</button></div>` : '');
+  const receipt = st.receipt && !st.ed ? `<div class="receipt fade" id="${st.id}-receipt"><span>${st.receipt.done ? `<b>Put back.</b> ${st.receipt.text.replace('Moved from', 'Back on').replace('Was', 'Back to')}` : `<b>Saved.</b> ${st.receipt.text}`}</span><span class="gap" style="flex:1"></span>${st.receipt.done ? '' : `<button type="button" class="btn undo" data-act="undoReceipt">Undo</button>`}</div>` : '';
+  return `<div class="card ${!withEditor && st.ed ? 'sel' : ''}" id="${st.id}-card">
+    <div class="ch"><div class="who"><b>${PKG.seller}</b><span class="meta">${PKG.date} · ● tracked</span><span class="meta">${PKG.orderId}</span></div>${rstamp}</div>
+    ${withEditor && st.ed === 'recv' ? recvEditor(st) : ''}
+    ${band}
+    ${withEditor && st.ed === 'stamp' ? stampEditor(st) : ''}
+    ${receipt}
+    ${itemsHTML(true)}
+  </div>`;
+}
+function rangePanel(st, withPreview) {
+  const r = st.range, pend = st.rs && st.re;
+  const opts = PRESETS.map(([v, l], i) => `<button type="button" data-act="preset" data-arg="${v}" aria-pressed="${r.p === v || (v === 'custom' && (r.p === 'custom' || r.p === 'exact'))}" class="${i === 6 ? 'span2' : ''}">${l}</button>`).join('');
+  const months = (r.p === 'custom' || r.p === 'exact') ? `<span class="micro rule">Month</span><div class="months tag-today" data-tag="Today: months from the ledger">${MONTHS.map(k => `<button type="button" data-act="month" data-arg="${k}" aria-pressed="${r.p === 'custom' && r.from.startsWith(k)}">${MO[+k.slice(5) - 1]} ${k.slice(0, 4)}</button>`).join('')}</div>` : '';
+  let cal = '';
+  if ((r.p === 'custom' || r.p === 'exact') ) {
+    cal = `<button type="button" class="disc" data-act="exact" aria-expanded="${st.exact}"><i>${st.exact ? '–' : '+'}</i>Exact dates</button>`;
+    if (st.exact && EX === 'fields') {
+      // today's pair (src/app.jsx, dateInput): each change applies at once; the slip still states the count
+      const cnt = countIn(r.from, r.to);
+      cal += `<div class="acts tag-today" data-tag="Today: two native date fields" id="${st.id}-fields">
+          <input type="date" class="field" data-field="from" value="${r.from}" max="${TODAY}" aria-label="From date" style="min-width:140px;font-family:var(--mono);font-size:16px">
+          <span style="color:var(--inkSoft)">–</span>
+          <input type="date" class="field" data-field="to" value="${r.to}" max="${TODAY}" aria-label="To date" style="min-width:140px;font-family:var(--mono);font-size:16px"></div>
+        <div class="slip tag-new" data-tag="New: the count, at the fields" aria-live="polite"><span class="ba">${md(r.from)} – ${md(r.to)}</span><span>${cnt} packages show, ${TOTAL - cnt} go outside.</span></div>`;
+    } else if (st.exact) {
+      const [y, m] = st.cal.split('-').map(Number), first = new Date(y, m - 1, 1), n = new Date(y, m, 0).getDate();
+      const cells = ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(w => `<span class="wd">${w}</span>`);
+      for (let i = 0; i < first.getDay(); i++) cells.push('<span class="blank"></span>');
+      const a = st.rs, b = st.re || st.rs;
+      for (let d = 1; d <= n; d++) {
+        const s = iso(new Date(y, m - 1, d)), dis = s > TODAY;
+        const cls = [ORDER_N[s] ? 'has' : '', a && s >= a && s <= b ? 'in' : '', s === st.rs || s === st.re ? 'end' : ''].join(' ');
+        cells.push(`<button type="button" class="${cls}" data-act="cal" data-arg="${s}" ${dis ? 'aria-disabled="true"' : ''} aria-label="${long(s)}, ${ORDER_N[s] || 0} orders">${d}</button>`);
+      }
+      const ka = st.rs && st.re ? countIn(st.rs, st.re) : 0;
+      const slip = pend ? `<span class="ba"><s>${rangeLabel(r)}</s> → <em>${md(st.rs)} – ${md(st.re)}</em></span><span>${ka} packages show, ${TOTAL - ka} go outside. Packages and Tally both follow.</span>`
+        : st.rs ? `<span class="ba">FROM ${long(st.rs).toUpperCase()}</span><span>${st.msg ? esc(st.msg) : 'Now tap the last day. It may be in another month.'}</span>`
+        : `<span class="ba">NOW ${rangeLabel(r).toUpperCase()}</span><span>${st.msg ? esc(st.msg) : 'Tap the first day, then the last. A dot marks a day with orders.'}</span>`;
+      cal += `<div class="tag-new" data-tag="New: two taps pick the days" id="${st.id}-cal"><div class="calhd"><button type="button" class="arrow" data-act="calm" data-arg="-1" aria-label="Earlier month">‹</button><span class="lbl">${MOL[m - 1]} ${y}</span><button type="button" class="arrow" data-act="calm" data-arg="1" aria-label="Later month" ${st.cal >= TODAY.slice(0, 7) ? 'aria-disabled="true"' : ''}>›</button></div>
+        <div class="cal">${cells.join('')}</div></div>
+        <div class="slip tag-new" data-tag="New: count before it applies" aria-live="polite">${slip}</div>
+        <div class="acts">${st.rs ? `<button type="button" class="btn" data-act="clearPick">Clear days</button>` : ''}<span class="gap"></span><button type="button" class="btn pri" data-act="applyRange" ${pend ? '' : 'aria-disabled="true"'}>${pend ? `Show ${ka} packages` : 'Show'}</button></div>`;
+    }
+  }
+  const back = st.prev ? `<div class="receipt fade" style="padding:0" id="${st.id}-back"><span><b>${rangeLabel(r)}</b> · ${countIn(r.from, r.to)} packages</span><span style="flex:1"></span><button type="button" class="btn undo" data-act="back">Back to ${rangeLabel(st.prev)}</button></div>` : '';
+  return `<div class="panel">${back}<div class="opts">${opts}</div>${months}${cal}</div>`;
+}
+function ledgerView(st, withRecent) {
+  const r = st.range, inN = countIn(r.from, r.to);
+  return `<div class="title"><b>Ledger</b><span>${TOTAL} packages</span></div>
+    <span class="micro">View</span>
+    <div class="lcard">
+      <button type="button" class="lrow"><span class="l">Showing<small>One tap toggles</small></span><span class="v">● Unreceived</span></button>
+      <button type="button" class="lrow" data-act="panel" aria-expanded="${st.panel}" id="${st.id}-range-row"><span class="l">Range<small>${inN} packages${TOTAL - inN ? ` · ${TOTAL - inN} outside` : ''}</small></span><span class="v">${rangeLabel(r)}</span></button>
+      ${st.panel ? rangePanel(st) : ''}
+      <button type="button" class="lrow"><span class="l">Sorted by<small>Packages</small></span><span class="v">Order date</span></button>
+    </div>
+    ${withRecent ? ledgerData(st) : ''}`;
+}
+/* The Ledger does not spread on the open Duo (DuoSpread.spreads(tab: .ledger) is false), and the built tab draws one page
+   across the window. The brief puts nothing across the fold, so this draws that one layout as two columns, one per page,
+   and keeps the range wholly on the left. Input needed: which of the two rules wins. */
+function ledgerData(st) {
+  return `<span class="micro">Data</span><div class="lcard"><button type="button" class="lrow" data-act="recOpen" aria-expanded="${!!st.recOpen}"><span class="l">Recent<small>Undo a tap</small></span><span class="v">Undo a tap</span></button>${st.recOpen ? `<div class="panel" style="padding:0">${recentRows(st)}</div>` : ''}<button type="button" class="lrow"><span class="l">History<small>Saved versions</small></span><span class="v">Saved versions</span></button></div>`;
+}
+function slipRender(st, dev) {
+  const one = dev !== 'o';
+  if (one) {
+    if (st.view === 'ledger') return `${status()}<div class="pg"><div class="scroll"><div class="stack">${ledgerView(st, true)}</div></div>${tabbar('Ledger')}</div>`;
+    return `${status()}<div class="pg"><div class="scroll"><div class="stack"><div class="title"><b>Packages</b><span>23 out · 41 in</span></div>${slipCard(st, true)}${otherCard()}</div></div>${tabbar('Packages')}</div>`;
+  }
+  if (st.view === 'ledger') return `${status()}<div class="pg l"><div class="scroll"><div class="stack nopad">${ledgerView(st, false)}</div></div></div>${fold()}
+    <div class="pg r"><div class="scroll"><div class="stack">${ledgerData(st)}</div></div>${tabbar('Ledger')}</div>`;
+  const right = st.ed === 'recv' ? `<div class="title"><b>Received on</b><span>${PKG.seller}</span></div><div class="card">${recvEditor(st)}</div>`
+    : st.ed === 'stamp' ? `<div class="title"><b>Stamp</b><span>${PKG.seller}</span></div><div class="card">${stampEditor(st)}</div>` : '';
+  return `${status()}<div class="pg l"><div class="scroll"><div class="stack nopad"><div class="title"><b>Packages</b><span>23 out · 41 in</span></div>${slipCard(st, false)}${otherCard()}</div></div></div>${fold()}
+    <div class="pg r"><div class="scroll"><div class="stack">${right}<span class="micro rule">Recent</span><div class="lcard tag-today" data-tag="Today: Recent rows undo by tap">${recentRows(st)}</div></div></div>${tabbar('Packages')}</div>`;
+}
+
+/* ======================= Daybook ======================= */
+function dbInit(s, kd) {
+  const st = { mode: 'card', recv: '2026-11-18', stamp: { kind: 'contacted', at: '2026-11-12', note: 'Asked about tracking' }, lifted: null,
+    pend: { recv: null, kind: null, at: null }, armed: false, armCancel: false, posted: null, recent: [], msg: null, land: false, kd,
+    range: { p: 30, ...presetRange(30) }, rs: null, re: null, scrollBottom: true };
+  if (['open', 'lifted', 'moved', 'stamp-lifted', 'two', 'posted', 'undone'].includes(s)) st.mode = 'pkg';
+  if (s === 'lifted' || s === 'moved' || s === 'two' || s === 'posted' || s === 'undone') dbAct(st, 'lift', 'recv');
+  if (s === 'moved' || s === 'two' || s === 'posted' || s === 'undone') dbAct(st, 'day', '2026-11-16');
+  if (s === 'stamp-lifted' || s === 'two' || s === 'posted' || s === 'undone') dbAct(st, 'lift', 'stamp');
+  if (s === 'two' || s === 'posted' || s === 'undone') { dbAct(st, 'kind', 'claim'); st.lifted = null; }
+  if (s === 'posted' || s === 'undone') { dbAct(st, 'post'); st.land = false; }
+  if (s === 'undone') { dbAct(st, 'undo'); st.land = false; }
+  if (s === 'range' || s === 'range-picked') st.mode = 'range';
+  if (s === 'range-picked') { dbAct(st, 'rday', '2026-10-27'); dbAct(st, 'rday', '2026-11-14'); }
+  return st;
+}
+const pendCount = st => (st.pend.recv ? 1 : 0) + ((st.pend.kind || st.pend.at) ? 1 : 0);
+function dbAct(st, a, arg) {
+  st.msg = null; st.land = false;
+  if (a !== 'rm') st.armed = false;
+  if (a !== 'close') st.armCancel = false;
+  switch (a) {
+    case 'tab': st.mode = arg === 'Ledger' ? 'ledger' : 'card'; break;
+    // the stamp that was tapped opens already picked up, so the fix is one more tap
+    case 'open': st.mode = 'pkg'; st.scrollBottom = true; st.lifted = arg === 'recv' || (arg === 'stamp' && st.stamp) ? arg : null; break;
+    case 'openRange': st.mode = 'range'; st.scrollBottom = true; break;
+    case 'close':
+      if (st.mode === 'range') { st.mode = 'ledger'; st.rs = st.re = null; break; }
+      if (pendCount(st) && !st.armCancel) { st.armCancel = true; clearTimeout(st.t2); st.t2 = setTimeout(() => { st.armCancel = false; st.redraw(); }, 4000); break; }
+      st.pend = { recv: null, kind: null, at: null }; st.lifted = null; st.armCancel = false; st.mode = 'card'; break;
+    case 'lift':
+      if (st.posted && !st.posted.undone) st.posted = null;
+      if (st.posted && st.posted.undone) st.posted = null;
+      if (arg === 'ord') { st.msg = 'Order dates come from your CSV, so they stay put.'; st.lifted = null; break; }
+      st.lifted = st.lifted === arg ? null : arg; break;
+    case 'day': {
+      if (!st.lifted) { st.msg = 'Tap a stamp first, then the day it belongs on.'; break; }
+      if (st.lifted === 'recv') st.pend.recv = arg === st.recv ? null : arg;
+      if (st.lifted === 'stamp') { st.pend.at = arg === st.stamp.at ? null : arg; st.dateTouched = true; }
+      st.lifted = null; break; }
+    case 'kind': {
+      const k = arg === st.stamp.kind ? null : arg; st.pend.kind = k;
+      if (!st.dateTouched) st.pend.at = k && st.kd === 'redate' ? TODAY : null;
+      break; }
+    case 'rm':
+      if (st.armed) { st.stamp = null; st.lifted = null; st.pend.kind = st.pend.at = null; st.armed = false; break; }
+      st.armed = true; clearTimeout(st.t); st.t = setTimeout(() => { st.armed = false; st.redraw(); }, 4000); break;
+    case 'putback': st.pend = { recv: null, kind: null, at: null }; st.lifted = null; st.dateTouched = false; break;
+    case 'post': {
+      if (!pendCount(st)) break;
+      const before = { recv: st.recv, stamp: { ...st.stamp } };
+      if (st.pend.recv) st.recv = st.pend.recv;
+      if (st.pend.kind || st.pend.at) st.stamp = { ...st.stamp, kind: st.pend.kind || st.stamp.kind, at: st.pend.at || st.stamp.at };
+      const after = { recv: st.recv, stamp: { ...st.stamp } };
+      st.posted = { n: pendCount(st), before, after, time: clock(), undone: null };
+      if (st.pend.recv) st.recent.push({ label: `RECEIVED ${short(before.recv)} → ${short(after.recv)}` });
+      if (st.pend.kind || st.pend.at) st.recent.push({ label: `STAMP · ${KL[after.stamp.kind].toUpperCase()}` });
+      st.pend = { recv: null, kind: null, at: null }; st.lifted = null; st.dateTouched = false; st.land = true; break; }
+    case 'undo': {
+      const p = st.posted; if (!p || p.undone) break;
+      if (st.recv !== p.after.recv || st.stamp.kind !== p.after.stamp.kind || st.stamp.at !== p.after.stamp.at) { st.msg = 'Changed since, so Undo would overwrite a newer change.'; break; }
+      st.recv = p.before.recv; st.stamp = { ...p.before.stamp }; p.undone = clock(); st.land = true; break; }
+    case 'rday':
+      if (!st.rs || st.re) { st.rs = arg; st.re = null; } else if (arg < st.rs) { st.re = st.rs; st.rs = arg; } else st.re = arg; break;
+    case 'applyRange': if (!st.rs || !st.re) break; st.prev = { ...st.range }; st.range = { p: 'exact', from: st.rs, to: st.re }; st.rs = st.re = null; st.mode = 'ledger'; break;
+    case 'back': if (st.prev) { st.range = st.prev; st.prev = null; } break;
+  }
+}
+function entry(st, key, label, cls, where) {
+  const lifted = st.lifted === key;
+  const moved = key === 'recv' ? st.pend.recv : key === 'stamp' ? st.pend.at : null;
+  let extra = '';
+  if (where === 'ghost') extra = 'ghost';
+  else if (where === 'pend') extra = 'pend';
+  else if (lifted) extra = 'lift';
+  const act = where === 'pend' ? 'lift' : 'lift';
+  return `<button type="button" class="ent ${extra}" data-act="${act}" data-arg="${key}" aria-label="${esc(label)}${where === 'ghost' ? ', moving away' : where === 'pend' ? ', waiting to post' : '. Pick up to move'}"><span class="${cls} ${st.land && where === 'here' ? 'land' : ''}">${esc(label)}</span></button>`;
+}
+function dbPkgRows(st) {
+  const rows = []; let lastM = -1;
+  const pk = st.stamp ? (st.pend.kind || st.stamp.kind) : null;
+  for (let s = PKG.date; s <= TODAY; s = add(s, 1)) {
+    const d = D(s);
+    if (d.getMonth() !== lastM) { lastM = d.getMonth(); rows.push(`<div class="mh micro">${MOL[lastM]} ${d.getFullYear()}</div>`); }
+    const en = [];
+    if (s === PKG.date) en.push(entry(st, 'ord', 'ORDERED', 'ord', 'here'));
+    if (s === st.recv) en.push(entry(st, 'recv', `RECEIVED · ${PKG.cards}`, 'rstamp', st.pend.recv ? 'ghost' : 'here'));
+    if (st.pend.recv && s === st.pend.recv) en.push(entry(st, 'recv', `RECEIVED · ${PKG.cards}`, 'rstamp', 'pend'));
+    if (st.stamp && s === st.stamp.at) en.push(entry(st, 'stamp', KL[(st.pend.at ? st.stamp.kind : pk)].toUpperCase(), 'schip', st.pend.at ? 'ghost' : (st.pend.kind ? 'pend' : 'here')));
+    if (st.stamp && st.pend.at && s === st.pend.at) en.push(entry(st, 'stamp', KL[pk].toUpperCase(), 'schip', 'pend'));
+    const src = (st.lifted === 'recv' && s === st.recv) || (st.lifted === 'stamp' && s === st.stamp?.at);
+    rows.push(`<div class="dr ${s === TODAY ? 'today' : ''} ${src ? 'src' : ''}" role="group" aria-label="${long(s)}">
+      <button type="button" class="dd" data-act="day" data-arg="${s}" style="border:0;background:transparent;text-align:left;cursor:pointer;min-height:52px" aria-label="Put on ${long(s)}"><b>${D(s).getDate()}</b>${WD[d.getDay()].toUpperCase()}</button>
+      <div class="en" data-act="day" data-arg="${s}">${en.join('')}<span class="slot" aria-hidden="true"></span></div></div>`);
+  }
+  return rows.join('');
+}
+function dbRangeRows(st) {
+  const rows = []; let lastM = -1; const a = st.rs, b = st.re || st.rs;
+  for (const o of ORDERS) {
+    const d = D(o.day);
+    if (d.getMonth() !== lastM) { lastM = d.getMonth(); rows.push(`<div class="mh micro">${MOL[lastM]} ${d.getFullYear()}</div>`); }
+    const inr = a && o.day >= a && o.day <= b, end = o.day === st.rs || o.day === st.re;
+    rows.push(`<button type="button" class="dr ${o.day === TODAY ? 'today' : ''} ${end ? 'rend' : inr ? 'inrange' : ''}" data-act="rday" data-arg="${o.day}" aria-pressed="${!!end}" aria-label="${long(o.day)}, ${o.n} orders">
+      <span class="dd"><b>${d.getDate()}</b>${WD[d.getDay()].toUpperCase()}</span><span class="en"><span class="cnt ${o.n ? '' : 'z'}">${o.n ? `${o.n} order${o.n > 1 ? 's' : ''}` : 'no orders'}</span>${end ? `<span class="here" style="visibility:visible">${o.day === st.rs ? 'First day' : 'Last day'}</span>` : ''}</span></button>`);
+  }
+  return rows.join('');
+}
+function dbSlip(st) {
+  if (st.mode === 'range') {
+    const pend = st.rs && st.re, ka = pend ? countIn(st.rs, st.re) : 0;
+    const body = pend ? `<span class="ba"><s>${rangeLabel(st.range)}</s> → <em>${md(st.rs)} – ${md(st.re)}</em></span><span>${ka} packages show, ${TOTAL - ka} go outside. Packages and Tally both follow.</span>`
+      : st.rs ? `<span class="ba">FROM ${long(st.rs).toUpperCase()}</span><span>Now tap the last day.</span>` : `<span class="ba">NOW ${rangeLabel(st.range).toUpperCase()}</span><span>Tap the first day, then the last.</span>`;
+    return `<div class="dock"><div class="slip tag-new" data-tag="New: count before it applies" aria-live="polite">${body}</div>
+      <div class="acts">${st.rs ? `<button type="button" class="btn" data-act="rday" data-arg="${st.rs}" style="display:none"></button>` : ''}<span class="gap"></span><button type="button" class="btn pri" data-act="applyRange" ${pend ? '' : 'aria-disabled="true"'}>${pend ? `Show ${ka} packages` : 'Show'}</button></div></div>`;
+  }
+  if (st.lifted === 'stamp') {
+    const cur = st.pend.kind || st.stamp.kind;
+    return `<div class="dock tall" id="${st.id}-dock"><div class="slip" aria-live="polite"><span class="ba">${KL[cur].toUpperCase()} · ${short(st.pend.at || st.stamp.at)} PICKED UP</span><span>Tap a day to move it, or pick the kind it should be.</span></div>
+      <div class="kinds">${KINDS.map(([k, l]) => `<button type="button" class="kc" data-act="kind" data-arg="${k}" aria-pressed="${cur === k}">${l}</button>`).join('')}</div>
+      <div class="acts"><span class="gap"></span><button type="button" class="btn" data-act="lift" data-arg="stamp">Put it down</button></div>
+      <div class="acts rmrow"><button type="button" class="btn rm ${st.armed ? 'armed' : ''}" data-act="rm">${st.armed ? 'Tap again to remove stamp from 4 cards' : 'Remove stamp'}</button></div></div>`;
+  }
+  if (st.posted) {
+    const p = st.posted;
+    const body = p.undone ? `<span class="ba">UNDONE ${p.undone}</span><span>Back as it was: received ${md(p.before.recv)}, ${KL[p.before.stamp.kind]} ${md(p.before.stamp.at)}.</span>`
+      : `<span class="ba">POSTED ${p.n} CORRECTION${p.n > 1 ? 'S' : ''} · ${p.time}</span><span>${st.msg ? esc(st.msg) : 'One Undo takes them all back. Recent keeps a row for each.'}</span>`;
+    return `<div class="dock" id="${st.id}-dock"><div class="slip fade" aria-live="polite">${body}</div><div class="acts"><span class="gap"></span>${p.undone ? '' : `<button type="button" class="btn undo" data-act="undo">Undo</button>`}<button type="button" class="btn" data-act="close">Close</button></div></div>`;
+  }
+  const n = pendCount(st), lines = [];
+  if (st.pend.recv) lines.push(`<span class="ba">RECEIVED <s>${md(st.recv)}</s> → <em>${md(st.pend.recv)}</em> · 4 cards</span>`);
+  if (st.pend.kind || st.pend.at) lines.push(`<span class="ba">STAMP ${st.pend.kind ? `<s>${KL[st.stamp.kind]}</s> → <em>${KL[st.pend.kind]}</em>` : KL[st.stamp.kind]} · ${st.pend.at ? `<s>${md(st.stamp.at)}</s> → <em>${md(st.pend.at)}</em>` : md(st.stamp.at)}</span>`);
+  let fx = 'Counts, cost and flags do not change.';
+  const nk = st.pend.kind;
+  if (nk && isRefund(nk) && !isRefund(st.stamp.kind)) fx = `4 cards, ${PKG.basis}, leave every count and the list.`;
+  if (nk && !isRefund(nk) && isRefund(st.stamp.kind)) fx = `4 cards, ${PKG.basis}, come back into every count.`;
+  if (nk && st.kd === 'redate' && !st.dateTouched && st.pend.at === TODAY) fx = `A new kind takes today's date. Move it to keep ${md(st.stamp.at)}.`;
+  let body;
+  if (st.msg) body = `<span class="ba">${esc(st.msg)}</span>`;
+  else if (st.lifted === 'recv') body = `<span class="ba">RECEIVED · ${short(st.recv)} PICKED UP</span><span>Put it here: tap the day the mail really came, on any dashed slot.</span>`;
+  else if (n) body = lines.join('') + `<span class="fx">${fx}</span>`;
+  else body = `<span class="ba">NOTHING WAITING</span><span>Tap a stamp to pick it up, then tap the day it belongs on.</span>`;
+  return `<div class="dock" id="${st.id}-dock"><div class="slip tag-new" data-tag="New: every change waiting" aria-live="polite">${body}</div>
+    <div class="acts">${n ? `<button type="button" class="btn" data-act="putback">Put back</button>` : ''}<span class="gap"></span>
+    <button type="button" class="btn pri" data-act="post" ${n ? '' : 'aria-disabled="true"'}>${n ? `Post ${n} correction${n > 1 ? 's' : ''}` : 'Post'}</button></div></div>`;
+}
+function dbSheet(st) {
+  if (st.mode === 'range') return `<div class="sheet" id="${st.id}-sheet"><div class="tb"><button type="button" class="lead" data-act="close">Cancel</button><span class="ttl">Pick days<small>${TOTAL} packages</small></span><span class="spacer"></span></div>
+    <div class="dbrows" data-scroll="range">${dbRangeRows(st)}</div>${dbSlip(st)}</div>`;
+  const n = pendCount(st);
+  return `<div class="sheet" id="${st.id}-sheet"><div class="tb"><button type="button" class="lead ${st.armCancel ? 'armed' : ''}" data-act="close">${st.armCancel ? `Tap again to drop ${n}` : st.posted ? 'Close' : 'Cancel'}</button><span class="ttl">${PKG.seller}<small>${PKG.orderId}</small></span><span class="spacer"></span></div>
+    <div class="dbrows ${st.lifted ? 'lifting' : ''}" data-scroll="pkg">${dbPkgRows(st)}</div>${dbSlip(st)}</div>`;
+}
+function dbCard(st, sel) {
+  const s = st.stamp, pr = st.pend.recv, pk = st.pend.kind, pa = st.pend.at;
+  const rText = pr ? `RECEIVED · ${short(pr)}` : `RECEIVED · ${short(st.recv)}`;
+  return `<div class="card ${sel ? 'sel' : ''}" id="${st.id}-card"><div class="ch"><div class="who"><b>${PKG.seller}</b><span class="meta">${PKG.date} · ● tracked</span><span class="meta">${PKG.orderId}</span></div>
+    <button type="button" class="hit" data-act="open" data-arg="recv" aria-label="Received ${long(st.recv)}. Open the Daybook"><span class="rstamp ${st.land ? 'land' : ''} tag-new" data-tag="New: opens the Daybook" ${pr ? 'style="border-style:dashed"' : ''}>${rText} ›</span></button></div>
+    ${s ? `<button type="button" class="band" data-act="open" data-arg="stamp" aria-label="Edit stamp in the Daybook: ${bandText(s)}"><span class="schip ${st.land ? 'land' : ''}" ${pk || pa ? 'style="border-style:dashed"' : ''}>${KL[pk || s.kind].toUpperCase()} · ${short(pa || s.at)}</span><span class="note">${esc(s.note)}</span><span class="caret">›</span></button>` : ''}
+    ${pr || pk || pa ? `<div class="receipt"><span><b>Waiting to post.</b> Dashed stamps are not saved yet.</span></div>` : ''}
+    ${itemsHTML(true)}</div>`;
+}
+function dbLedger(st) {
+  const r = st.range, inN = countIn(r.from, r.to);
+  return `<div class="title"><b>Ledger</b><span>${TOTAL} packages</span></div><span class="micro">View</span>
+    <div class="lcard"><button type="button" class="lrow"><span class="l">Showing<small>One tap toggles</small></span><span class="v">● Unreceived</span></button>
+    <button type="button" class="lrow" aria-expanded="true"><span class="l">Range<small>${inN} packages${TOTAL - inN ? ` · ${TOTAL - inN} outside` : ''}</small></span><span class="v">${rangeLabel(r)}</span></button>
+    <div class="panel">${st.prev ? `<div class="receipt fade" style="padding:0"><span><b>${rangeLabel(r)}</b></span><span style="flex:1"></span><button type="button" class="btn undo" data-act="back">Back to ${rangeLabel(st.prev)}</button></div>` : ''}
+      <div class="opts">${PRESETS.map(([v, l], i) => `<button type="button" class="${i === 6 ? 'span2' : ''}" aria-pressed="${r.p === v}">${l}</button>`).join('')}</div>
+      <button type="button" class="btn tag-new" data-tag="New: opens the Daybook rows" data-act="openRange" id="${st.id}-pickdays">Pick days ›</button></div>
+    <button type="button" class="lrow"><span class="l">Sorted by<small>Packages</small></span><span class="v">Order date</span></button></div>`;
+}
+function dbRender(st, dev) {
+  const one = dev !== 'o';
+  const tab = st.mode === 'ledger' || st.mode === 'range' ? 'Ledger' : 'Packages';
+  const base = (st.mode === 'ledger' || st.mode === 'range') ? dbLedger(st) : `<div class="title"><b>Packages</b><span>23 out · 41 in</span></div>${dbCard(st, !one && st.mode === 'pkg')}${otherCard()}`;
+  if (one) return `${status()}<div class="pg"><div class="scroll"><div class="stack">${base}</div></div>${tabbar(tab)}${st.mode === 'pkg' || st.mode === 'range' ? dbSheet(st) : ''}</div>`;
+  const right = st.mode === 'pkg' || st.mode === 'range' ? dbSheet(st)
+    : `<div class="scroll"><div class="stack"><span class="micro rule">Recent</span><div class="lcard">${st.recent.length ? st.recent.slice().reverse().map(r => `<div class="rec"><div class="t"><span class="micro"><span>${r.label}</span></span><b>${PKG.seller}</b><small>${PKG.orderId}</small></div><div class="r"><button type="button">UNDO</button></div></div>`).join('') : `<div class="rec"><div class="t"><span class="micro"><span>Nothing to undo</span></span><small>Tap a RECEIVED stamp or a stamp band to open the Daybook here.</small></div></div>`}</div></div></div>${tabbar(tab)}`;
+  return `${status()}<div class="pg l"><div class="scroll"><div class="stack nopad">${base}</div></div></div>${fold()}<div class="pg r">${right}</div>`;
+}
+
+/* ---------- frames ---------- */
+const frames = [];
+let KD = 'redate';
+let EX = 'cal';
+function mount(el, s) {
+  const c = el.dataset.c, dev = el.dataset.k;
+  const st = c === 'slip' ? slipInit(s, KD) : dbInit(s, KD);
+  st.id = el.id; st.k = dev;
+  if (c === 'slip' && s === 'recent' && dev !== 'o') { st.view = 'ledger'; st.recOpen = true; }
+  if (c === 'slip' && s === 'recent' && dev === 'o') { st.view = 'packages'; }
+  const f = { el, c, dev, st };
+  st.redraw = () => draw(f);
+  el.classList.add('still');  // a deep link opens drawn, not mid-animation
+  draw(f);
+  // At AX5 the state a deep link names sits far down: scroll its frame to it, never the page.
+  if (el.classList.contains('ax5')) {
+    const target = el.querySelector('.dock') || el.querySelector('.ed') || el.querySelector('.receipt');
+    const scroller = target && (target.closest('.sheet') || target.closest('.scroll'));
+    if (scroller) scroller.scrollTop += target.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 8;
+  }
+  return f;
+}
+function draw(f) {
+  const keep = {};
+  f.el.querySelectorAll('[data-scroll]').forEach(x => keep[x.dataset.scroll] = x.scrollTop);
+  const pageKeep = [...f.el.querySelectorAll('.scroll, .sheet')].map(x => x.scrollTop);
+  f.el.innerHTML = f.c === 'slip' ? slipRender(f.st, f.dev) : dbRender(f.st, f.dev);
+  f.el.querySelectorAll('[data-scroll]').forEach(x => {
+    if (f.st.scrollBottom) x.scrollTop = x.scrollHeight; else if (keep[x.dataset.scroll] != null) x.scrollTop = keep[x.dataset.scroll];
+  });
+  f.st.scrollBottom = false;
+  f.el.querySelectorAll('.scroll, .sheet').forEach((x, i) => { if (pageKeep[i] != null) x.scrollTop = pageKeep[i]; });
+}
+document.querySelectorAll('.dev[data-c]').forEach(el => {
+  el.addEventListener('click', e => {
+    const t = e.target.closest('[data-act]');
+    if (!t || !el.contains(t)) return;
+    const f = frames.find(x => x.el === el);
+    el.classList.remove('still');
+    const act = t.dataset.act, arg = t.dataset.arg;
+    if (f.c === 'slip') slipAct(f.st, act, arg); else dbAct(f.st, act, arg);
+    if (act === 'open' || act === 'openRange') f.st.scrollBottom = true;
+    draw(f);
+  });
+});
+
+/* ---------- deep links: #c=<concept>&s=<state>&d=<f|o|p|ax|all>&kd=<redate|keep> ---------- */
+const hidden = new Set();
+function parse() { const o = {}; location.hash.replace(/^#/, '').split('&').forEach(p => { const [k, v] = p.split('='); if (k) o[k] = v; }); return o; }
+function route() {
+  const h = parse();
+  KD = h.kd === 'keep' ? 'keep' : 'redate';
+  EX = h.ex === 'fields' ? 'fields' : 'cal';
+  document.querySelectorAll('[data-ex]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.ex === EX)));
+  document.querySelectorAll('[data-kd]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.kd === KD)));
+  const dsel = h.d || 'all';
+  document.querySelectorAll('[data-dev]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dev === dsel)));
+  frames.length = 0;
+  document.querySelectorAll('section.concept').forEach(sec => {
+    const c = sec.dataset.concept;
+    sec.hidden = hidden.has(c) || (h.c && h.c !== c);
+    sec.querySelectorAll('figure').forEach(fg => fg.hidden = dsel !== 'all' && fg.dataset.d !== dsel);
+    const s = h.c === c ? h.s : 'rest';
+    sec.querySelectorAll('.dev[data-c]').forEach(el => frames.push(mount(el, s)));
+    sec.querySelectorAll('.bar a').forEach(a => a.setAttribute('aria-current', String(h.c === c && a.getAttribute('href') === `#c=${c}&s=${h.s}`)));
+  });
+}
+function setHash(k, v) { const h = parse(); h[k] = v; location.hash = Object.entries(h).filter(([, x]) => x != null).map(([a, b]) => `${a}=${b}`).join('&'); }
+document.querySelectorAll('.concept .bar a').forEach(a => a.addEventListener('click', e => {
+  e.preventDefault(); const h = parse(); const n = new URLSearchParams(a.getAttribute('href').slice(1));
+  h.c = n.get('c'); h.s = n.get('s'); location.hash = Object.entries(h).map(([x, y]) => `${x}=${y}`).join('&');
+}));
+document.querySelectorAll('[data-dev]').forEach(b => b.addEventListener('click', () => setHash('d', b.dataset.dev)));
+document.querySelectorAll('[data-kd]').forEach(b => b.addEventListener('click', () => setHash('kd', b.dataset.kd)));
+document.querySelectorAll('[data-ex]').forEach(b => b.addEventListener('click', () => setHash('ex', b.dataset.ex)));
+// today's date pair applies on change, as setDateFilter does in src/app.jsx
+document.querySelectorAll('.dev[data-c="slip"]').forEach(el => el.addEventListener('change', e => {
+  const t = e.target.closest('[data-field]'); if (!t || !t.value) return;
+  const f = frames.find(x => x.el === el), r = f.st.range;
+  f.st.prev = { ...r }; f.st.range = { p: 'exact', from: r.from, to: r.to, [t.dataset.field]: t.value };
+  el.classList.remove('still'); draw(f);
+}));
+document.querySelectorAll('[data-hide]').forEach(b => b.addEventListener('click', () => {
+  const o = b.dataset.hide; hidden.has(o) ? hidden.delete(o) : hidden.add(o);
+  b.setAttribute('aria-pressed', String(hidden.has(o)));
+  b.textContent = (hidden.has(o) ? 'Show ' : 'Hide ') + (o === 'slip' ? 'Correction slip' : 'Daybook'); route();
+}));
+document.getElementById('tagsbtn').addEventListener('click', e => {
+  const off = document.body.classList.toggle('tags-off'); e.currentTarget.setAttribute('aria-pressed', String(!off));
+});
+addEventListener('hashchange', route);
+route();
+</script>
+</body>
+</html>

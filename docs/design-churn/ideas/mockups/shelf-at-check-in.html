@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Shelf at Check-in</title>
+<style>
+/* Own palette for an idea mockup: no repo token was read (brief: read only the plan section). */
+:root {
+  --page: #ecebe7; --page-ink: #1d1d1f; --page-muted: #5c5c62; --page-line: #d2d0c9; --page-card: #f7f6f3;
+  --banner: #fff4d6; --banner-ink: #5a4300; --banner-line: #e7c96b;
+  --bg: #f2f2f7; --cell: #ffffff; --label: #111114; --label2: #6c6c72; --sep: #d8d8dc;
+  --accent: #0b7a63; --accent-ink: #ffffff; --accent-soft: #0b7a6318;
+  --fill: #7676801f; --tray: #f7f7f9; --sheet: #ffffff; --shadow: 0 -6px 24px #0000001f;
+  --bar: #fffffff0; --bezel: #18181a; --hinge: #2a2a2d;
+  --new: #c2410c; --today: #55606c;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #121213; --page-ink: #f2f2f3; --page-muted: #a3a3a9; --page-line: #2f2f33; --page-card: #1a1a1c;
+    --banner: #2b2410; --banner-ink: #f3dc95; --banner-line: #6b5a22;
+    --bg: #000000; --cell: #1c1c1e; --label: #f5f5f7; --label2: #98989f; --sep: #38383a;
+    --accent: #3cc8a6; --accent-ink: #00261e; --accent-soft: #3cc8a622;
+    --fill: #7676803d; --tray: #121214; --sheet: #2c2c2e; --shadow: 0 -6px 24px #00000080;
+    --bar: #1c1c1ef0; --bezel: #050505; --hinge: #3a3a3e;
+    --new: #fb923c; --today: #9aa4ae;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #121213; --page-ink: #f2f2f3; --page-muted: #a3a3a9; --page-line: #2f2f33; --page-card: #1a1a1c;
+  --banner: #2b2410; --banner-ink: #f3dc95; --banner-line: #6b5a22;
+  --bg: #000000; --cell: #1c1c1e; --label: #f5f5f7; --label2: #98989f; --sep: #38383a;
+  --accent: #3cc8a6; --accent-ink: #00261e; --accent-soft: #3cc8a622;
+  --fill: #7676803d; --tray: #121214; --sheet: #2c2c2e; --shadow: 0 -6px 24px #00000080;
+  --bar: #1c1c1ef0; --bezel: #050505; --hinge: #3a3a3e;
+  --new: #fb923c; --today: #9aa4ae;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { font-family: -apple-system, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--page); color: var(--page-ink); font-size: 15px; line-height: 20px; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+
+/* ---------- page around the phone ---------- */
+.page { max-width: 1140px; margin: 0 auto; padding: 20px 16px 48px; }
+.head h1 { font-size: 28px; line-height: 34px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+.head .kind { display: inline-block; margin-left: 8px; font-size: 13px; line-height: 18px; font-weight: 600;
+  color: var(--page-muted); border: 1px solid var(--page-line); border-radius: 999px; padding: 2px 10px; vertical-align: 5px; }
+.head p { margin: 6px 0 0; font-size: 17px; line-height: 22px; color: var(--page-muted); max-width: 62ch; }
+.banner { margin: 16px 0; padding: 10px 14px; background: var(--banner); color: var(--banner-ink);
+  border: 1px solid var(--banner-line); border-radius: 10px; font-size: 15px; line-height: 20px; }
+.banner b { font-weight: 700; }
+.controls { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin-bottom: 20px; }
+.seg { display: inline-flex; background: var(--page-card); border: 1px solid var(--page-line); border-radius: 10px; padding: 3px; flex-wrap: wrap; }
+.seg button { border: 0; background: transparent; padding: 8px 12px; min-height: 36px; border-radius: 7px;
+  font-size: 15px; color: var(--page-muted); font-weight: 500; }
+.seg button[aria-pressed="true"] { background: var(--page-ink); color: var(--page); }
+.seg button .n { font-variant-numeric: tabular-nums; opacity: .7; margin-right: 4px; }
+.ctl-label { font-size: 13px; color: var(--page-muted); margin-right: 6px; }
+.check { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; color: var(--page-muted); min-height: 36px; }
+.check input { width: 18px; height: 18px; accent-color: var(--page-ink); }
+.legend { font-size: 13px; color: var(--page-muted); display: inline-flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.legend span { border: 1.5px dashed currentColor; border-radius: 4px; padding: 0 6px; }
+.legend .l-new { color: var(--new); } .legend .l-today { color: var(--today); }
+
+.stage { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+.device-scroll { max-width: calc(100% + 32px); overflow-x: auto; padding: 6px 16px 30px; margin: 0 -16px; }
+.caption { flex: 1 1 300px; max-width: 460px; }
+.caption h2 { font-size: 22px; line-height: 28px; margin: 0 0 8px; }
+.caption .step { font-size: 13px; font-weight: 600; color: var(--page-muted); text-transform: uppercase; letter-spacing: .06em; }
+.caption p { margin: 0 0 12px; font-size: 16px; line-height: 22px; }
+.caption .try { font-size: 15px; color: var(--page-muted); border-left: 3px solid var(--page-line); padding-left: 12px; margin: 0 0 16px; }
+.nextprev { display: flex; gap: 10px; flex-wrap: wrap; }
+.nextprev button { min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--page-line);
+  background: var(--page-card); font-size: 15px; font-weight: 600; }
+.nextprev button:disabled { opacity: .4; cursor: default; }
+.foot { margin-top: 36px; display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.foot section { background: var(--page-card); border: 1px solid var(--page-line); border-radius: 12px; padding: 14px 16px; }
+.foot h3 { font-size: 15px; margin: 0 0 6px; }
+.foot ul { margin: 0; padding-left: 18px; font-size: 15px; line-height: 21px; color: var(--page-muted); }
+.foot li { margin: 3px 0; }
+
+/* ---------- device frames (nominal size: the repo writes no Duo size) ---------- */
+.frame { background: var(--bezel); border-radius: 52px; padding: 10px; box-shadow: 0 8px 22px #00000026; display: inline-flex; }
+@media (max-width: 420px) { .frame:not(.duo) { zoom: .88; } }
+.frame[hidden] { display: none; }
+.frame.duo { border-radius: 46px; }
+.hinge { width: 12px; background: var(--hinge); margin: 0 2px; border-radius: 2px; }
+.screen { width: 360px; height: 780px; background: var(--bg); color: var(--label); border-radius: 42px; overflow: hidden;
+  position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto auto; }
+.duo .screen { border-radius: 36px; }
+.duo .screen.left { border-top-right-radius: 6px; border-bottom-right-radius: 6px; }
+.duo .screen.right { border-top-left-radius: 6px; border-bottom-left-radius: 6px; grid-template-rows: auto minmax(0, 1fr) auto; }
+
+.status { height: 54px; padding: max(14px, env(safe-area-inset-top)) 28px 0; display: flex; justify-content: space-between;
+  align-items: flex-start; font-size: 15px; font-weight: 600; position: relative; }
+.island { position: absolute; left: 50%; top: 11px; width: 120px; height: 34px; margin-left: -60px; background: #000; border-radius: 20px; }
+.duo .island { width: 26px; height: 26px; margin-left: -13px; top: 14px; }
+.duo .right .island { display: none; }
+.sig { display: inline-flex; gap: 6px; align-items: center; padding-top: 2px; }
+.bars { display: inline-flex; gap: 2px; align-items: flex-end; height: 11px; }
+.bars i { width: 3px; background: var(--label); border-radius: 1px; }
+.batt { width: 24px; height: 11px; border: 1.5px solid var(--label2); border-radius: 3px; padding: 1px; }
+.batt i { display: block; height: 100%; width: 70%; background: var(--label); border-radius: 1px; }
+
+.scroll { overflow-y: auto; overflow-x: hidden; padding: 0 0 12px; scrollbar-width: none; }
+.scroll::-webkit-scrollbar { display: none; }
+.nav { padding: 2px 16px 8px; }
+.nav h1 { font-size: 34px; line-height: 41px; font-weight: 700; margin: 0; letter-spacing: .01em; }
+.nav .sub { font-size: 15px; line-height: 20px; color: var(--label2); margin-top: 2px; }
+.search { margin: 8px 16px 6px; display: flex; align-items: center; gap: 6px; background: var(--fill); border-radius: 12px; padding: 0 10px; height: 44px; }
+.search svg { flex: none; }
+.search input { border: 0; background: transparent; outline: none; flex: 1; font-size: 17px; height: 44px; min-width: 0; }
+.search input::placeholder { color: var(--label2); }
+.search input::-webkit-search-cancel-button { display: none; }
+.search .clear { border: 0; background: transparent; width: 44px; height: 44px; color: var(--label2); font-size: 17px; padding: 0; margin-right: -10px; }
+.sec { margin: 18px 16px 6px; font-size: 15px; line-height: 20px; font-weight: 600; color: var(--label2); display: flex; justify-content: space-between; }
+.sec .stamp { font-weight: 500; font-size: 13px; }
+.group { margin: 0 16px; background: var(--cell); border-radius: 14px; overflow: hidden; }
+.row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 62px; padding: 9px 14px; border: 0; background: transparent; text-align: left; position: relative; }
+.row + .row::before, .trow + .trow::before { content: ""; position: absolute; top: 0; left: 52px; right: 0; border-top: 0.5px solid var(--sep); }
+.trow + .trow::before { left: 14px; }
+.tick { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--label2); display: grid; place-items: center; }
+.row[aria-checked="true"] .tick { background: var(--accent); border-color: var(--accent); }
+.tick svg { visibility: hidden; }
+.row[aria-checked="true"] .tick svg { visibility: visible; }
+.txt { flex: 1; min-width: 0; }
+.name { display: block; font-size: 17px; line-height: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.meta { display: block; font-size: 13px; line-height: 18px; color: var(--label2); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.to { color: var(--accent); font-weight: 600; }
+.unsorted { color: var(--label2); font-weight: 600; }
+.price { font-size: 17px; line-height: 22px; color: var(--label2); font-variant-numeric: tabular-nums; flex: none; }
+.foot-note { margin: 8px 30px 0; font-size: 13px; line-height: 18px; color: var(--label2); }
+
+/* tally */
+.pcard { margin: 12px 16px 0; background: var(--cell); border-radius: 14px; overflow: hidden; }
+.phead { padding: 12px 14px 10px; border-bottom: 0.5px solid var(--sep); position: relative; }
+.ptitle { font-size: 20px; line-height: 25px; font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
+.ptitle .paid { font-size: 17px; font-weight: 400; color: var(--label2); font-variant-numeric: tabular-nums; }
+.pbreak { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.pill { font-size: 13px; line-height: 18px; font-weight: 600; background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 3px 10px; }
+.pill.muted { background: var(--fill); color: var(--label2); }
+.trow { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 6px 8px 6px 14px; position: relative; }
+.small-btn { flex: none; min-width: 64px; min-height: 44px; border: 0; background: transparent; color: var(--accent); font-size: 17px; border-radius: 10px; }
+.small-btn:active { background: var(--fill); }
+
+/* the tray: fixed height from the first frame, so nothing above it ever moves */
+.tray-wrap { height: 140px; position: relative; background: var(--tray); border-top: 0.5px solid var(--sep); }
+.tray { position: absolute; inset: 0; padding: 12px 12px 16px; display: grid; grid-template-rows: 44px 56px; row-gap: 12px; }
+.logline { display: flex; align-items: center; gap: 8px; padding-left: 6px; font-size: 13px; line-height: 18px; color: var(--label2); min-width: 0; }
+.logline .lt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.logline .lt b { color: var(--label); font-weight: 600; }
+.logline .undo { flex: none; min-width: 64px; height: 44px; border: 0; background: transparent; color: var(--accent); font-size: 15px; font-weight: 600; border-radius: 10px; }
+.logline .undo:disabled { visibility: hidden; }
+.shelfbtn { display: flex; align-items: center; gap: 8px; width: 100%; height: 56px; border: 0; border-radius: 14px; background: var(--cell);
+  padding: 0 14px; text-align: left; font-size: 17px; box-shadow: 0 0 0 0.5px var(--sep) inset; }
+.shelfbtn svg { flex: none; margin-right: 2px; }
+.shelfbtn .k { color: var(--label2); }
+.shelfbtn .v { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.shelfbtn .chg { margin-left: auto; color: var(--accent); font-size: 15px; flex: none; }
+.sheet { position: absolute; inset: 0; background: var(--sheet); border-radius: 18px 18px 0 0; box-shadow: var(--shadow);
+  padding: 4px 0 6px; display: grid; grid-template-rows: 44px minmax(0, 1fr); row-gap: 6px; }
+.sbar { display: grid; grid-template-columns: 76px minmax(0, 1fr) 76px; align-items: center; }
+.sbar button { height: 44px; border: 0; background: transparent; color: var(--accent); font-size: 17px; }
+.sbar .done { font-weight: 600; }
+.sbar .stitle { font-size: 17px; font-weight: 600; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* chips wrap to two rows of 36 with an 8 gap; each chip's hit region reaches 44 */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; overflow-y: auto; padding: 4px 12px; align-content: flex-start; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex: none; height: 36px; padding: 0 14px; position: relative; border-radius: 999px; border: 0; background: var(--fill); font-size: 15px; font-weight: 500; white-space: nowrap; }
+.chip::before { content: ""; position: absolute; inset: -4px 0; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.chip.add { background: transparent; box-shadow: 0 0 0 1px var(--sep) inset; color: var(--accent); }
+.newrow { display: flex; gap: 8px; padding: 0 12px; align-items: center; }
+.newrow input { flex: 1; min-width: 0; height: 44px; border-radius: 12px; border: 0; background: var(--fill); padding: 0 12px; font-size: 17px; outline: none; }
+.newrow button { height: 44px; padding: 0 14px; border-radius: 12px; border: 0; background: var(--accent); color: var(--accent-ink); font-size: 15px; font-weight: 600; }
+
+/* floating tab bar */
+.tabbar-wrap { padding: 6px 14px 0; background: var(--tray); }
+.tabbar { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--bar); border-radius: 999px; height: 58px;
+  box-shadow: 0 0 0 0.5px var(--sep) inset, 0 4px 14px #00000014; padding: 4px; }
+.tab { border: 0; background: transparent; border-radius: 999px; display: grid; place-items: center; align-content: center; gap: 2px; font-size: 11px; line-height: 13px; color: var(--label2); min-height: 44px; }
+.tab[aria-selected="true"] { color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.home { height: max(26px, env(safe-area-inset-bottom)); background: var(--tray); display: grid; place-items: center; }
+.home i { width: 134px; height: 5px; border-radius: 3px; background: var(--label); opacity: .85; }
+.right .home { background: var(--bg); }
+
+/* shelf screen on the fold's right side */
+.shelfhead { padding: 2px 16px 4px; }
+.kicker { font-size: 13px; line-height: 18px; color: var(--label2); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.stats { display: flex; gap: 10px; margin: 10px 16px 4px; }
+.stat { flex: 1; background: var(--cell); border-radius: 14px; padding: 10px 12px; }
+.stat .v { font-size: 22px; line-height: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stat .k { font-size: 13px; line-height: 18px; color: var(--label2); }
+.fresh { animation: fresh 1.4s ease-out; }
+@keyframes fresh { from { background: var(--accent-soft); } to { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .fresh { animation: none; } }
+
+/* Today / New annotations: a dashed outline and a tag. "Labels" hides them all. */
+.labels-on .ann { outline: 1.5px dashed var(--new); outline-offset: -2px; position: relative; }
+.labels-on .ann.today { outline-color: var(--today); }
+.labels-on .ann::after { content: attr(data-ann); position: absolute; top: 0; right: 0; z-index: 5; pointer-events: none;
+  font-size: 11px; line-height: 13px; font-weight: 600; color: #fff; background: var(--new); padding: 2px 6px; border-radius: 0 0 0 6px; white-space: nowrap; }
+.labels-on .ann.today::after { background: var(--today); }
+.labels-on .ann.tag-left::after { right: auto; left: 0; border-radius: 0 0 6px 0; }
+.labels-on .ann.tag-bottom::after { top: auto; bottom: 0; border-radius: 6px 0 0 0; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<div class="page labels-on" id="page">
+  <header class="head">
+    <h1>Shelf at check-in <span class="kind">idea mockup, not built</span></h1>
+    <p>Tick a card received and it is filed: the tray under the list names its shelf, so you always know which binder or box it went into.</p>
+  </header>
+
+  <div class="banner" role="note"><b>Sample.</b> No figure on this page is real. Every card name, seller, count, price and shelf is invented.</div>
+
+  <div class="controls">
+    <div>
+      <span class="ctl-label" id="lbl-state">Screen state</span>
+      <div class="seg" role="group" aria-labelledby="lbl-state" id="steps">
+        <button data-act="step" data-s="checkin"><span class="n">1</span>Check-in</button>
+        <button data-act="step" data-s="picker"><span class="n">2</span>Picker open</button>
+        <button data-act="step" data-s="lookup"><span class="n">3</span>Lookup</button>
+        <button data-act="step" data-s="fold"><span class="n">4</span>Folding phone</button>
+      </div>
+    </div>
+    <div>
+      <span class="ctl-label" id="lbl-theme">Theme</span>
+      <div class="seg" role="group" aria-labelledby="lbl-theme" id="themes">
+        <button data-act="theme" data-t="auto">Auto</button>
+        <button data-act="theme" data-t="light">Light</button>
+        <button data-act="theme" data-t="dark">Dark</button>
+      </div>
+    </div>
+    <label class="check"><input type="checkbox" id="labels" checked> Labels</label>
+    <span class="legend"><span class="l-today">Today: exists now</span><span class="l-new">New: this idea adds</span></span>
+  </div>
+
+  <div class="stage">
+    <div class="device-scroll">
+      <!-- Folded pose: one screen. States 1 to 3 draw here. -->
+      <div class="frame" data-device="iphone-duo-folded" id="frame-folded">
+        <div class="screen" id="scr-folded"></div>
+      </div>
+      <!-- Unfolded pose: two screens. State 4 draws here. -->
+      <div class="frame duo" data-device="iphone-duo-unfolded" id="frame-unfolded" hidden>
+        <div class="screen left" id="scr-left"></div>
+        <div class="hinge" aria-hidden="true"></div>
+        <div class="screen right" id="scr-right"></div>
+      </div>
+    </div>
+
+    <aside class="caption" aria-live="polite">
+      <div class="step" id="cap-step"></div>
+      <h2 id="cap-title"></h2>
+      <div id="cap-body"></div>
+      <div class="nextprev">
+        <button data-act="prev" id="btn-prev">Back</button>
+        <button data-act="next" id="btn-next">Next</button>
+        <button data-act="reset">Reset sample</button>
+      </div>
+    </aside>
+  </div>
+
+  <div class="foot">
+    <section>
+      <h3>Picks drawn here (the plan's recommendations)</h3>
+      <ul>
+        <li>Shelves are free text, with recent shelves as chips.</li>
+        <li>One shelf per order line. A ×3 line cannot split yet.</li>
+        <li>Cards received before this feature read "Unsorted" (see Pale Wisp).</li>
+        <li>Undo reverses the tick and its shelf as one log entry.</li>
+        <li>The tray shows before any tick, so the layout stays still.</li>
+        <li>Orphaned cards can take a shelf (Orphaned tab).</li>
+      </ul>
+    </section>
+    <section>
+      <h3>Not drawn</h3>
+      <ul>
+        <li>Splitting one line across two shelves, move history, and backfilling old cards: not in the first slice.</li>
+        <li>Where a shelf is saved: unknown. The saved-state shape is fixed, so the owner rules first.</li>
+        <li>The web layout. This page draws the iPhone only.</li>
+        <li>Device sizes: the repo writes none, so each screen is a nominal 360 by 780.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var STATES = ["checkin", "picker", "lookup", "fold"];
+  var CAPTIONS = {
+    checkin: { step: "State 1 of 4", title: "Check-in",
+      body: "<p>Tick a line received, as today. The tray under the list already names the shelf: the last one used. Do nothing, and the line goes there. The log line says where it went, and Undo takes back the tick and the shelf together.</p>" +
+            "<p class='try'>Try: tick Tidewall Sentry, then press Undo. Nothing above the tray moves.</p>" },
+    picker: { step: "State 2 of 4", title: "Picker open",
+      body: "<p>Tap the tray. A sheet opens over the tray only; the list stays put. Recent shelves are chips, and + New takes any name. Done files the line just ticked there, and that shelf becomes the default for the next tick.</p>" +
+            "<p class='try'>Try: pick Trade box and press Done. The log line and the row both change.</p>" },
+    lookup: { step: "State 3 of 4", title: "Lookup",
+      body: "<p>Search a product on Tally. The cost total gains a breakdown by shelf, so \"where are my three Ember Drakes\" has one answer. Move re-files one line, as one logged edit.</p>" +
+            "<p class='try'>Try: press Move on the Trade box line, then pick Binder B.</p>" },
+    fold: { step: "State 4 of 4", title: "Folding phone",
+      body: "<p>Open the phone. The check-in list stays on the left. The right screen shows the current shelf, with its totals and the newest card on top. Not in the first slice.</p>" +
+            "<p class='try'>Try: tick Lantern Moth on the left. It lands on top of Binder B on the right, and the totals grow.</p>" },
+    orphaned: { step: "Extra", title: "Orphaned card",
+      body: "<p>A package with no sender can still take a shelf. The shelf says where the card sits, and nothing about who sent it.</p>" }
+  };
+
+  var BASE = {
+    "Binder B": { cards: 110, cents: 3090, hist: [
+      { name: "Saltmarsh Wren", qty: 1, cents: 20, when: "Tue" },
+      { name: "Copper Golem", qty: 2, cents: 70, when: "Nov 16" },
+      { name: "Pale Wisp", qty: 1, cents: 20, when: "Nov 16" },
+      { name: "Glass Heron", qty: 1, cents: 110, when: "Nov 12" } ] },
+    "Deck: Tidewall": { cards: 58, cents: 1220, hist: [
+      { name: "Tidewall Sentry", qty: 4, cents: 100, when: "Nov 9" } ] },
+    "Trade box": { cards: 40, cents: 685, hist: [
+      { name: "Lantern Moth", qty: 2, cents: 30, when: "Nov 14" } ] }
+  };
+
+  function fresh() {
+    return {
+      shelf: "Binder B",
+      shelves: ["Binder B", "Deck: Tidewall", "Trade box"],
+      lines: [
+        { id: 1, pkg: "Harbor Cards", name: "Ember Drake", qty: 2, cents: 50, ticked: true, shelf: "Binder B", at: 3 },
+        { id: 2, pkg: "Harbor Cards", name: "Tidewall Sentry", qty: 1, cents: 25, ticked: false, shelf: null, at: 0 },
+        { id: 3, pkg: "Harbor Cards", name: "Lantern Moth", qty: 4, cents: 60, ticked: false, shelf: null, at: 0 },
+        { id: 4, pkg: "Quiet Pine Games", name: "Glass Heron", qty: 1, cents: 110, ticked: false, shelf: null, at: 0 },
+        { id: 5, pkg: "Quiet Pine Games", name: "Ember Drake", qty: 1, cents: 25, ticked: true, shelf: "Trade box", at: 2 },
+        { id: 6, pkg: "North Ridge TCG", name: "Pale Wisp", qty: 2, cents: 40, ticked: true, shelf: "Unsorted", at: 1 },
+        { id: 7, pkg: "North Ridge TCG", name: "Copper Golem", qty: 1, cents: 35, ticked: false, shelf: null, at: 0 }
+      ],
+      orphan: { name: "Glass Heron", qty: 1, shelf: "Trade box" },
+      log: { text: "Ember Drake ×2", to: "Binder B", undo: { kind: "tick", id: 1 } },
+      lastTick: 1, clock: 3, freshId: null
+    };
+  }
+
+  var data = fresh();
+  var ui = { s: "checkin", t: "auto", tab: "packages", q: "", sheet: null, labels: true, started: false };
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function money(c) { return "$" + (c / 100).toFixed(2); }
+  function line(id) { for (var i = 0; i < data.lines.length; i++) if (data.lines[i].id === id) return data.lines[i]; return null; }
+  /* A dashed Today/New label on one element: returns the class suffix and the tag text attribute. */
+  function ann(on, text, today, place) {
+    if (!on) return { c: "", a: "" };
+    return { c: " ann" + (today ? " today" : "") + (place ? " tag-" + place : ""), a: ' data-ann="' + esc(text) + '"' };
+  }
+
+  var ICON_CHECK = '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 7.4l3 3 6-6.6" fill="none" stroke="var(--accent-ink)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var ICON_SEARCH = '<svg width="17" height="17" viewBox="0 0 17 17" aria-hidden="true"><circle cx="7" cy="7" r="5.2" fill="none" stroke="var(--label2)" stroke-width="1.8"/><path d="M11 11l4.2 4.2" stroke="var(--label2)" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  var ICON_SHELF = '<svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="3" width="16" height="16" rx="3" fill="none" stroke="var(--accent)" stroke-width="1.8"/><path d="M3 11h16M8 7h6M8 15h6" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  var TAB_ICONS = {
+    packages: '<svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M3 7l8-4 8 4v8l-8 4-8-4z M3 7l8 4 8-4 M11 11v8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+    tally: '<svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M5 4v14M9 4v14M13 4v14M17 4v14M3 15l16-8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
+    orphaned: '<svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="5" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3 7l8 5 8-5" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>'
+  };
+
+  function statusBar() {
+    return '<div class="status"><span>9:41</span><span class="island" aria-hidden="true"></span>' +
+      '<span class="sig" aria-hidden="true"><span class="bars"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:11px"></i></span>' +
+      '<span class="batt"><i></i></span></span></div>';
+  }
+
+  function shelfMeta(l) {
+    if (!l.ticked) return "Not received";
+    if (l.shelf === "Unsorted") return 'Received earlier · <span class="unsorted">Unsorted</span>';
+    return 'Received · <span class="to">→ ' + esc(l.shelf) + "</span>";
+  }
+
+  function rowHTML(l) {
+    return '<button class="row' + (data.freshId === l.id ? " fresh" : "") + '" role="checkbox" aria-checked="' + l.ticked + '" data-act="tick" data-id="' + l.id + '">' +
+      '<span class="tick">' + ICON_CHECK + '</span>' +
+      '<span class="txt"><span class="name">' + esc(l.name) + " ×" + l.qty + '</span><span class="meta">' + shelfMeta(l) + "</span></span>" +
+      '<span class="price">' + money(l.cents) + "</span></button>";
+  }
+
+  function searchHTML(ph, key) {
+    return '<div class="search">' + ICON_SEARCH + '<label class="sr" for="q-' + key + '">' + ph + '</label><input id="q-' + key + '" class="q" type="search" placeholder="' + ph + '" value="' + esc(ui.q) + '" autocomplete="off">' +
+      (ui.q ? '<button class="clear" data-act="clearq" aria-label="Clear search">✕</button>' : "") + "</div>";
+  }
+
+  function matches(name, q) { return !q || name.toLowerCase().indexOf(q.toLowerCase()) >= 0; }
+
+  function packagesView(key) {
+    var pkgs = [], by = {};
+    data.lines.forEach(function (l) {
+      if (!matches(l.name, ui.q)) return;
+      if (!by[l.pkg]) { by[l.pkg] = []; pkgs.push(l.pkg); }
+      by[l.pkg].push(l);
+    });
+    var open = data.lines.filter(function (l) { return !l.ticked; }).length;
+    var h = '<div class="nav"><h1>Packages</h1><div class="sub">Mail day · ' + open + " lines open</div></div>";
+    h += searchHTML("Search cards", key);
+    pkgs.forEach(function (p, i) {
+      var ls = by[p], got = ls.filter(function (l) { return l.ticked; }).length;
+      var a = ann(ui.labels && i === 0, "Today: list and tick", true);
+      h += '<div class="sec"><span>' + esc(p) + '</span><span class="stamp">' + (got === ls.length ? "All in" : got + " of " + ls.length + " in") + "</span></div>";
+      h += '<div class="group' + a.c + '"' + a.a + ">";
+      ls.forEach(function (l) { h += rowHTML(l); });
+      h += "</div>";
+    });
+    if (!pkgs.length) h += '<p class="foot-note">No card matches.</p>';
+    h += '<p class="foot-note">The shelf shows after "Received". A line that never arrived has no shelf.</p>';
+    return h;
+  }
+
+  function tallyView(key) {
+    var names = [], by = {};
+    data.lines.forEach(function (l) {
+      if (!matches(l.name, ui.q)) return;
+      if (!by[l.name]) { by[l.name] = []; names.push(l.name); }
+      by[l.name].push(l);
+    });
+    var h = '<div class="nav"><h1>Tally</h1><div class="sub">One product across every seller</div></div>';
+    h += searchHTML("Search a product", key);
+    names.forEach(function (n, i) {
+      var ls = by[n], recv = 0, ord = 0, paid = 0, shelves = [], sq = {};
+      ls.forEach(function (l) {
+        ord += l.qty; paid += l.cents;
+        if (l.ticked) { recv += l.qty; if (!(l.shelf in sq)) { sq[l.shelf] = 0; shelves.push(l.shelf); } sq[l.shelf] += l.qty; }
+      });
+      var a = ann(ui.labels && i === 0, "New: breakdown by shelf", false, "bottom");
+      h += '<div class="pcard"><div class="phead' + a.c + '"' + a.a + ">";
+      h += '<div class="ptitle"><span>' + esc(n) + " ×" + recv + '</span><span class="paid">paid ' + money(paid) + "</span></div>";
+      h += '<div class="pbreak" aria-hidden="true">';
+      shelves.forEach(function (s) { h += '<span class="pill' + (s === "Unsorted" ? " muted" : "") + '">' + esc(s) + " " + sq[s] + "</span>"; });
+      if (recv < ord) h += '<span class="pill muted">Not received ' + (ord - recv) + "</span>";
+      h += '</div><span class="sr">' + esc(n) + " ×" + recv + ": " + esc(shelves.map(function (s) { return s + " " + sq[s]; }).join(", ")) + " · paid " + money(paid) + "</span></div>";
+      ls.forEach(function (l) {
+        h += '<div class="trow' + (data.freshId === l.id ? " fresh" : "") + '"><span class="txt"><span class="name">' + esc(l.pkg) + " ×" + l.qty + '</span><span class="meta">' + money(l.cents) +
+          (l.ticked ? ' · <span class="' + (l.shelf === "Unsorted" ? "unsorted" : "to") + '">→ ' + esc(l.shelf) + "</span>" : " · not received") + "</span></span>" +
+          (l.ticked ? '<button class="small-btn" data-act="move" data-id="' + l.id + '" aria-label="Move ' + esc(l.pkg) + " " + esc(n) + '">Move</button>' : "") + "</div>";
+      });
+      h += "</div>";
+    });
+    if (!names.length) h += '<p class="foot-note">No product matches.</p>';
+    return h;
+  }
+
+  function orphanedView() {
+    var o = data.orphan, a = ann(ui.labels, "New: shelf on an orphaned card");
+    var h = '<div class="nav"><h1>Orphaned</h1><div class="sub">Mail with no way to tell who sent it</div></div>';
+    h += '<div class="sec"><span>Unmarked envelope</span><span class="stamp">arrived Nov 19</span></div>';
+    h += '<div class="group' + a.c + '"' + a.a + '><div class="trow"><span class="txt"><span class="name">' + esc(o.name) + " ×" + o.qty +
+      '</span><span class="meta"><span class="to">→ ' + esc(o.shelf) + '</span></span></span><button class="small-btn" data-act="moveorphan">Move</button></div></div>';
+    h += '<p class="foot-note">The shelf says where the card sits. It decides nothing about who sent it.</p>';
+    return h;
+  }
+
+  function trayHTML(key) {
+    var lg = data.log, sh = ui.sheet, a = ann(ui.labels && !sh, "New: shelf tray, space held from the start", false, "left");
+    var logText = !lg ? "No checks yet" : (lg.to ? "<b>" + esc(lg.text) + '</b> <span class="to">→ ' + esc(lg.to) + "</span>" : esc(lg.text));
+    var h = '<div class="tray-wrap' + a.c + '" id="shelf-tray' + key + '"' + a.a + ">";
+    h += '<div class="tray"' + (sh ? ' aria-hidden="true"' : "") + ">";
+    h += '<div class="logline"><span class="lt" role="status">' + logText + '</span><button class="undo" data-act="undo"' + (lg && lg.undo ? "" : " disabled") + ">Undo</button></div>";
+    h += '<button class="shelfbtn" data-act="tray" aria-haspopup="dialog">' + ICON_SHELF + '<span class="k">Shelf:</span><span class="v">' + esc(data.shelf) + '</span><span class="chg">change</span></button>';
+    h += "</div>";
+    if (sh) h += sheetHTML(sh, key);
+    return h + "</div>";
+  }
+
+  function sheetTitle(sh) {
+    if (sh.mode === "tick") { var l = sh.id && line(sh.id); return l ? "Shelf for " + l.name + " ×" + l.qty : "Shelf for next tick"; }
+    if (sh.mode === "move") { var m = line(sh.id); return "Move " + m.name + " ×" + m.qty; }
+    return "Shelf for " + data.orphan.name + " ×" + data.orphan.qty;
+  }
+
+  function sheetHTML(sh, key) {
+    var title = sheetTitle(sh), a = ann(ui.labels, "New: shelf picker", false, "bottom");
+    var h = '<div class="sheet' + a.c + '" role="dialog" aria-label="' + esc(title) + '"' + a.a + ">";
+    h += '<div class="sbar"><button data-act="cancel">Cancel</button><div class="stitle">' + esc(title) + '</div><button class="done" data-act="done">Done</button></div>';
+    if (sh.adding) {
+      h += '<div class="newrow"><label class="sr" for="newname' + key + '">New shelf name</label><input id="newname' + key + '" class="newname" placeholder="New shelf name" autocomplete="off" maxlength="28"><button data-act="addname">Add</button></div>';
+    } else {
+      h += '<div class="chips">';
+      data.shelves.forEach(function (s) { h += '<button class="chip" aria-pressed="' + (sh.sel === s) + '" data-act="chip" data-name="' + esc(s) + '">' + esc(s) + "</button>"; });
+      h += '<button class="chip add" data-act="newshelf">+ New</button></div>';
+    }
+    return h + "</div>";
+  }
+
+  function tabbarHTML() {
+    var tabs = [["packages", "Packages"], ["tally", "Tally"], ["orphaned", "Orphaned"]], a = ann(false);
+    var h = '<div class="tabbar-wrap"><div class="tabbar' + a.c + '" role="tablist"' + a.a + ">";
+    tabs.forEach(function (t) { h += '<button class="tab" role="tab" aria-selected="' + (ui.tab === t[0]) + '" data-act="tab" data-tab="' + t[0] + '">' + TAB_ICONS[t[0]] + "<span>" + t[1] + "</span></button>"; });
+    return h + "</div></div>";
+  }
+
+  function mainScreen(key) {
+    var body = ui.tab === "tally" ? tallyView(key) : ui.tab === "orphaned" ? orphanedView() : packagesView(key);
+    return statusBar() + '<div class="scroll" data-scroll="' + key + '">' + body + "</div>" + trayHTML(key) + tabbarHTML() + '<div class="home"><i></i></div>';
+  }
+
+  function shelfScreen() {
+    var name = data.shelf, base = BASE[name] || { cards: 0, cents: 0, hist: [] };
+    var mine = data.lines.filter(function (l) { return l.ticked && l.shelf === name; }).sort(function (x, y) { return y.at - x.at; });
+    var cards = base.cards, cents = base.cents;
+    mine.forEach(function (l) { cards += l.qty; cents += l.cents; });
+    var a = ann(ui.labels, "New: shelf screen, not in slice 1");
+    var h = statusBar() + '<div class="scroll' + a.c + '" data-scroll="right"' + a.a + ">";
+    h += '<div class="shelfhead"><div class="kicker">Shelf</div><div class="nav" style="padding:0"><h1>' + esc(name) + "</h1></div></div>";
+    h += '<div class="stats" aria-hidden="true"><div class="stat"><div class="v">' + cards + '</div><div class="k">cards</div></div><div class="stat"><div class="v">' + money(cents) + '</div><div class="k">paid</div></div></div>';
+    h += '<span class="sr">' + esc(name) + ": " + cards + " cards, " + money(cents) + " paid</span>";
+    h += '<div class="sec"><span>Newest first</span></div><div class="group">';
+    var top = mine.length ? mine[0].at : -1;
+    mine.forEach(function (l) {
+      h += '<div class="trow' + (data.freshId === l.id ? " fresh" : "") + '"><span class="txt"><span class="name">' + esc(l.name) + " ×" + l.qty + '</span><span class="meta">' + esc(l.pkg) + " · " + (l.at === top ? "just now" : "today") + '</span></span><span class="price">' + money(l.cents) + "</span></div>";
+    });
+    base.hist.forEach(function (x) {
+      h += '<div class="trow"><span class="txt"><span class="name">' + esc(x.name) + " ×" + x.qty + '</span><span class="meta">' + esc(x.when) + '</span></span><span class="price">' + money(x.cents) + "</span></div>";
+    });
+    var shown = base.hist.reduce(function (n, x) { return n + x.qty; }, 0) + mine.reduce(function (n, l) { return n + l.qty; }, 0);
+    if (cards > shown) h += '<div class="trow"><span class="txt"><span class="meta">' + (cards - shown) + " more cards</span></span></div>";
+    if (!shown) h += '<div class="trow"><span class="txt"><span class="meta">No cards on this shelf yet</span></span></div>';
+    h += "</div></div>";
+    return h + '<div class="home"><i></i></div>';
+  }
+
+  /* ---------- render ---------- */
+  function render() {
+    var act = document.activeElement, focusId = null, caret = null;
+    if (act && act.id && (act.classList.contains("q") || act.classList.contains("newname"))) { focusId = act.id; caret = act.selectionStart; }
+    var scrolls = {};
+    document.querySelectorAll(".scroll").forEach(function (el) { scrolls[el.getAttribute("data-scroll")] = el.scrollTop; });
+
+    var unfolded = ui.s === "fold";
+    $("frame-folded").hidden = unfolded;
+    $("frame-unfolded").hidden = !unfolded;
+    if (unfolded) { $("scr-left").innerHTML = mainScreen("-duo"); $("scr-right").innerHTML = shelfScreen(); $("scr-folded").innerHTML = ""; }
+    else { $("scr-folded").innerHTML = mainScreen(""); $("scr-left").innerHTML = ""; $("scr-right").innerHTML = ""; }
+
+    document.querySelectorAll(".scroll").forEach(function (el) { var k = el.getAttribute("data-scroll"); if (k in scrolls) el.scrollTop = scrolls[k]; });
+    if (focusId && $(focusId)) { var f = $(focusId); f.focus(); if (caret != null) try { f.setSelectionRange(caret, caret); } catch (e) {} }
+    var ni = document.querySelector(".newname");
+    if (ni && !focusId) ni.focus();
+
+    $("page").classList.toggle("labels-on", ui.labels);
+    document.querySelectorAll("#steps button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-s") === ui.s)); });
+    document.querySelectorAll("#themes button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-t") === ui.t)); });
+    var c = CAPTIONS[ui.s];
+    $("cap-step").textContent = c.step; $("cap-title").textContent = c.title; $("cap-body").innerHTML = c.body;
+    var idx = STATES.indexOf(ui.s);
+    $("btn-prev").disabled = idx <= 0; $("btn-next").disabled = idx < 0 || idx >= STATES.length - 1;
+    data.freshId = null;
+    writeHash();
+  }
+
+  function applyTheme() {
+    if (ui.t === "auto") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", ui.t);
+  }
+
+  function writeHash() {
+    var h = "#s=" + ui.s + (ui.t !== "auto" ? "&t=" + ui.t : "");
+    if (location.hash !== h) try { history.replaceState(null, "", h); } catch (e) { /* a file: page may refuse; the view still works */ }
+  }
+
+  function readHash() {
+    var out = {};
+    location.hash.replace(/^#/, "").split("&").forEach(function (kv) { var p = kv.split("="); if (p[0]) out[p[0]] = decodeURIComponent(p[1] || ""); });
+    return out;
+  }
+
+  function openTickSheet() {
+    var l = line(data.lastTick);
+    ui.sheet = { mode: "tick", id: l && l.ticked ? l.id : null, sel: data.shelf, adding: false };
+  }
+
+  function goState(s) {
+    ui.s = s; ui.sheet = null;
+    if (s === "checkin" || s === "fold") { ui.tab = "packages"; ui.q = ""; }
+    if (s === "picker") { ui.tab = "packages"; ui.q = ""; openTickSheet(); }
+    if (s === "lookup") { ui.tab = "tally"; ui.q = "Ember Drake"; }
+    if (s === "orphaned") { ui.tab = "orphaned"; ui.q = ""; }
+  }
+
+  function bumpShelf(name) { data.shelves = [name].concat(data.shelves.filter(function (s) { return s !== name; })); }
+
+  /* ---------- actions ---------- */
+  var ACTS = {
+    step: function (b) { goState(b.getAttribute("data-s")); },
+    next: function () { var i = STATES.indexOf(ui.s); goState(STATES[Math.min(STATES.length - 1, i + 1)]); },
+    prev: function () { var i = STATES.indexOf(ui.s); goState(STATES[Math.max(0, i - 1)]); },
+    reset: function () { data = fresh(); goState(ui.s); },
+    theme: function (b) { ui.t = b.getAttribute("data-t"); applyTheme(); },
+    tick: function (b) {
+      var l = line(+b.getAttribute("data-id"));
+      ui.sheet = null;
+      if (!l.ticked) {
+        l.ticked = true; l.shelf = data.shelf; l.at = ++data.clock; data.lastTick = l.id; data.freshId = l.id;
+        data.log = { text: l.name + " ×" + l.qty, to: l.shelf, undo: { kind: "tick", id: l.id } };
+      } else {
+        var prev = l.shelf, prevAt = l.at;
+        l.ticked = false; l.shelf = null;
+        data.log = { text: "Unticked " + l.name + " ×" + l.qty + ", shelf cleared", undo: { kind: "untick", id: l.id, shelf: prev, at: prevAt } };
+      }
+      if (ui.s === "picker") ui.s = "checkin";
+    },
+    undo: function () {
+      var u = data.log && data.log.undo; if (!u) return;
+      if (u.kind === "tick") { var l = line(u.id); l.ticked = false; l.shelf = null; data.log = { text: "Undone: " + l.name + " ×" + l.qty + ", tick and shelf", undo: null }; }
+      else if (u.kind === "untick") { var k = line(u.id); k.ticked = true; k.shelf = u.shelf; k.at = u.at; data.freshId = k.id; data.log = { text: "Undone: " + k.name + " ×" + k.qty + " is back", to: u.shelf, undo: null }; }
+      else if (u.kind === "move") { var m = line(u.id); m.shelf = u.prev; data.freshId = m.id; data.log = { text: "Undone: move of " + m.name + " ×" + m.qty, to: u.prev, undo: null }; }
+      else if (u.kind === "orphan") { data.orphan.shelf = u.prev; data.log = { text: "Undone: orphaned " + data.orphan.name, to: u.prev, undo: null }; }
+    },
+    tray: function () { openTickSheet(); if (ui.s === "checkin") ui.s = "picker"; },
+    chip: function (b) { ui.sheet.sel = b.getAttribute("data-name"); },
+    newshelf: function () { ui.sheet.adding = true; },
+    addname: function () {
+      var inp = document.querySelector(".newname"), v = inp ? inp.value.trim().replace(/\s+/g, " ") : "";
+      ui.sheet.adding = false;
+      if (!v) return;
+      var hit = data.shelves.filter(function (s) { return s.toLowerCase() === v.toLowerCase(); })[0];
+      if (hit) v = hit; else data.shelves.push(v);
+      ui.sheet.sel = v;
+    },
+    cancel: function () { ui.sheet = null; if (ui.s === "picker") ui.s = "checkin"; },
+    done: function () {
+      var sh = ui.sheet, sel = sh.sel; ui.sheet = null;
+      if (sh.mode === "tick") {
+        data.shelf = sel; bumpShelf(sel);
+        var l = sh.id && line(sh.id);
+        if (l && l.ticked) { l.shelf = sel; data.freshId = l.id; data.log = { text: l.name + " ×" + l.qty, to: sel, undo: { kind: "tick", id: l.id } }; }
+      } else if (sh.mode === "move") {
+        var m = line(sh.id), prev = m.shelf;
+        if (prev !== sel) { m.shelf = sel; data.freshId = m.id; bumpShelf(sel); data.log = { text: "Moved " + m.name + " ×" + m.qty, to: sel, undo: { kind: "move", id: m.id, prev: prev } }; }
+      } else {
+        var p = data.orphan.shelf;
+        if (p !== sel) { data.orphan.shelf = sel; bumpShelf(sel); data.log = { text: "Orphaned " + data.orphan.name + " ×" + data.orphan.qty, to: sel, undo: { kind: "orphan", prev: p } }; }
+      }
+      if (ui.s === "picker") ui.s = "checkin";
+    },
+    move: function (b) { var l = line(+b.getAttribute("data-id")); ui.sheet = { mode: "move", id: l.id, sel: l.shelf === "Unsorted" ? data.shelf : l.shelf, adding: false }; },
+    moveorphan: function () { ui.sheet = { mode: "orphan", sel: data.orphan.shelf, adding: false }; },
+    tab: function (b) {
+      var t = b.getAttribute("data-tab"); ui.sheet = null;
+      if (ui.s === "fold") { ui.tab = t; return; }
+      if (t === "packages") goState("checkin");
+      else if (t === "tally") { ui.s = "lookup"; ui.tab = "tally"; if (!ui.q) ui.q = "Ember Drake"; }
+      else goState("orphaned");
+    },
+    clearq: function () { ui.q = ""; }
+  };
+
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-act]");
+    if (!b || b.disabled) return;
+    var fn = ACTS[b.getAttribute("data-act")];
+    if (fn) { fn(b); render(); }
+  });
+  document.addEventListener("input", function (e) {
+    if (e.target.classList.contains("q")) { ui.q = e.target.value; render(); }
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && e.target.classList.contains("newname")) { ACTS.addname(); render(); }
+    else if (e.key === "Escape" && ui.sheet) { ACTS.cancel(); render(); }
+  });
+  $("labels").addEventListener("change", function (e) { ui.labels = e.target.checked; render(); });
+  window.addEventListener("hashchange", function () { fromHash(); render(); });
+
+  function fromHash() {
+    var h = readHash();
+    var s = h.s === "orphaned" || STATES.indexOf(h.s) >= 0 ? h.s : "checkin";
+    ui.t = h.t === "light" || h.t === "dark" ? h.t : "auto";
+    if (s !== ui.s || !ui.started) goState(s);
+    ui.started = true;
+    applyTheme();
+  }
+
+  fromHash();
+  render();
+})();
+</script>
+</body>
+</html>

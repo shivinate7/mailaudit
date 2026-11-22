@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tracking Verdict Chip</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The web app and the native client are held to light,
+   so this page draws one theme; no dark set ships (design-parchment-ledger, "the app and the native client stay light"). */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961;
+  --accent:#6F5CA6; --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9;
+  --manila:#EADBBA; --manilaInk:#695832; --amber:#846008; --shadow:rgba(28,43,36,0.06);
+  /* Content type: typography-cochin-and-mono. Chrome type: the system font (skill ios-apps, Type). */
+  --sys: -apple-system, system-ui, sans-serif;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  /* Status bar foot: unmeasured on the Duo. Drawn at the 20 pt floor the Duo UI tests use (DuoHandUITests.statusBarFloor). */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: env(safe-area-inset-bottom);
+  --new:#2E7A5E; --today:#A8443C;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.4; }
+main { max-width:1000px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+.intro { display:flex; flex-direction:column; gap:4px; }
+.intro h1 { font:700 24px/1.2 -apple-system, system-ui, sans-serif; margin:0; }
+.intro p { margin:0; color:var(--inkSoft); }
+.kind { font:600 14px/1.4 -apple-system, system-ui, sans-serif; color:var(--ink); }
+.toolbar { display:flex; flex-direction:column; gap:8px; }
+.toolbar .cluster { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.toolbar .lbl { font-size:13px; color:var(--inkSoft); min-width:64px; }
+.toolbar a, .toolbar button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+.toolbar a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.toolbar button[aria-pressed="true"] { border-color:var(--ink); background:var(--ink); color:var(--card); }
+.toolbar a:focus-visible, .toolbar button:focus-visible, .frame button:focus-visible, .frame a:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+section.concept { display:flex; flex-direction:column; gap:16px; border-top:1px solid var(--line); padding-top:16px; }
+section.concept[hidden] { display:none; }
+section.concept > h2 { font:700 20px/1.2 -apple-system, system-ui, sans-serif; margin:0; }
+section.concept > p { margin:0; max-width:72ch; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; }
+figure[hidden] { display:none; }
+figcaption { max-width:72ch; font-size:14px; }
+figcaption b { font-weight:700; }
+.fit { width:100%; overflow-x:auto; }
+
+/* ---------- device frames: 1 CSS px = 1 pt ---------- */
+.frame { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:12px; overflow:hidden; font-family:-apple-system, system-ui, sans-serif; flex:none; }
+.frame.folded { width:466px; height:678px; }      /* duo-fold-and-keyboard: outer window 466 x 678 pt */
+.frame.open { width:951px; height:669px; }        /* brief and duo-fold-and-keyboard: inner 951 x 669 pt */
+.frame.phone { width:466px; height:678px; }       /* size not written: drawn at the folded Duo's written size */
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 16px; font-size:12px; font-weight:600; z-index:6; background:var(--paper); }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:7; }
+.fold span { position:absolute; top:300px; left:50%; transform:translateX(-50%) rotate(-90deg); font:10.5px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; }
+.page { position:absolute; top:0; bottom:0; overflow:hidden; }
+.frame.open .page.l { left:0; width:455.5px; }
+.frame.open .page.r { left:495.5px; width:455.5px; }
+.scroll { position:absolute; left:0; right:0; top:var(--sat); bottom:0; padding:12px 16px calc(96px + var(--sab)); display:flex; flex-direction:column; gap:12px; overflow:hidden; }
+
+/* the masthead, drawn small: the letterhead itself is unchanged (masthead-is-one-letterhead) */
+.mast { display:flex; justify-content:space-between; align-items:baseline; border-bottom:2px solid var(--ink); padding-bottom:4px; }
+.mast b { font:700 20px/1.1 var(--cochin); letter-spacing:3px; }
+.mast span { font:11px var(--mono); color:var(--inkSoft); }
+.handopen { display:flex; justify-content:space-between; align-items:center; min-height:44px; border-bottom:1px solid var(--line); }
+.handopen span { font:15px var(--cochin); }
+.mini { font:12px var(--mono); border:1px solid var(--line); background:var(--card); border-radius:8px; padding:6px 10px; color:var(--ink); }
+
+/* the system tab bar, iOS 26: floating at the bottom (HIG tab bars). Folded bar from y 595 pt, 83 pt tall (duo-fold-and-keyboard). */
+.tabbar { position:absolute; left:0; right:0; top:595px; height:83px; z-index:5; display:flex; justify-content:center; padding:6px 16px calc(8px + var(--sab)); }
+.frame.open .tabbar { left:495.5px; top:auto; bottom:0; height:83px; }  /* open: under the right page (duo-card-in-hand, item 23 a); height unmeasured */
+.tabbar .cap { flex:1; height:62px; border-radius:31px; border:1px solid var(--line); background:color-mix(in srgb, var(--paper) 62%, transparent);
+  backdrop-filter:blur(12px) saturate(1.4); -webkit-backdrop-filter:blur(12px) saturate(1.4); box-shadow:0 4px 16px var(--shadow); display:flex; padding:4px; gap:4px; }
+.tabbar .tab { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font:500 11px/13px -apple-system, system-ui, sans-serif; color:var(--ink); border-radius:27px; position:relative; }
+.tabbar .tab svg { width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.6; }
+.tabbar .tab.on { background:color-mix(in srgb, var(--card) 90%, transparent); color:var(--accent); }
+.tabbar .badge { position:absolute; top:4px; left:calc(50% + 6px); min-width:18px; height:18px; border-radius:9px; background:var(--red); color:var(--card); font:600 11px/18px -apple-system, system-ui, sans-serif; text-align:center; padding:0 5px; }
+.tabbar .badge.new { display:none; }
+body.badge-on .tabbar .badge.new { display:block; }
+
+/* ---------- the package card, as PackagesView.PackageRow draws it ---------- */
+.card { background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 2px var(--shadow); position:relative; flex:none; }
+.card.done { border-color:var(--green); }
+.card.picked { box-shadow:inset 4px 0 0 var(--accent), 0 1px 2px var(--shadow); }
+.hdr { padding:12px 12px 0; display:flex; flex-direction:column; }
+.row1 { display:flex; align-items:center; gap:8px; }
+.who { flex:1; min-width:0; display:flex; flex-direction:column; }
+.seller { font:700 15px/19px var(--cochin); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.dateln { font:11px/14px var(--mono); color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.dateln[data-tag]::after { top:auto; bottom:-14px; }
+.detail[data-tag] { position:absolute; }
+.detail[data-tag]::after { right:auto; left:0; }
+.dateln .warn-a { color:var(--amber); font-weight:700; } .dateln .warn-r { color:var(--red); font-weight:700; }
+/* the status slot: a fixed box sized by an invisible widest pill, the live pill drawn over it (PackagesView.statusSlot) */
+.slot { display:grid; justify-items:end; align-items:center; flex:none; }
+.slot > * { grid-area:1/1; }
+.slot .sizer { visibility:hidden; }
+.pill { font:700 12.5px/16px var(--cochin); padding:4px 8px; border-radius:14px; background:color-mix(in srgb, var(--accent) 14%, var(--card)); color:var(--accent); white-space:nowrap; min-height:28px; display:inline-flex; align-items:center; }
+.received { font:700 10.5px/14px var(--mono); letter-spacing:1px; color:var(--green); border:2px solid var(--green); border-radius:4px; padding:3px 8px; transform:rotate(-4deg); }
+.idrow { display:flex; align-items:center; gap:8px; min-height:45px; }
+.oid { font:11px var(--mono); color:var(--inkSoft); text-decoration:underline; min-width:45px; min-height:45px; display:inline-flex; align-items:center; flex:none; }
+.band { margin:0 12px 12px; background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font:13px var(--cochin); display:flex; justify-content:space-between; }
+.band span { font:11px var(--mono); }
+.hdr + .foot { height:12px; }
+.line { display:flex; gap:8px; align-items:center; min-height:56px; border-top:1px solid var(--line); padding:0 12px 0 4px; }
+.line .box { flex:0 0 45px; height:45px; display:grid; place-items:center; }
+.line .box i { width:26px; height:26px; border:1.5px solid var(--inkSoft); border-radius:6px; display:block; }
+.line .t { flex:1; display:flex; justify-content:space-between; font:600 14px var(--cochin); }
+.line .t span { font:400 12px var(--mono); color:var(--inkSoft); }
+
+/* ---------- the verdict chip: one per tracked order ---------- */
+.chip { font:inherit; border:0; background:transparent; padding:0; margin:0; color:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.vface { display:inline-flex; align-items:center; gap:6px; min-height:28px; padding:4px 10px; border-radius:14px; border:1.5px solid transparent; white-space:nowrap; }
+.vface .w { font:700 12.5px/16px var(--cochin); }
+.vface .n { font:11px/14px var(--mono); }
+.vface i { width:8px; height:8px; border-radius:4px; background:currentColor; flex:none; }
+.v-way    .vface { color:var(--accent); background:color-mix(in srgb, var(--accent) 10%, var(--card)); border-color:color-mix(in srgb, var(--accent) 40%, transparent); }
+.v-dtoday .vface { color:var(--amber); background:color-mix(in srgb, var(--amber) 10%, var(--card)); border-color:var(--amber); }
+.v-dlate  .vface { color:var(--red); background:var(--redSoft); border-color:var(--red); }
+.v-stuck  .vface { color:var(--amber); background:color-mix(in srgb, var(--amber) 10%, var(--card)); border-color:var(--amber); }
+.v-ret    .vface { color:var(--red); background:var(--redSoft); border-color:var(--red); }
+.v-check  .vface { color:var(--inkSoft); background:var(--card); border-color:var(--line); border-style:dashed; }
+.v-check  .vface i { background:transparent; border:1.5px solid currentColor; }
+.v-unread .vface { color:var(--manilaInk); background:var(--manila); border-color:var(--manila); }
+.v-unread .vface i { background:transparent; border:1.5px solid currentColor; }
+.v-got    .vface { color:var(--green); background:var(--greenSoft); border-color:transparent; }
+.v-muted  .vface { color:var(--inkSoft); background:transparent; border-color:var(--line); }
+.v-muted  .vface i { background:transparent; border:1.5px solid currentColor; }
+
+/* Flip chip: two faces share one grid cell, so the cell is always the taller face and a flip moves nothing
+   (the same trick as the status slot's invisible widest pill). */
+.flipcell { flex:1; min-width:0; min-height:45px; display:grid; align-items:center; }
+.flipcell > * { grid-area:1/1; }
+.flipcell .vface { justify-self:end; }
+/* the reading keeps its verdict's dot, so a flipped chip still says how worried to be */
+.rface { justify-self:stretch; min-height:44px; display:flex; flex-direction:column; justify-content:center; gap:2px; padding:4px 10px; border-radius:8px;
+  background:var(--paper); border:1px solid var(--line); text-align:left; min-width:0; }
+.rface .s { display:flex; align-items:center; gap:6px; }
+.rface .s i { width:8px; height:8px; border-radius:4px; flex:none; background:var(--dot, var(--inkSoft)); }
+.v-way { --dot:var(--accent); } .v-dtoday, .v-stuck { --dot:var(--amber); } .v-dlate, .v-ret { --dot:var(--red); }
+.v-unread { --dot:var(--manilaInk); } .v-got { --dot:var(--green); } .v-check, .v-muted { --dot:var(--inkSoft); }
+/* the flip mark: an authored two-arrow glyph that says the chip turns over */
+.vface svg.f { width:12px; height:12px; stroke:currentColor; fill:none; stroke-width:1.6; opacity:.75; flex:none; }
+.ax .vface svg.f { width:32px; height:32px; }
+.ax .rface .s i { width:20px; height:20px; border-radius:10px; }
+/* the Slot verdict chip is a control: its hit area is 44 pt tall around a 28 pt drawn chip (HIG buttons; L6 in ux-house-rules-govern) */
+.slotchip { position:relative; }
+.slotchip::before { content:""; position:absolute; left:0; right:0; top:50%; height:44px; transform:translateY(-50%); }
+body.dtoday-red .v-dtoday .vface { color:var(--red); background:var(--redSoft); border-color:var(--red); }
+body.dtoday-red .v-dtoday { --dot:var(--red); }
+.stamps { display:flex; flex-wrap:wrap; gap:8px; }
+.stamps[hidden] { display:none; }
+.stamps button { font:13px var(--cochin); min-height:44px; padding:0 12px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; }
+.reading .acts button.copy { min-width:132px; }
+.rface .s { font:13px/17px var(--cochin); color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.rface .m { font:11px/14px var(--mono); color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.flipcell[data-face="v"] .rface, .flipcell[data-face="r"] .vface { visibility:hidden; }
+
+/* Slot verdict: the chip takes the status slot, and its press opens the reading */
+.slotchip .vface { min-height:28px; }
+.pop { position:absolute; z-index:8; width:300px; background:var(--card); border:1px solid var(--line); border-radius:12px; box-shadow:0 8px 28px rgba(28,43,36,0.18);
+  padding:12px; display:flex; flex-direction:column; gap:8px; }
+.pop[hidden] { display:none; }
+.pop::before { content:""; position:absolute; top:-7px; right:var(--arrow, 40px); width:12px; height:12px; background:var(--card); border-left:1px solid var(--line); border-top:1px solid var(--line); transform:rotate(45deg); }
+.reading { display:flex; flex-direction:column; gap:8px; }
+.reading h3 { margin:0; font:700 17px/22px var(--cochin); }
+.reading .s { font:15px/20px var(--cochin); }
+.reading dl { margin:0; display:grid; grid-template-columns:auto 1fr; gap:4px 12px; }
+.reading dt { font:11px/16px var(--mono); color:var(--inkSoft); }
+.reading dd { margin:0; font:12px/16px var(--mono); color:var(--ink); }
+.reading .acts { display:flex; gap:8px; }
+.reading .acts button { font:600 14px -apple-system, system-ui, sans-serif; min-height:44px; padding:0 14px; border-radius:22px; border:1px solid var(--line); background:var(--paper); color:var(--accent); cursor:pointer; }
+.detail { position:absolute; left:16px; right:16px; top:calc(var(--sat) + 12px); display:flex; flex-direction:column; gap:12px; }
+.detail .card { padding:16px; }
+.detail .empty { font:15px/20px var(--cochin); color:var(--inkSoft); display:flex; flex-direction:column; gap:12px; align-items:flex-start; }
+
+/* open pose, Flip chip: one grid in two page columns, its gutter is the fold */
+.spread { position:absolute; left:0; right:0; top:var(--sat); bottom:0; padding:12px 16px 0; display:flex; flex-direction:column; gap:12px; }
+.spread .grid { display:grid; grid-template-columns:423.5px 423.5px; column-gap:72px; row-gap:12px; align-items:start; }
+.spread .heads { display:grid; grid-template-columns:423.5px 423.5px; column-gap:72px; }
+
+/* AX5: Large default Body 17 pt -> AX5 Body 53 pt (HIG typography, read 2026-11-21). Font.cochin and Font.mono scale
+   relative to .body by default (native/Manifest/Theme.swift), so every content size here is size x 53/17. */
+.ax .seller { font-size:46.8px; line-height:55px; white-space:normal; }
+.ax .dateln { font-size:34.3px; line-height:41px; white-space:normal; }
+.ax .pill { font-size:39px; line-height:46px; border-radius:30px; padding:4px 16px; }
+.ax .row1 { flex-direction:column; align-items:flex-start; gap:4px; }
+.ax .slot { justify-items:start; }
+.ax .idrow { flex-direction:column; align-items:stretch; gap:8px; }
+.ax .oid { font-size:34.3px; }
+.ax .vface { white-space:normal; border-radius:24px; padding:6px 14px; gap:10px; }
+.ax .vface .w { font-size:39px; line-height:46px; }
+.ax .vface .n { font-size:34.3px; line-height:41px; }
+.ax .vface i { width:20px; height:20px; border-radius:10px; }
+.ax .rface .s { font-size:40.5px; line-height:48px; white-space:normal; }
+.ax .rface .m { font-size:34.3px; line-height:41px; white-space:normal; }
+.ax .flipcell { align-items:start; }
+.ax .flipcell .vface { justify-self:start; }
+.ax .mast b { font-size:40px; }
+
+/* tags: dashed outline on what exists today, and on what an option adds */
+[data-tag] { position:relative; }
+[data-tag]::after { content:attr(data-tag); position:absolute; right:2px; top:-9px; font:600 10.5px/14px -apple-system, system-ui, sans-serif; padding:0 4px; background:var(--paper); z-index:4; white-space:nowrap; pointer-events:none; }
+.tag-new { outline:2px dashed var(--new); outline-offset:2px; } .tag-new::after { color:var(--new); }
+.tag-today { outline:2px dashed var(--today); outline-offset:2px; } .tag-today::after { color:var(--today); }
+body.tags-off [data-tag] { outline:none; } body.tags-off [data-tag]::after { display:none; }
+
+.key { display:flex; flex-wrap:wrap; gap:8px; }
+.key .chip { cursor:default; }
+@media (prefers-reduced-motion: no-preference) {
+  .flipcell .vface, .flipcell .rface { transition:opacity 120ms ease-out; }
+}
+.flipcell[data-face="v"] .rface, .flipcell[data-face="r"] .vface { opacity:0; }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No seller, date, tracking number, scan or count on this page is real. Tracking numbers are zeros on purpose.</div>
+
+<div class="intro">
+  <h1>Tracking checker: one verdict chip per order</h1>
+  <p class="kind">Designer kind: directed. Direction: status-chip: one verdict chip per order, nothing else.</p>
+  <p>Two concepts. Each adds one chip to a tracked package card on Packages, and nothing else: no new tab, no list, no filter. Tap any chip. Light theme only: the app is held to light.</p>
+</div>
+
+<div class="toolbar">
+  <nav class="cluster" aria-label="States">
+    <span class="lbl">States</span>
+    <a href="#s=all">All</a>
+    <a href="#s=flip">Flip chip</a>
+    <a href="#s=flip-reading">Flip chip, every reading</a>
+    <a href="#s=slot">Slot verdict</a>
+    <a href="#s=slot-popover">Slot verdict, reading open</a>
+    <a href="#s=slot-detail">Slot verdict, open pose reading</a>
+    <a href="#s=offline">Carrier can't be read</a>
+    <a href="#s=ax5">AX5 text</a>
+  </nav>
+  <div class="cluster" role="group" aria-label="Hide an option">
+    <span class="lbl">Cull</span>
+    <button type="button" data-hide="flip" aria-pressed="false">Hide Flip chip</button>
+    <button type="button" data-hide="slot" aria-pressed="false">Hide Slot verdict</button>
+    <button type="button" id="badge-toggle" aria-pressed="false">Show tab badge option</button>
+    <button type="button" id="dtoday-toggle" aria-pressed="false">Delivered today: red</button>
+    <button type="button" id="tags-toggle" aria-pressed="false">Hide tags</button>
+  </div>
+</div>
+
+<figure>
+  <div class="key" id="key" aria-label="Every verdict the chip can show"></div>
+  <figcaption><b>The verdicts.</b> On its way, Delivered today (cards not checked in), Delivered and not here (a day or more), Stuck, Returned, Checking (no reading yet), Can't read (the carrier gave no answer), Delivered and checked in, and a stamped order's muted chip. Colours keep their app meanings: accent is in progress, amber is "look soon", red is "act now", green is done, manila is unknown (orphaned-colours-by-meaning).</figcaption>
+</figure>
+
+<!-- ======================= Flip chip ======================= -->
+<section class="concept" id="concept-flip" data-concept="flip">
+  <h2>Flip chip</h2>
+  <p>Today's "● tracked" glyph grows into a chip on the order id row. The chip shows the verdict. A tap flips it, in place, to the carrier's latest scan and its time. A second tap flips it back. The row is already 45 pt tall for the order id link, so the chip adds no height.</p>
+
+  <figure data-states="all flip flip-folded flip-reading offline">
+    <div class="fit"><div class="frame folded" data-device="iphone-duo-folded" data-concept="flip" data-pose="folded"></div></div>
+    <figcaption><b>Folded, 466 x 678 pt.</b> The first chip (id <code>flip-chip</code>) is the one to judge. Gamma Cards says delivered yesterday with 3 cards not checked in, so its chip is red today. Untracked Moss Ledger keeps today's lost-mail flag.</figcaption>
+  </figure>
+
+  <figure data-states="all flip flip-open flip-reading offline">
+    <div class="fit"><div class="frame open" data-device="iphone-duo-unfolded" data-concept="flip" data-pose="open"></div></div>
+    <figcaption><b>Open, 951 x 669 pt.</b> The cards fill one grid of two page columns, and the fold is the gutter. Card in Hand stays at the top. The tab bar sits under the right page. Departs from: Packages keeps one page on the open Duo (<code>DuoSpread.swift</code> <code>DuoTab.packages</code>, default, not owner). Loss: the grid reads left, right, left, so order runs across the fold.</figcaption>
+  </figure>
+
+  <figure data-states="all flip flip-phone flip-reading">
+    <div class="fit"><div class="frame phone" data-device="iphone-regular" data-concept="flip" data-pose="phone"></div></div>
+    <figcaption><b>Large phone: size not written.</b> Drawn at the folded Duo's 466 x 678 pt, the only written phone size, with its tab bar line. Shown after three taps: three chips are on their reading face. Nothing else on the card moved.</figcaption>
+  </figure>
+
+  <figure data-states="all flip ax5">
+    <div class="fit"><div class="frame folded ax" data-device="iphone-duo-folded" data-concept="flip" data-pose="ax5"></div></div>
+    <figcaption><b>Folded at AX5.</b> The chip takes its own row under the order id. Its cell keeps the height of the taller face, the scan, so a flip still moves nothing. One card fills the screen.</figcaption>
+  </figure>
+</section>
+
+<!-- ======================= Slot verdict ======================= -->
+<section class="concept" id="concept-slot" data-concept="slot">
+  <h2>Slot verdict</h2>
+  <p>The verdict takes the card's status slot, where the "3 left" pill sits today, and carries the count with it: one chip per order says both where the package is and what is still out. A tap opens the reading: the carrier's latest scan, its time, the number, the claim date, and two ways on.</p>
+
+  <figure data-states="all slot slot-folded slot-popover offline">
+    <div class="fit"><div class="frame folded" data-device="iphone-duo-folded" data-concept="slot" data-pose="folded"></div></div>
+    <figcaption><b>Folded, 466 x 678 pt.</b> The first chip (id <code>slot-chip</code>) is the one to judge. The "● tracked" glyph leaves the date line, since the chip says it. A received order keeps its RECEIVED stamp and shows no chip (Sable Post, open pose). Untracked Moss Ledger keeps today's pill and flag. Cost: the slot is now sized by "Delivered 9d ago · 99 not here", so every seller column is narrower.</figcaption>
+  </figure>
+
+  <figure data-states="all slot slot-open slot-detail offline">
+    <div class="fit"><div class="frame open" data-device="iphone-duo-unfolded" data-concept="slot" data-pose="open"></div></div>
+    <figcaption><b>Open, 951 x 669 pt.</b> The list stays on the left page. A tap on a chip shows its reading on the right page, a list beside its detail (HIG layout). The picked card carries an accent bar in its gutter, as Card in Hand marks a tapped row. Departs from: Packages keeps one page on the open Duo (<code>DuoSpread.swift</code> <code>DuoTab.packages</code>; <code>HandScreen.swift</code> <code>PackagesTab</code>), default, not owner.</figcaption>
+  </figure>
+
+  <figure data-states="all slot slot-phone slot-popover">
+    <div class="fit"><div class="frame phone" data-device="iphone-regular" data-concept="slot" data-pose="phone"></div></div>
+    <figcaption><b>Large phone: size not written.</b> Drawn at 466 x 678 pt. The reading is open on North Pier TCG, as a popover from its chip. A tap outside it or Escape closes it.</figcaption>
+  </figure>
+
+  <figure data-states="all slot ax5">
+    <div class="fit"><div class="frame folded ax" data-device="iphone-duo-folded" data-concept="slot" data-pose="ax5"></div></div>
+    <figcaption><b>Folded at AX5.</b> The slot drops under the seller, as a stack that fits. The chip wraps to two lines.</figcaption>
+  </figure>
+</section>
+</main>
+
+<script>
+/* Sample data. Every seller, number and scan is invented. "Today" on this page is 2026-11-21. */
+const ORDERS = [
+  { seller:"Gamma Cards", date:"2026-11-06", id:"000000-0001", left:3, of:4, track:true, v:"dlate", days:1, carrier:"USPS",
+    scan:"Delivered, in or at mailbox", at:"Nov 20, 2:04 PM", claim:"Dec 6" },
+  { seller:"Oak Hollow Games", date:"2026-11-12", id:"000000-0002", left:2, of:2, track:true, v:"dtoday", carrier:"USPS",
+    scan:"Delivered, front door", at:"Today, 11:38 AM", claim:"Dec 12" },
+  { seller:"North Pier TCG", date:"2026-11-02", id:"000000-0003", left:4, of:4, track:true, v:"stuck", days:5, carrier:"UPS",
+    scan:"Arrived at facility", at:"Nov 16, 6:51 AM", claim:"Dec 2" },
+  { seller:"Lantern Row", date:"2026-11-14", id:"000000-0004", left:1, of:1, track:true, v:"way", carrier:"USPS",
+    scan:"In transit to next facility", at:"Today, 5:12 AM", claim:"Dec 14" },
+  { seller:"Moss Ledger", date:"2026-10-28", id:"000000-0005", left:5, of:5, track:false, lost:"maybe", lostDays:24 },
+  { seller:"Bramble & Co", date:"2026-10-20", id:"000000-0006", left:3, of:3, track:true, v:"ret", carrier:"USPS",
+    scan:"Returned to sender", at:"Nov 18, 9:20 AM", claim:"Nov 19" },
+  { seller:"Copper Kite", date:"2026-11-19", id:"000000-0007", left:2, of:2, track:true, v:"check", carrier:"USPS" },
+  { seller:"Fernhill Cards", date:"2026-11-10", id:"000000-0008", left:2, of:3, track:true, v:"unread", carrier:"UPS",
+    lastScan:"Out for delivery", lastAt:"Nov 19, 8:02 AM" },
+  { seller:"Quill Street", date:"2026-11-01", id:"000000-0009", left:2, of:2, track:true, v:"stuck", days:9, carrier:"USPS",
+    scan:"Departed facility", at:"Nov 12, 10:40 PM", claim:"Dec 1", stamp:"Seller contacted", stampDate:"Nov 18" },
+  { seller:"Sable Post", date:"2026-11-08", id:"000000-0010", left:0, of:3, track:true, v:"got", carrier:"USPS",
+    scan:"Delivered, in or at mailbox", at:"Nov 15, 1:10 PM" },
+];
+const NUM = "0000 0000 0000 0000 00";
+
+/* The verdict face: the word, then a number in mono where one exists (typography-cochin-and-mono). */
+function verdict(o, withCount) {
+  const out = withCount && o.left ? ` · ${o.left} ${o.v === "dlate" || o.v === "dtoday" ? "not here" : "left"}` : "";
+  switch (o.v) {
+    case "way":    return { cls:"v-way",    w:"On its way", n:out };
+    case "dtoday": return { cls:"v-dtoday", w:"Delivered today", n:out || " · not here yet" };
+    case "dlate":  return { cls:"v-dlate",  w:"Delivered", n:` ${o.days}d ago` + (out || " · not here") };
+    case "stuck":  return { cls:"v-stuck",  w:"Stuck", n:` ${o.days}d no scan` + out };
+    case "ret":    return { cls:"v-ret",    w:"Returned", n:out };
+    case "check":  return { cls:"v-check",  w:"Checking", n:out };
+    case "unread": return { cls:"v-unread", w:"Can't read", n:out };
+    case "got":    return { cls:"v-got",    w:"Delivered", n:"" };
+  }
+}
+function said(o) { return o.v === "unread" || o.v === "check" ? null : o.scan; }
+function vface(o, withCount, flip) {
+  const v = verdict(o, withCount);
+  return `<span class="vface"><i aria-hidden="true"></i><span class="w">${v.w}</span>${v.n ? `<span class="n">${v.n}</span>` : ""}${flip ? `<svg class="f" viewBox="0 0 12 12" aria-hidden="true"><path d="M1 4h9M7.5 1.5 10 4 7.5 6.5M11 8H2M4.5 5.5 2 8l2.5 2.5"/></svg>` : ""}</span>`;
+}
+function vclass(o) { return o.stamp ? "v-muted" : verdict(o).cls; }
+function chipLabel(o) {
+  const v = verdict(o, true);
+  return `Tracking: ${v.w}${v.n}${o.stamp ? ", stamped " + o.stamp : ""}`;
+}
+
+/* The reading face of Flip chip: two lines, the scan and its time. */
+function rface(o) {
+  const dot = `<i aria-hidden="true"></i>`;
+  if (o.v === "check") return `<span class="rface"><span class="s">${dot}No scan read yet</span><span class="m">${o.carrier} · ${NUM}${o.id.slice(-2)}</span></span>`;
+  if (o.v === "unread") return `<span class="rface"><span class="s">${dot}Last scan: ${o.lastScan}</span><span class="m">${o.lastAt} · ${o.carrier} gave no answer</span></span>`;
+  return `<span class="rface"><span class="s">${dot}${o.scan}</span><span class="m">${o.at} · ${o.carrier}</span></span>`;
+}
+
+function dateLine(o, concept) {
+  let s = "";
+  if (o.lost === "maybe") s += `<span class="warn-a">⚠ ${o.lostDays}d — may be lost · </span>`;
+  s += o.date;
+  if (!o.track) s += ` · <span style="color:var(--manilaInk)">○</span> untracked`;
+  return `<div class="dateln${!o.track ? " tag-today" : ""}"${!o.track ? ' data-tag="Today: lost-mail flag, untracked"' : ""}>${s}</div>`;
+}
+
+function slotHTML(o, concept, focusId) {
+  const sizer = concept === "slot" ? `<span class="pill sizer" aria-hidden="true">Delivered 9d ago · 99 not here</span>`
+                                   : `<span class="pill sizer" aria-hidden="true">99 left · refunded</span>`;
+  if (o.left === 0) return `<span class="slot">${sizer}<span class="received">RECEIVED</span></span>`;
+  if (concept === "slot" && o.track) {
+    return `<span class="slot${focusId ? ' tag-new" data-tag="New: verdict takes the slot"' : '"'}>${sizer}<button type="button" class="chip slotchip ${vclass(o)}"${focusId ? ` id="${focusId}"` : ""} data-i="${ORDERS.indexOf(o)}" aria-haspopup="dialog" aria-label="${chipLabel(o)}">${vface(o, true)}</button></span>`;
+  }
+  return `<span class="slot">${sizer}<span class="pill">${o.left} left</span></span>`;
+}
+
+function card(o, concept, opts) {
+  const i = ORDERS.indexOf(o);
+  const flipFace = opts.reading && opts.reading.includes(i) ? "r" : "v";
+  let idrow = `<a class="oid" href="#" onclick="return false" aria-label="Order ${o.id} on TCGplayer">${o.id}</a>`;
+  if (concept === "flip" && o.track) {
+    const tag = opts.focusId ? ' data-tag="New: verdict chip, tap to flip"' : "";
+    idrow += `<button type="button" class="chip flipcell ${vclass(o)}${opts.focusId ? " tag-new" : ""}"${tag}${opts.focusId ? ` id="${opts.focusId}"` : ""} data-face="${flipFace}" aria-label="${chipLabel(o)}" aria-pressed="${flipFace === "r"}">${vface(o, false, true)}${rface(o)}</button>`;
+  }
+  const band = o.stamp ? `<div class="band tag-today" data-tag="Today: stamp band"><b>${o.stamp}</b><span>${o.stampDate}</span></div>` : `<div class="foot"></div>`;
+  const lines = opts.lines ? `<div class="line"><span class="box"><i></i></span><span class="t">Sample Card One<span>$0.42</span></span></div>` : "";
+  return `<article class="card${o.left === 0 ? " done" : ""}${opts.picked === i ? " picked" : ""}" data-i="${i}">
+    <div class="hdr">
+      <div class="row1"><div class="who"><span class="seller">${o.seller}</span>${concept === "slot" && o.track ? `<div class="dateln">${o.date}</div>` : (concept === "flip" && o.track ? `<div class="dateln">${o.date}</div>` : dateLine(o, concept))}</div>${slotHTML(o, concept, opts.slotFocus && i === 0 ? opts.slotFocus : null)}</div>
+      <div class="idrow">${idrow}</div>
+    </div>${band}${lines}</article>`;
+}
+
+const ICONS = {
+  ledger:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>',
+  orph:'<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
+  tally:'<svg viewBox="0 0 24 24"><path d="M9 4L7 20M17 4l-2 16M4 9h16M3 15h16"/></svg>',
+  pkg:'<svg viewBox="0 0 24 24"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>',
+};
+function tabbar(warnCount) {
+  return `<div class="tabbar"><div class="cap" role="tablist" aria-label="Views">
+    <span class="tab">${ICONS.ledger}Ledger</span>
+    <span class="tab">${ICONS.orph}Orphaned<span class="badge">2</span></span>
+    <span class="tab">${ICONS.tally}Tally</span>
+    <span class="tab on" aria-current="page">${ICONS.pkg}Packages<span class="badge new tag-new" data-tag="New: tab badge option">${warnCount}</span></span>
+  </div></div>`;
+}
+const chrome = `<div class="status"><span>9:41</span><span>●●● 100%</span></div>`;
+const mast = `<div class="mast tag-today" data-tag="Today: masthead, drawn small"><b>MANIFEST</b><span>41 in · 23 out</span></div>`;
+const warns = ORDERS.filter(o => !o.stamp && (o.v === "dlate" || o.v === "stuck" || o.v === "ret")).length;
+
+function readingHTML(o) {
+  const v = verdict(o, true);
+  const lines = {
+    dlate:`The carrier says delivered ${o.days} day ago, and ${o.left} of ${o.of} cards are not checked in.`,
+    dtoday:`The carrier says delivered today. ${o.left} cards are not checked in yet.`,
+    stuck:`No new scan for ${o.days} days.`,
+    ret:`The carrier is sending it back to the seller.`,
+    way:`Moving. Last scan today.`,
+    check:`No scan read yet.`,
+    unread:`${o.carrier} gave no answer. The last scan read is below.`,
+    got:`Delivered, and every card is checked in.`,
+  }[o.v];
+  const scan = o.v === "unread" ? `${o.lastScan}, ${o.lastAt}` : (o.scan ? `${o.scan}, ${o.at}` : "None yet");
+  return `<div class="reading">
+    <h3>${o.seller}</h3>
+    <div class="s">${lines}</div>
+    <dl><dt>Latest scan</dt><dd>${scan}</dd><dt>Carrier</dt><dd>${o.carrier}</dd><dt>Number</dt><dd>${NUM}${o.id.slice(-2)}</dd>${o.claim ? (o.v === "ret" ? `<dt>Claim</dt><dd style="color:var(--red)">refund window closing</dd>` : `<dt>Claim by</dt><dd>${o.claim}</dd>`) : ""}</dl>
+    <div class="acts"><button type="button" class="copy" data-copy>Copy number</button><button type="button" data-stamp-open aria-expanded="false">Stamp…</button></div>
+    <div class="stamps" role="group" aria-label="Stamp this order" hidden>${["Claim filed","Refunded","Seller contacted","Reshipped","Partial refund","Other"].map(k => `<button type="button" data-stamp="${k}" data-i="${ORDERS.findIndex(x => x.id === o.id)}">${k}</button>`).join("")}</div>
+  </div>`;
+}
+
+/* Which cards each frame lists. Folded and phone show the head of the list; the open pose shows more. */
+const SETS = {
+  folded:[0,1,2,4], phone:[0,1,2,3], open:[0,1,2,3,4,5,6,7,8,9], ax5:[0],
+};
+function render(frame, state) {
+  const concept = frame.dataset.concept, pose = frame.dataset.pose;
+  const offline = state === "offline";
+  const list = SETS[pose].map(i => offline && ORDERS[i].track && ORDERS[i].v !== "got"
+      ? Object.assign({}, ORDERS[i], { v:"unread", lastScan: ORDERS[i].scan || "None", lastAt: ORDERS[i].at || "—" }) : ORDERS[i]);
+  // the offline copies must still index into ORDERS for data-i
+  list.forEach((o, k) => { if (o !== ORDERS[SETS[pose][k]]) o.__i = SETS[pose][k]; });
+  const reading = state === "flip-reading" ? SETS[pose] : (pose === "phone" ? [0, 2, 3] : []);
+  const focusId = pose === "folded" ? (concept === "flip" ? "flip-chip" : "slot-chip") : null;
+  const opts = (o, k) => ({ reading, focusId: concept === "flip" && k === 0 ? focusId : null, slotFocus: concept === "slot" ? focusId : null,
+                            lines: k === 0 && pose === "phone", picked: frame._picked });
+  const cards = l => l.map((o, k) => card(o, concept, opts(o, k)).replace(/data-i="(\d+)"/g, (m, d) => `data-i="${o.__i ?? d}"`)).join("");
+  let html = "";
+  if (pose === "open" && concept === "flip") {
+    html = `${chrome}<div class="fold"><span>FOLD</span></div>
+      <div class="spread"><div class="heads">${mast}<div class="handopen tag-today" data-tag="Today: hand-open"><span>Card in Hand</span><span class="mini">Open</span></div></div>
+      <div class="grid tag-new" data-tag="New: two-page grid">${cards(list)}</div></div>${tabbar(warns)}`;
+  } else if (pose === "open" && concept === "slot") {
+    const p = frame._picked;
+    html = `${chrome}<div class="fold"><span>FOLD</span></div>
+      <div class="page l"><div class="scroll">${mast}<div class="handopen tag-today" data-tag="Today: hand-open"><span>Card in Hand</span><span class="mini">Open</span></div>${cards(list.filter((o, k) => [0, 6, 7, 8, 9].includes(SETS.open[k])))}</div></div>
+      <div class="page r"><div class="detail tag-new" data-tag="New: reading beside the list">${p == null
+        ? `<div class="card"><div class="empty">Tap a chip on the left page to read its latest scan.<button type="button" class="mini" data-pick="0" style="min-height:44px;cursor:pointer">Read Gamma Cards</button></div></div>`
+        : `<div class="card">${readingHTML(offline && ORDERS[p].track && ORDERS[p].v !== "got" ? Object.assign({}, ORDERS[p], { v:"unread", lastScan:ORDERS[p].scan, lastAt:ORDERS[p].at }) : ORDERS[p])}</div>`}</div></div>
+      ${tabbar(warns)}`;
+  } else {
+    html = `${chrome}<div class="scroll">${pose === "ax5" ? "" : mast}${cards(list)}</div>${tabbar(warns)}`;
+    if (concept === "slot" && pose !== "ax5") html += `<div class="pop" role="dialog" aria-label="Latest scan" hidden></div>`;
+  }
+  frame.innerHTML = html;
+}
+
+/* ---------- state from the hash: #s=<state> ---------- */
+function stateFromHash() {
+  const m = /(?:^#|&)s=([\w-]+)/.exec(location.hash);
+  return m ? m[1] : "all";
+}
+function openPop(frame, chip) {
+  const pop = frame.querySelector(".pop");
+  if (!pop) return;
+  const i = +chip.dataset.i;
+  pop.innerHTML = readingHTML(ORDERS[i]);
+  const fr = frame.getBoundingClientRect(), r = chip.getBoundingClientRect();
+  const left = Math.max(12, Math.min(fr.width - 312, r.right - fr.left - 300));
+  pop.style.left = left + "px";
+  pop.style.top = (r.bottom - fr.top + 10) + "px";
+  pop.style.setProperty("--arrow", Math.max(16, (left + 300) - (r.left - fr.left + r.width / 2) - 6) + "px");
+  pop.hidden = false;
+  pop.dataset.for = i;
+}
+function closePops() { document.querySelectorAll(".pop").forEach(p => { p.hidden = true; }); }
+
+function apply() {
+  const s = stateFromHash();
+  document.querySelectorAll(".toolbar nav a").forEach(a => a.setAttribute("aria-current", a.getAttribute("href") === "#s=" + s ? "true" : "false"));
+  document.querySelectorAll("figure[data-states]").forEach(f => { f.hidden = !f.dataset.states.split(" ").includes(s); });
+  document.querySelectorAll(".frame[data-concept]").forEach(fr => {
+    fr._picked = (fr.dataset.pose === "open" && fr.dataset.concept === "slot" && (s === "slot-detail" || s === "all" || s === "offline")) ? 0 : (s === "slot" ? null : fr._picked ?? null);
+    render(fr, s);
+  });
+  closePops();
+  {
+    requestAnimationFrame(() => {
+      const ph = document.querySelector('.frame[data-concept="slot"][data-pose="phone"]');
+      const c = ph && ph.querySelector('.slotchip[data-i="2"]');
+      if (c && ph.offsetParent) openPop(ph, c);
+      if (s === "slot-popover") {
+        const fo = document.querySelector('.frame[data-concept="slot"][data-pose="folded"]');
+        const c0 = fo && fo.querySelector("#slot-chip");
+        if (c0 && fo.offsetParent) openPop(fo, c0);
+      }
+    });
+  }
+}
+
+/* ---------- presses ---------- */
+document.addEventListener("click", e => {
+  const flip = e.target.closest(".flipcell");
+  if (flip) { const r = flip.dataset.face === "v"; flip.dataset.face = r ? "r" : "v"; flip.setAttribute("aria-pressed", String(r)); return; }
+  const sc = e.target.closest(".slotchip");
+  if (sc) {
+    const fr = sc.closest(".frame");
+    if (fr.dataset.pose === "open") { fr._picked = +sc.dataset.i; render(fr, stateFromHash()); return; }
+    const pop = fr.querySelector(".pop");
+    if (pop && !pop.hidden && pop.dataset.for === sc.dataset.i) { pop.hidden = true; return; }
+    closePops(); openPop(fr, sc); return;
+  }
+  const copy = e.target.closest("[data-copy]");
+  if (copy) { copy.textContent = "Copied"; return; }  // fixed min-width, so the swap moves nothing
+  const so = e.target.closest("[data-stamp-open]");
+  if (so) { const g = so.closest(".reading").querySelector(".stamps"); g.hidden = !g.hidden; so.setAttribute("aria-expanded", String(!g.hidden)); return; }
+  const st = e.target.closest("[data-stamp]");
+  if (st) {
+    const o = ORDERS[+st.dataset.i];
+    o.stamp = st.dataset.stamp; o.stampDate = "Nov 21";
+    const keep = stateFromHash();
+    document.querySelectorAll(".frame[data-concept]").forEach(fr => render(fr, keep));
+    return;
+  }
+  const pick = e.target.closest("[data-pick]");
+  if (pick) { const fr = pick.closest(".frame"); fr._picked = +pick.dataset.pick; render(fr, stateFromHash()); return; }
+  if (!e.target.closest(".pop")) closePops();
+  const hide = e.target.closest("[data-hide]");
+  if (hide) {
+    const sec = document.getElementById("concept-" + hide.dataset.hide);
+    sec.hidden = !sec.hidden; hide.setAttribute("aria-pressed", String(sec.hidden));
+    hide.textContent = (sec.hidden ? "Show " : "Hide ") + (hide.dataset.hide === "flip" ? "Flip chip" : "Slot verdict");
+  }
+  if (e.target.id === "badge-toggle") {
+    const on = document.body.classList.toggle("badge-on");
+    e.target.setAttribute("aria-pressed", String(on)); e.target.textContent = on ? "Hide tab badge option" : "Show tab badge option";
+  }
+  if (e.target.id === "dtoday-toggle") {
+    const on = document.body.classList.toggle("dtoday-red");
+    e.target.setAttribute("aria-pressed", String(on)); e.target.textContent = on ? "Delivered today: amber" : "Delivered today: red";
+  }
+  if (e.target.id === "tags-toggle") {
+    const off = document.body.classList.toggle("tags-off");
+    e.target.setAttribute("aria-pressed", String(off)); e.target.textContent = off ? "Show tags" : "Hide tags";
+  }
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape") closePops(); });
+window.addEventListener("hashchange", apply);
+
+/* the key: one chip of each verdict */
+document.getElementById("key").innerHTML = [0,1,3,2,5,6,7,9,8].map(i => `<span class="chip ${vclass(ORDERS[i])}">${vface(ORDERS[i], false)}</span>`).join("");
+apply();
+</script>
+</body>
+</html>

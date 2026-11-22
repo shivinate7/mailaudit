@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Undo Recent Taps</title>
+<style>
+/* Colours are the tokens of shared/tokens.json (design-parchment-ledger). Both clients ship one theme:
+   the native app is held to light (Info.plist UIUserInterfaceStyle, InterfaceStyleTests) and src/app.jsx
+   has no prefers-color-scheme rule. So the page draws light only; data-theme stays "light". */
+:root, :root[data-theme="light"] {
+  --paper: #F2E9DA; --card: #FCF6EA; --ink: #332E3F; --inkSoft: #6E6379;
+  --line: #DCCDB6; --gold: #C9A961; --accent: #6F5CA6; --green: #2E7A5E;
+  --red: #A8443C; --redSoft: #F4E4D9; --manila: #EADBBA; --manilaInk: #695832;
+  --wax: #A8443C; --waxLit: #C86A5F; --waxDeep: #66231D;
+  --shadow: rgba(28,43,36,0.06);
+  --sys: -apple-system, system-ui, "SF Pro Text", sans-serif;
+  --cochin: Cochin, "Hoefler Text", Palatino, Georgia, serif;
+  --mono: Menlo, ui-monospace, SFMono-Regular, Consolas, monospace;
+  --desk: #E6DCCB;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--desk); color: var(--ink); font-family: var(--sys); font-size: 15px; line-height: 1.4; }
+button { font: inherit; color: inherit; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- reviewer chrome (not part of the screen) ---------- */
+.banner { background: var(--manila); color: var(--manilaInk); font-family: var(--mono); font-size: 12px;
+  padding: 8px 16px; text-align: center; }
+.chrome { max-width: 1280px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.chrome h1 { margin: 0; font-family: var(--cochin); font-weight: 400; font-size: 26px; }
+.chrome p { margin: 0; max-width: 72ch; color: var(--inkSoft); font-size: 14px; }
+.kind { font-family: var(--mono); font-size: 12px; color: var(--ink); }
+.ctl { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ctl > .lab { font-family: var(--mono); font-size: 11px; color: var(--inkSoft); min-width: 96px; }
+.chip { min-height: 36px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--card);
+  font-family: var(--mono); font-size: 12px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--card); }
+.opt { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--card); }
+.opt .chip { border: 0; border-radius: 0; }
+.opt .x { border: 0; border-left: 1px solid var(--line); background: transparent; color: var(--inkSoft); padding: 0 12px;
+  font-family: var(--mono); font-size: 12px; cursor: pointer; min-width: 36px; }
+.opt[hidden] { display: none; }
+.note { font-family: var(--mono); font-size: 11.5px; color: var(--inkSoft); max-width: 90ch; min-height: 2.8em; }
+.stage { display: flex; flex-wrap: wrap; gap: 32px 24px; justify-content: center; align-items: flex-start; padding: 8px 16px 64px; }
+.dev { display: flex; flex-direction: column; gap: 8px; max-width: 100%; }
+.dev[hidden] { display: none; }
+.dev > .cap { font-family: var(--mono); font-size: 11.5px; color: var(--inkSoft); max-width: 466px; }
+.dev.wide > .cap { max-width: 951px; }
+.dev > .cap b { font-weight: 400; color: var(--ink); }
+.fit { position: relative; }
+
+/* ---------- a device frame: 1 CSS px = 1 pt ---------- */
+.frame { position: relative; overflow: hidden; background: var(--paper); border: 1px solid var(--ink); border-radius: 14px;
+  transform-origin: top left; font-family: var(--sys);
+  --sat: max(env(safe-area-inset-top), 20px); --sab: max(env(safe-area-inset-bottom), 20px);
+  --row-h: 72px; --head-h: 28px; --f-lab: 10px; --lh-lab: 14px; --f-name: 16px; --lh-name: 22px;
+  --f-sell: 13.5px; --lh-sell: 18px; --f-undo: 11px; --cell-w: 72px; --fx-w: 76px; --f-fx: 16px;
+  --f-lt: 20px; --f-lv: 14px; --f-ls: 13.5px; --lrow-min: 52px; --f-grp: 11px; --f-mh: 30px; }
+.frame.web { border-radius: 4px; --fx-w: 56px; }
+.status { position: absolute; left: 0; right: 0; top: 0; height: var(--sat); z-index: 9; display: flex; align-items: center;
+  justify-content: space-between; padding: 0 20px; font-size: 12px; font-weight: 600; background: var(--paper); }
+.scroller { position: absolute; left: 0; right: 0; top: var(--sat); bottom: 0; overflow-y: auto; overscroll-behavior: auto; }
+.scroller.locked { overflow: hidden; }
+.pg { padding: 8px 16px 120px; display: flex; flex-direction: column; gap: 0; }
+
+/* masthead, abridged (MastheadScreen): drawn, not measured */
+.mh { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 8px 8px 16px; font-family: var(--cochin); }
+.mh .rule { display: flex; align-items: center; gap: 12px; width: 70%; }
+.mh .rule i { flex: 1; height: 1px; background: var(--gold); }
+.mh .seal { width: 30px; height: 30px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, var(--waxLit), var(--wax) 60%, var(--waxDeep)); }
+.mh .t { font-size: var(--f-mh); letter-spacing: .14em; text-indent: .14em; line-height: 1.3; }
+.mh .f { font-family: var(--mono); font-size: var(--f-lab); letter-spacing: .2em; color: var(--inkSoft); text-align: center; }
+
+/* Ledger tab: LedgerTab.swift / src/app.jsx .mdl-l* */
+.lh { text-align: center; font-family: var(--mono); font-size: 12px; letter-spacing: .3em; text-indent: .3em; color: var(--inkSoft); padding: 8px 0 0; }
+.lg { font-family: var(--mono); font-size: var(--f-grp); letter-spacing: .2em; color: var(--inkSoft); padding: 16px 4px 8px; }
+.card { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+.lrow { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; min-height: var(--lrow-min);
+  padding: 8px 16px; border: 0; border-top: 1px solid var(--line); background: transparent; text-align: left; cursor: pointer;
+  font-family: var(--cochin); }
+.card > .lrow:first-child { border-top: 0; }
+.lrow .t { flex: 1; min-width: 0; font-size: var(--f-lt); line-height: 1.3; }
+.lrow .v { font-family: var(--mono); font-size: var(--f-lv); color: var(--accent); text-align: right; }
+.lrow .v.soft { color: var(--inkSoft); }
+.lrow .cr { font-size: calc(var(--f-lt) * 1.1); line-height: 1; color: var(--inkSoft); transition: transform 140ms ease; }
+.lrow[aria-expanded="true"] .cr { transform: rotate(90deg); }
+.lrow.picked { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 0; }
+.reset { margin-top: 20px; }
+.reset .lrow { color: var(--red); }
+.stub { padding: 8px 16px 12px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; color: var(--inkSoft); }
+
+/* ---------- the Recent rows (decision recent-checks-can-be-undone, What a row shows) ---------- */
+.rp { position: relative; border-top: 1px solid var(--line); background: var(--card); padding: 4px 8px 8px; }
+.rl { overflow-y: auto; overscroll-behavior: contain; }
+.dh { position: sticky; top: 0; z-index: 2; height: var(--head-h); display: flex; align-items: flex-end; padding: 0 4px 6px;
+  border-bottom: 1px solid var(--line); background: inherit; font-family: var(--mono); font-size: var(--f-lab);
+  letter-spacing: .16em; color: var(--inkSoft); }
+.rp .dh { background: var(--card); }
+.rr { position: relative; height: var(--row-h); display: flex; align-items: stretch; gap: 12px; padding-left: 4px;
+  border-top: 1px solid var(--line); overflow: hidden; }
+.dh + .rr { border-top: 0; }
+.rr > .l { flex: 1; min-width: 0; display: grid; grid-template-rows: var(--lh-lab) var(--lh-name) var(--lh-sell); align-content: center; }
+.rr .k { display: flex; gap: 8px; min-width: 0; font-family: var(--mono); font-size: var(--f-lab); line-height: var(--lh-lab);
+  letter-spacing: .16em; color: var(--inkSoft); }
+.rr .k .a { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rr .k .tm { margin-left: auto; flex-shrink: 0; color: var(--ink); letter-spacing: .04em; }
+.rr .n { display: flex; align-items: baseline; gap: 8px; min-width: 0; font-family: var(--cochin); font-size: var(--f-name); line-height: var(--lh-name); }
+.rr .nm { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rr .fg { flex-shrink: 0; margin-left: auto; font-family: var(--mono); font-size: calc(var(--f-lab) + 1px); color: var(--inkSoft); }
+.rr .s { display: flex; gap: 8px; min-width: 0; align-items: baseline; font-family: var(--cochin); font-size: var(--f-sell);
+  line-height: var(--lh-sell); color: var(--inkSoft); }
+.rr .sl { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rr .dv { margin-left: auto; flex-shrink: 0; font-family: var(--mono); font-size: var(--f-lab); letter-spacing: .12em; color: var(--inkSoft); }
+.rr .dv.here { color: var(--ink); }
+body.no-dev .rr .dv, body.no-ord .rr .od { display: none; }
+.rr.undone .nm { text-decoration: line-through; text-decoration-thickness: 1px; text-decoration-color: var(--inkSoft); }
+.rr .fx { display: none; }
+/* The right edge: one fixed width, so UNDO and every end state take the same box. */
+.rr > .r { flex: 0 0 var(--cell-w); display: flex; align-items: center; justify-content: flex-end; }
+.undo { width: var(--cell-w); height: var(--row-h); display: flex; align-items: center; justify-content: flex-end; padding: 0 4px 0 0;
+  border: 0; background: transparent; cursor: pointer; }
+.undo span { font-family: var(--mono); font-size: var(--f-undo); letter-spacing: .16em; color: var(--accent);
+  border-bottom: 1px solid var(--line); line-height: 1.45; }
+.undo:active span { border-bottom-color: var(--accent); }
+.end { font-family: var(--mono); font-size: var(--f-lab); line-height: var(--lh-lab); letter-spacing: .16em; color: var(--inkSoft);
+  text-align: right; padding-right: 4px; }
+@media (prefers-reduced-motion: no-preference) {
+  .end.fresh { animation: ink-in 180ms ease-out both; }
+  @keyframes ink-in { from { opacity: 0; } to { opacity: 1; } }
+  .rp, .slip { animation: arrive 220ms cubic-bezier(.16,1,.3,1) both; }
+  @keyframes arrive { from { opacity: 0; } to { opacity: 1; } }
+}
+
+/* ---------- Day book: the slip, the change in figures, and the margin column ---------- */
+body.c-daybook .rr .fg { display: none; }
+body.c-daybook .rr .fx { display: flex; flex: 0 0 var(--fx-w); flex-direction: column; align-items: flex-end; justify-content: center;
+  gap: 2px; font-family: var(--mono); }
+.fx .fig { display: flex; align-items: baseline; gap: 6px; font-size: var(--f-fx); line-height: 1.3; }
+.fx .was { font-size: calc(var(--f-fx) * .75); color: var(--inkSoft); text-decoration: line-through; text-decoration-thickness: 1px; }
+.fx .now { color: var(--ink); }
+.fx .of { font-size: var(--f-lab); letter-spacing: .12em; color: var(--inkSoft); }
+body.c-daybook .rr > .r { border-left: 3px double var(--line); }
+.slip { position: absolute; z-index: 8; left: 16px; right: 16px; display: flex; flex-direction: column; background: var(--paper);
+  border: 1px solid var(--line); box-shadow: 0 10px 28px rgba(28,43,36,.12); padding: 0 8px; }
+.slip.down { border-top: 0; border-radius: 0 0 8px 8px; }
+.slip.up { border-bottom: 0; border-radius: 8px 8px 0 0; }
+.slip .rl { flex: 1; min-height: 0; }
+.slip .dh { background: var(--paper); }
+.slip .foot { flex: 0 0 8px; background-image: radial-gradient(circle, var(--line) 1.2px, transparent 1.4px);
+  background-size: 8px 8px; background-position: center; background-repeat: repeat-x; }
+.slip.up .foot { order: -1; }
+.page-r .book { position: absolute; left: 16px; right: 16px; top: calc(var(--sat) + 8px); bottom: 84px; display: flex; flex-direction: column; }
+.book .bh { display: flex; align-items: baseline; gap: 12px; padding: 0 4px 8px; font-family: var(--cochin); font-size: 22px; }
+.book .bh small { font-family: var(--mono); font-size: 11px; color: var(--inkSoft); letter-spacing: .12em; margin-left: auto; }
+.book .rl { flex: 1; min-height: 0; border-top: 1px solid var(--ink); }
+.book .empty { padding: 16px 4px; font-family: var(--cochin); font-size: 16px; color: var(--inkSoft); }
+
+/* ---------- accessibility sizes ---------- */
+/* Stop at xxxLarge: Body 23, Footnote 19, Caption 2 17, Title 3 26, Callout 22 (Apple typography, xxxLarge). */
+.frame.ax-cap { --row-h: 92px; --head-h: 36px; --f-lab: 15.5px; --lh-lab: 20px; --f-name: 21.5px; --lh-name: 28px;
+  --f-sell: 19.5px; --lh-sell: 26px; --f-undo: 17px; --cell-w: 92px; --fx-w: 96px; --f-fx: 21.5px;
+  --f-lt: 26px; --f-lv: 19px; --f-ls: 19.5px; --lrow-min: 64px; --f-grp: 16px; --f-mh: 40px; }
+/* Grow to AX5: Body 53, Footnote 44, Caption 2 40, Title 3 55, Callout 51 (Apple typography, AX5).
+   The row stacks: the undo leaves the right edge and becomes a full-width band under the text. */
+.frame.ax-grow { --row-h: 340px; --head-h: 56px; --f-lab: 36px; --lh-lab: 44px; --f-name: 50px; --lh-name: 58px;
+  --f-sell: 45.5px; --lh-sell: 54px; --f-undo: 40px; --cell-w: 100%; --f-fx: 40px;
+  --f-lt: 55px; --f-lv: 44.5px; --lrow-min: 96px; --f-grp: 40px; --f-mh: 60px; }
+.frame.ax-grow .lrow { flex-wrap: wrap; gap: 0 12px; }
+.frame.ax-grow .lrow .t { flex: 1 0 60%; }
+.frame.ax-grow .lrow .v { order: 3; flex: 1 0 100%; text-align: left; }
+.frame.ax-grow .rr { flex-direction: column; gap: 0; padding: 8px 4px 0; }
+.frame.ax-grow .rr > .l { flex: none; grid-template-rows: var(--lh-lab) calc(var(--lh-name) * 2) var(--lh-sell); }
+.frame.ax-grow .rr .n { display: block; }
+.frame.ax-grow .rr .nm { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; }
+.frame.ax-grow .rr .fg { display: none; }
+.frame.ax-grow .rr .fx { display: flex; flex: 0 0 52px; flex-direction: row; align-items: center; justify-content: flex-start; gap: 12px; font-family: var(--mono); }
+.frame.ax-grow .rr .dv { display: none; }
+.frame.ax-grow .rr > .r { flex: 0 0 72px; border-left: 0; border-top: 1px solid var(--line); justify-content: stretch; }
+body.c-daybook .frame.ax-grow .rr > .r { border-top: 3px double var(--line); }
+.frame.ax-grow .undo { width: 100%; height: 72px; justify-content: flex-end; padding-right: 8px; }
+.frame.ax-grow .end { width: 100%; font-size: 36px; line-height: 44px; }
+.frame.ax-grow .end br { display: none; }
+.frame.ax-grow .mh .f { display: none; }
+
+/* ---------- bars ---------- */
+/* Folded Duo: the system tab bar starts at y 595 and is 83 pt tall, bottom inset included (measurements duo-fold-and-keyboard).
+   The pill inside the band is drawn, not measured. */
+.tbar { position: absolute; z-index: 8; display: flex; padding: 4px; border: 1px solid var(--line); border-radius: 999px;
+  background: color-mix(in srgb, var(--paper) 62%, transparent); -webkit-backdrop-filter: blur(18px) saturate(1.8);
+  backdrop-filter: blur(18px) saturate(1.8); box-shadow: 0 8px 24px var(--shadow); }
+.tbar button { flex: 1; min-height: 44px; border: 0; border-radius: 999px; background: transparent; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-family: var(--sys); font-size: 10px; color: var(--ink); }
+.tbar button .g { width: 18px; height: 14px; border: 1.5px solid currentColor; border-radius: 4px; }
+.tbar button.on { color: var(--accent); background: color-mix(in srgb, var(--card) 90%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
+.tbar.sys { left: 16px; right: 16px; top: 603px; height: 56px; }
+.tbar.duo { left: 519.5px; width: 407.5px; top: 593px; height: 64px; }
+.tbar.web { left: 24px; right: 24px; top: 736px; height: 64px; }
+.tbar.web button { font-family: var(--mono); letter-spacing: .09em; }
+.tbar.web button .g { display: none; }
+.home-ind { position: absolute; z-index: 9; bottom: 8px; width: 134px; height: 5px; border-radius: 3px; background: var(--ink); opacity: .8; }
+
+/* open Duo pages, fold 455.5 to 495.5 pt (measurements duo-fold-and-keyboard) */
+.page-l, .page-r { position: absolute; top: 0; bottom: 0; width: 455.5px; overflow: hidden; }
+.page-l { left: 0; } .page-r { left: 495.5px; }
+.fold { position: absolute; top: 0; bottom: 0; left: 455.5px; width: 40px; z-index: 10;
+  background: color-mix(in srgb, var(--line) 70%, var(--paper)); border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
+
+/* ---------- reviewer marks ---------- */
+.mark { position: absolute; z-index: 11; left: 0; right: 0; height: 0; border-top: 1.5px dashed var(--red); pointer-events: none; display: none; }
+.mark span { position: absolute; right: 6px; top: -18px; font-family: var(--mono); font-size: 10px; color: var(--red); background: var(--card); padding: 0 4px; }
+body.ann .mark { display: block; }
+body.ann [data-ann] { outline: 1.5px dashed var(--inkSoft); outline-offset: -2px; }
+body.ann [data-ann].new { outline-color: var(--accent); }
+body.ann [data-ann]::after { content: attr(data-ann); position: absolute; z-index: 7; right: 4px; top: 2px; pointer-events: none;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0; line-height: 1.3; padding: 1px 4px; background: var(--card);
+  color: var(--inkSoft); border: 1px dashed currentColor; text-transform: none; white-space: nowrap; }
+body.ann [data-ann].new::after { color: var(--accent); }
+body.ann .rr[data-ann]::after { top: auto; bottom: 2px; right: auto; left: 4px; }
+body.ann .frame.ax-grow [data-ann]::after { font-size: 12px; }
+.lost { margin: 0; padding: 48px 24px; font-family: var(--cochin); font-size: 17px; color: var(--inkSoft); }
+.flash { position: absolute; z-index: 12; left: 50%; transform: translateX(-50%); bottom: 96px; padding: 6px 10px; border-radius: 6px;
+  background: var(--ink); color: var(--card); font-family: var(--mono); font-size: 11px; pointer-events: none; opacity: 0; transition: opacity 160ms; }
+.flash.on { opacity: 1; }
+</style>
+</head>
+<body class="ann c-bounded">
+<div class="banner" role="note">Sample. No card, seller, order, time, count or device on this page is real.</div>
+
+<div class="chrome">
+  <h1>Undo a recent tap</h1>
+  <div class="kind">Designer kind: informed. Designer: undo-recent-informed-1.</div>
+  <p>The pain: "I tapped the wrong card and now I don't know how to fix it." Two concepts. Each keeps the Recent row above History on the Ledger tab, one-tap undo, frozen rows and fixed row heights. Every frame shares one state, as two synced devices would. Tap Recent, then UNDO on any live row.</p>
+
+  <div class="ctl" role="group" aria-label="Concept">
+    <span class="lab">Concept</span>
+    <span class="opt" data-opt="bounded"><button class="chip" data-set="c=bounded" id="opt-bounded">Bounded panel</button><button class="x" data-hide="bounded" aria-label="Hide the Bounded panel concept">×</button></span>
+    <span class="opt" data-opt="daybook"><button class="chip" data-set="c=daybook" id="opt-daybook">Day book (bold)</button><button class="x" data-hide="daybook" aria-label="Hide the Day book concept">×</button></span>
+  </div>
+  <div class="ctl" role="group" aria-label="Device">
+    <span class="lab">Device</span>
+    <button class="chip" data-set="d=all">All four</button>
+    <button class="chip" data-set="d=folded">Duo folded</button>
+    <button class="chip" data-set="d=open">Duo open</button>
+    <button class="chip" data-set="d=ax5">Duo folded, AX5</button>
+    <button class="chip" data-set="d=web">Phone, 375 web</button>
+  </div>
+  <div class="ctl" role="group" aria-label="State">
+    <span class="lab">State</span>
+    <button class="chip" data-set="s=closed">Closed</button>
+    <button class="chip" data-set="s=open">Open</button>
+    <button class="chip" data-set="s=undone">One undone</button>
+    <button class="chip" data-set="s=inert">All undone, open</button>
+    <button class="chip" data-set="s=nothing">All undone, closed</button>
+    <button class="chip" data-set="s=hidden">Tab entered again</button>
+  </div>
+  <div class="ctl" role="group" aria-label="Options">
+    <span class="lab">Options</span>
+    <span class="opt" data-opt="dev-on"><button class="chip" data-set="dev=on" id="opt-dev-on">Device shown</button><button class="x" data-hide="dev-on" aria-label="Hide the Device shown option">×</button></span>
+    <span class="opt" data-opt="dev-off"><button class="chip" data-set="dev=off" id="opt-dev-off">Device left off</button><button class="x" data-hide="dev-off" aria-label="Hide the Device left off option">×</button></span>
+    <span class="opt" data-opt="ord-on"><button class="chip" data-set="ord=on" id="opt-ord-on">Order date shown</button><button class="x" data-hide="ord-on" aria-label="Hide the Order date shown option">×</button></span>
+    <span class="opt" data-opt="ord-off"><button class="chip" data-set="ord=off" id="opt-ord-off">Seller only</button><button class="x" data-hide="ord-off" aria-label="Hide the Seller only option">×</button></span>
+    <span class="opt" data-opt="ax-grow"><button class="chip" data-set="ax=grow" id="opt-ax-grow">Grow to AX5</button><button class="x" data-hide="ax-grow" aria-label="Hide the Grow to AX5 option">×</button></span>
+    <span class="opt" data-opt="ax-cap"><button class="chip" data-set="ax=cap" id="opt-ax-cap">Stop at xxxLarge</button><button class="x" data-hide="ax-cap" aria-label="Hide the Stop at xxxLarge option">×</button></span>
+  </div>
+  <div class="ctl" role="group" aria-label="Reviewer">
+    <span class="lab">Reviewer</span>
+    <button class="chip" id="reenter">Leave and re-enter Ledger</button>
+    <button class="chip" id="labels" aria-pressed="true">Today / New labels</button>
+    <button class="chip" id="showall">Show hidden options</button>
+  </div>
+  <div class="note" id="note" aria-live="polite"></div>
+</div>
+
+<div class="stage" id="stage">
+  <section class="dev" data-d="folded" id="dev-folded"><div class="cap"><b>Duo, folded.</b> 466 x 678 pt, from the brief and measurements duo-fold-and-keyboard. Tab bar from y 595 (measured). Status bar 20 pt, drawn.</div><div class="fit"><div class="frame" data-device="iphone-duo-folded" style="width:466px;height:678px"><p class="lost">This frame draws with script. Turn script on to see it.</p></div></div></section>
+  <section class="dev wide" data-d="open" id="dev-open"><div class="cap"><b>Duo, open.</b> 951 x 669 pt, fold 455.5 to 495.5 pt. Nothing sits across the fold. Custom bar under the right page: pill 64 pt, lifted 12 pt (DuoBarMetrics).</div><div class="fit"><div class="frame" data-device="iphone-duo-unfolded" style="width:951px;height:669px"><p class="lost">This frame draws with script. Turn script on to see it.</p></div></div></section>
+  <section class="dev" data-d="ax5" id="dev-ax5"><div class="cap"><b>Duo, folded, largest text (AX5).</b> Page scrolled by the person so Recent sits near the top. Sizes from Apple's AX5 and xxxLarge tables.</div><div class="fit"><div class="frame" data-device="iphone-duo-folded" style="width:466px;height:678px"><p class="lost">This frame draws with script. Turn script on to see it.</p></div></div></section>
+  <section class="dev" data-d="web" id="dev-web"><div class="cap"><b>Large phone, web client.</b> Drawn at 375 x 812, the screens-check viewport (test/screens.mjs): no size is written for this phone. Web bar from y 736 (debt recent-undo-under-bar).</div><div class="fit"><div class="frame web" data-device="iphone-regular" style="width:375px;height:812px"><p class="lost">This frame draws with script. Turn script on to see it.</p></div></div></section>
+</div>
+
+<script>
+(() => {
+"use strict";
+/* ---------- sample data: one entry per logged action ---------- */
+const ROWS = [
+  { id: "r1", day: "TODAY", label: "CHECKED", name: "Llanowar Elves", was: 0, now: 1, qty: 1, sell: "Ridgeback TCG", ord: "Nov 3", tm: "14:32", dev: "Duo", st: "live" },
+  { id: "r2", day: "TODAY", label: "COUNT 2 → 3", name: "Counterspell", was: 2, now: 3, qty: 4, sell: "Northgate Games", ord: "Nov 2", tm: "14:31", dev: "Duo", st: "live" },
+  { id: "r3", day: "TODAY", label: "PACKAGE CHECKED", name: "Cobalt Card Co", was: 0, now: 23, qty: 23, sell: "23 lines in the package", ord: "Oct 30", tm: "14:29", dev: "Mac", st: "live", pkg: true },
+  { id: "r4", day: "TODAY", label: "STAMP · REFUNDED", name: "Pinewood Collectibles", sell: "Stamp edited since", ord: "Oct 28", tm: "14:20", dev: "Mac", st: "changed", pkg: true },
+  { id: "r5", day: "TODAY", label: "UN-CHECKED", name: "Swords to Plowshares", was: 1, now: 0, qty: 1, sell: "Northgate Games", ord: "Nov 2", tm: "13:58", dev: "Mac", st: "undone", at: "14:02" },
+  { id: "r6", day: "YESTERDAY", label: "ENVELOPE RECORDED", name: "Plain white, Ohio postmark", was: 0, now: 3, unit: "CARDS", sell: "Orphaned envelope", tm: "19:12", dev: "Duo", st: "live", env: true },
+  { id: "r7", day: "YESTERDAY", label: "ASSIGNED", name: "Brainstorm", was: 0, now: 2, qty: 2, sell: "Ridgeback TCG", ord: "Nov 3", tm: "18:40", dev: "Mac", st: "nothing" },
+  { id: "r8", day: "YESTERDAY", label: "CHECKED", name: "Dark Ritual", was: 0, now: 1, qty: 1, sell: "Harbor Light Games", ord: "Nov 1", tm: "18:02", dev: "Duo", st: "live" },
+  { id: "r9", day: "THU NOV 19", label: "COUNT 0 → 2", name: "Lightning Bolt", was: 0, now: 2, qty: 3, sell: "Northgate Games", ord: "Nov 2", tm: "21:10", dev: "Mac", st: "live" },
+  { id: "r10", day: "THU NOV 19", label: "CHECKED", name: "Sol Ring", was: 0, now: 1, qty: 1, sell: "Cobalt Card Co", ord: "Oct 30", tm: "20:55", dev: "Duo", st: "live" },
+];
+const FRAMES = {
+  folded: { w: 466, h: 678, dev: "Duo", barTop: 595, kind: "duo", device: "iphone-duo-folded" },
+  open:   { w: 951, h: 669, dev: "Duo", barTop: 593, kind: "duo", device: "iphone-duo-unfolded" },
+  ax5:    { w: 466, h: 678, dev: "Duo", barTop: 595, kind: "duo", device: "iphone-duo-folded" },
+  web:    { w: 375, h: 812, dev: "Phone", barTop: 736, kind: "web", device: "iphone-regular" },
+};
+const GAP = 8;            /* the list stops 8 pt above the bar's top edge */
+const PANEL_MAX = 360;    /* the list's cap (decision, Measurements the build must take) */
+
+/* ---------- state ---------- */
+const S = { c: "bounded", d: "all", s: "closed", dev: "on", ord: "on", ax: "grow", hide: new Set() };
+let undone = {};          /* row id -> undo time */
+let open = false;         /* the Recent panel (folded, AX5, web) */
+let entryLive = true;     /* read when the Ledger tab is entered */
+let valueAtOpen = "Undo a tap";
+let rightPick = "recent"; /* the open Duo's right page, Day book only */
+let historyOpen = false;
+let clock = 35;
+const nextTime = () => `14:${String(clock++).padStart(2, "0")}`;
+
+const stateOf = (r) => (undone[r.id] ? "undone" : r.st);
+const anyLive = () => ROWS.some((r) => stateOf(r) === "live");
+const cellValue = () => (open ? valueAtOpen : anyLive() ? "Undo a tap" : "Nothing to undo");
+
+function applyNamedState(s) {
+  undone = {}; open = false; entryLive = true; historyOpen = false; rightPick = "recent"; clock = 35;
+  const undoAll = () => ROWS.forEach((r) => { if (r.st === "live") undone[r.id] = nextTime(); });
+  if (s === "open") open = true;
+  if (s === "undone") { open = true; undone.r1 = nextTime(); }
+  if (s === "inert") { open = true; undoAll(); valueAtOpen = "Undo a tap"; }
+  if (s === "nothing") { undoAll(); }
+  if (s === "hidden") { undoAll(); entryLive = false; rightPick = "history"; }
+  if (s !== "inert") valueAtOpen = anyLive() ? "Undo a tap" : "Nothing to undo";
+}
+
+/* ---------- hash: one URL per state and option ---------- */
+function readHash() {
+  const q = new URLSearchParams(location.hash.slice(1));
+  for (const k of ["c", "d", "s", "dev", "ord", "ax"]) if (q.get(k)) S[k] = q.get(k);
+  S.hide = new Set((q.get("x") || "").split(",").filter(Boolean));
+  const t = q.get("t"); if (t) document.documentElement.dataset.theme = "light";
+}
+function writeHash() {
+  const q = new URLSearchParams();
+  for (const k of ["c", "d", "s", "dev", "ord", "ax"]) q.set(k, S[k]);
+  if (S.hide.size) q.set("x", [...S.hide].join(","));
+  history.replaceState(null, "", "#" + q.toString());
+}
+
+/* ---------- row html ---------- */
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+/* Only another device is named; a row with no device word came from the device in hand (ux-label-once). */
+function devWord(r, fk) { return r.dev === FRAMES[fk].dev ? "" : r.dev.toUpperCase(); }
+function figure(r, st) {
+  /* A stamp has no count; its label already names it, so the figure column stays empty. */
+  if (r.was == null) return { plain: "", fx: "" };
+  const of = r.unit ? r.unit : `OF ${r.qty}`;
+  const plain = r.unit ? `${r.now} ${r.unit.toLowerCase()}` : `${r.now} of ${r.qty}`;
+  /* Day book: the change shown as a ledger correction. Live: the old count struck, the new inked.
+     Undone: the undo is a later write, so the tap's count is struck and the old one inked again. */
+  const a = st === "undone" ? r.now : r.was, b = st === "undone" ? r.was : r.now;
+  const fx = S.c === "daybook"
+    ? `<span class="fig"><span class="was">${a}</span><span class="now">${b}</span></span><span class="of">${of}</span>`
+    : `<span class="fig"><span class="now">${plain}</span></span>`;
+  return { plain, fx };
+}
+function endHTML(st, r) {
+  if (st === "undone") return `<div class="end${r.fresh ? " fresh" : ""}">UNDONE<br> ${esc(undone[r.id] || r.at)}</div>`;
+  if (st === "changed") return `<div class="end">CHANGED<br> SINCE</div>`;
+  if (st === "nothing") return `<div class="end">NOTHING<br> TO UNDO</div>`;
+  return "";
+}
+function rowHTML(r, fk) {
+  const st = stateOf(r);
+  const f = figure(r, st);
+  const subj = r.pkg ? `${r.name}, ${r.ord} order` : r.name;
+  const ord = r.pkg || r.env || !r.ord ? "" : `<span class="od">, order of ${esc(r.ord)}</span>`;
+  const ann = ` class="rr${st === "undone" ? " undone" : ""}"`;
+  const right = st === "live"
+    ? `<button class="undo" data-undo="${r.id}" id="undo-${r.id}-${fk}" aria-label="Undo ${esc(r.label.toLowerCase())} ${esc(subj)}, ${esc(r.sell)}"><span>UNDO</span></button>`
+    : endHTML(st, r);
+  return `<div${ann} data-row="${r.id}" data-fk="${fk}" id="row-${r.id}-${fk}">
+    <div class="l">
+      <div class="k"><span class="a">${esc(r.label)}</span><span class="tm">${esc(r.tm)}</span></div>
+      <div class="n"><span class="nm">${esc(subj)}</span>${f.plain ? `<span class="fg">${esc(f.plain)}</span>` : ""}</div>
+      <div class="s"><span class="sl">${esc(r.sell)}${ord}</span><span class="dv">${devWord(r, fk)}</span></div>
+    </div>
+    <div class="fx">${f.fx}</div>
+    <div class="r">${right}</div>
+  </div>`;
+}
+function listHTML(fk) {
+  let out = "", day = "";
+  for (const r of ROWS) {
+    if (r.day !== day) { day = r.day; out += `<div class="dh" role="heading" aria-level="3">${esc(day)}</div>`; }
+    out += rowHTML(r, fk);
+  }
+  return out;
+}
+
+/* ---------- screen html ---------- */
+const masthead = () => `<div class="mh" aria-hidden="true"><div class="rule"><i></i><span class="seal"></span><i></i></div>
+  <div class="t">MANIFEST</div><div class="f">212 CARDS &nbsp; 38 PACKAGES &nbsp; 9 OUT</div></div>`;
+
+function recentRow(fk, pickedRight) {
+  if (!entryLive) return "";
+  const v = cellValue();
+  const exp = FRAMES[fk] && fk === "open" && S.c === "daybook" ? "" : ` aria-expanded="${open}"`;
+  const isNew = fk !== "web";
+  return `<button class="lrow${pickedRight ? " picked" : ""}${isNew ? " new" : ""}" data-act="recent" id="recent-row-${fk}"${exp}
+     data-ann="${isNew ? "New: Recent row (native)" : "Today: Recent row"}">
+     <span class="t">Recent</span><span class="v${v === "Nothing to undo" ? " soft" : ""}" id="recent-value-${fk}">${v}</span><span class="cr" aria-hidden="true">›</span></button>`;
+}
+function bounded(fk) {
+  if (!open || !entryLive) return "";
+  return `<div class="rp new" id="panel-${fk}" data-ann="${fk === "web" ? "Today: panel. New: stops above the bar" : "New: list stops above the bar"}"><div class="rl" tabindex="0" aria-label="Recent actions" id="list-${fk}">${listHTML(fk)}</div></div>`;
+}
+function dataCard(fk, opts = {}) {
+  const inflow = S.c === "bounded" && opts.panel !== false;
+  return `<div class="lg">DATA</div><div class="card" id="data-card-${fk}">
+    <button class="lrow" data-act="sync" style="border-top:0"><span class="t">Sync</span><span class="v">On</span><span class="cr" aria-hidden="true">›</span></button>
+    ${recentRow(fk, opts.picked)}${inflow ? bounded(fk) : ""}
+    <button class="lrow" data-act="history" aria-expanded="${historyOpen}"${opts.pickHistory ? ' style="box-shadow: inset 0 0 0 2px var(--accent)"' : ""}><span class="t">History</span><span class="v">Saved versions</span><span class="cr" aria-hidden="true">›</span></button>
+    ${historyOpen && opts.historyStub !== false ? `<div class="stub">Saved versions are listed here. History is not drawn in this mockup.</div>` : ""}
+    <button class="lrow" data-act="backup"><span class="t">Backup</span></button>
+  </div>`;
+}
+/* The web Ledger tab's View group (src/app.jsx, "Ledger options"), so Recent sits where a seeded ledger puts it, near y 509. */
+const viewCard = () => `<div class="lg">VIEW</div><div class="card" data-ann="Today: View group, abridged">
+  <button class="lrow" data-act="showing" style="border-top:0"><span class="t">Showing</span><span class="v">● Unreceived</span></button>
+  <button class="lrow" data-act="sorted"><span class="t">Sorted by</span><span class="v">Order date</span><span class="cr" aria-hidden="true">›</span></button>
+  <button class="lrow" data-act="dates"><span class="t">Dates</span><span class="v">All</span><span class="cr" aria-hidden="true">›</span></button></div>`;
+const resetBox = () => `<div class="card reset"><button class="lrow" data-act="reset"><span class="t">Reset all check-ins</span></button></div>`;
+const status = () => `<div class="status" aria-hidden="true"><span>9:41</span><span>●●●</span></div>`;
+function tabBar(kind) {
+  const names = ["Ledger", "Orphaned", "Tally", "Packages"];
+  return `<nav class="tbar ${kind}" aria-label="Tabs" data-ann="Today: tab bar">${names.map((n, i) =>
+    `<button class="${i === 0 ? "on" : ""}" data-tab="${n}"><span class="g" aria-hidden="true"></span>${kind === "web" ? n.toUpperCase() : n}</button>`).join("")}</nav>`;
+}
+const mark = (y, text) => `<div class="mark" style="top:${y}px"><span>${text}</span></div>`;
+
+function frameHTML(fk) {
+  const F = FRAMES[fk];
+  const cls = `frame ${F.kind === "web" ? "web" : ""} ${fk === "ax5" ? "ax-" + S.ax : ""}`;
+  if (fk === "open") return openHTML(F);
+  const slip = S.c === "daybook" && open && entryLive
+    ? `<div class="slip down new" id="slip-${fk}" data-ann="New: slip over the list, docked on the bar"><div class="rl" tabindex="0" aria-label="Recent actions" id="list-${fk}">${listHTML(fk)}</div><div class="foot" aria-hidden="true"></div></div>` : "";
+  const bar = F.kind === "web" ? tabBar("web") : tabBar("sys");
+  return `<div class="${cls}" style="width:${F.w}px;height:${F.h}px" data-device="${F.device}" data-fk="${fk}" id="frame-${fk}">
+    ${status()}
+    <div class="scroller${slip ? " locked" : ""}" id="scroller-${fk}"><div class="pg">
+      ${masthead()}<div class="lh">LEDGER</div>${fk === "web" ? viewCard() : ""}${dataCard(fk)}${resetBox()}
+    </div></div>
+    ${slip}${bar}
+    ${F.kind === "web" ? "" : `<div class="home-ind" style="left:${(F.w - 134) / 2}px"></div>`}
+    ${mark(F.barTop, `bar top, y ${F.barTop}${fk === "web" ? " (measured)" : " (measured)"}`)}
+    <div class="flash" id="flash-${fk}"></div>
+  </div>`;
+}
+function openHTML(F) {
+  const dayBook = S.c === "daybook";
+  let left, right;
+  if (!dayBook) {
+    /* Bounded panel, open pose: the Data card on the left page, where no bar sits, so the list may run to the cap. */
+    left = `<div class="scroller" id="scroller-open"><div class="pg">${masthead()}<div class="lh">LEDGER</div>${dataCard("open")}</div></div>`;
+    right = `<div class="scroller" id="scroller-open-r"><div class="pg"><div class="lg">RESET</div>${resetBox()}</div></div>`;
+  } else {
+    const showRecent = entryLive && rightPick === "recent";
+    left = `<div class="scroller" id="scroller-open"><div class="pg">${masthead()}<div class="lh">LEDGER</div>${dataCard("open", { panel: false, picked: showRecent, pickHistory: rightPick === "history", historyStub: false })}${resetBox()}</div></div>`;
+    right = showRecent
+      ? `<div class="book new" id="book-open" data-ann="New: Recent on the right page"><div class="bh" role="heading" aria-level="2">Recent</div><div class="rl" tabindex="0" aria-label="Recent actions" id="list-open">${listHTML("open")}</div></div>`
+      : `<div class="book" id="book-open"><div class="bh">History</div><div class="rl"><div class="empty">Saved versions are listed here. History is not drawn in this mockup.</div></div></div>`;
+  }
+  return `<div class="frame" style="width:951px;height:669px" data-device="iphone-duo-unfolded" data-fk="open" id="frame-open">
+    <div class="page-l">${status()}${left}</div>
+    <div class="fold" aria-hidden="true"></div>
+    <div class="page-r">${status()}${right}</div>
+    ${tabBar("duo")}
+    <div class="home-ind" style="left:${(951 - 134) / 2 + 247}px"></div>
+    <div class="mark" style="top:593px;left:495.5px"><span>bar top, y 593 (64 + 12, DuoBarMetrics)</span></div>
+    <div class="flash" id="flash-open"></div>
+  </div>`;
+}
+
+/* ---------- layout pass: the two ways the list keeps clear of the bar ---------- */
+function rel(el, frame) {
+  const fr = frame.getBoundingClientRect(), s = fr.width / frame.offsetWidth, r = el.getBoundingClientRect();
+  return { top: (r.top - fr.top) / s, bottom: (r.bottom - fr.top) / s };
+}
+function rowPx(frame) { return parseFloat(getComputedStyle(frame).getPropertyValue("--row-h")); }
+function headPx(frame) { return parseFloat(getComputedStyle(frame).getPropertyValue("--head-h")); }
+function layout(fk) {
+  const frame = document.getElementById("frame-" + fk);
+  if (!frame) return;
+  const F = FRAMES[fk];
+  if (fk === "open") {
+    const list = document.getElementById("list-open");
+    if (list && S.c === "bounded") {
+      const room = F.h - 20 - GAP - rel(list, frame).top;  /* no bar on the left page; 20 pt bottom inset, drawn */
+      list.style.maxHeight = Math.max(rowPx(frame), Math.min(PANEL_MAX, room)) + "px";
+    }
+    return;
+  }
+  if (S.c === "bounded") {
+    const list = document.getElementById("list-" + fk);
+    if (!list) return;
+    /* Read once, at open: the list stops GAP above the bar, never above the 360 cap. */
+    const room = F.barTop - GAP - rel(list, frame).top - 8;
+    /* The 360 pt cap holds one heading and four rows at the default size. At AX5 one row alone is 340 pt,
+       so the cap never drops below one heading and one row. */
+    const h = Math.min(Math.max(PANEL_MAX, headPx(frame) + rowPx(frame)), room);
+    const short = h < headPx(frame) + rowPx(frame);
+    list.style.maxHeight = Math.max(h, 0) + "px";
+    if (short) note(`Bounded panel, ${fk}: only ${Math.round(Math.max(h, 0))} pt fit above the bar, less than one heading and one row. Scroll the page first. See notes item 4.`);
+  } else {
+    const slip = document.getElementById("slip-" + fk), row = document.getElementById("recent-row-" + fk);
+    if (!slip || !row) return;
+    const rr = rel(row, frame), top = parseFloat(getComputedStyle(frame).getPropertyValue("--sat")) || 20;
+    const below = F.barTop - GAP - rr.bottom, above = rr.top - top - GAP;
+    const need = headPx(frame) + 3 * rowPx(frame);
+    /* Opens below when three rows fit there, else toward the larger room, as an iOS menu picks its side. */
+    const down = below >= Math.min(need, F.barTop) || below >= above;
+    slip.classList.toggle("down", down); slip.classList.toggle("up", !down);
+    if (down) { slip.style.top = rr.bottom + "px"; slip.style.bottom = (F.h - F.barTop + GAP) + "px"; }
+    else { slip.style.top = (top + GAP) + "px"; slip.style.bottom = (F.h - rr.top) + "px"; }
+    slip.dataset.ann = down ? "New: slip docked on the bar" : "New: slip opens upward, where the room is";
+  }
+}
+
+/* ---------- render ---------- */
+let noteText = "";
+function note(t) { noteText = noteText ? noteText + " " + t : t; }
+function render(keepScroll = true) {
+  const scrolls = {};
+  if (keepScroll) document.querySelectorAll(".scroller").forEach((el) => (scrolls[el.id] = el.scrollTop));
+  noteText = "";
+  document.body.classList.toggle("c-bounded", S.c === "bounded");
+  document.body.classList.toggle("c-daybook", S.c === "daybook");
+  document.body.classList.toggle("no-dev", S.dev === "off");
+  document.body.classList.toggle("no-ord", S.ord === "off");
+  for (const fk of Object.keys(FRAMES)) {
+    const sec = document.getElementById("dev-" + fk);
+    sec.hidden = !(S.d === "all" || S.d === fk);
+    const fit = sec.querySelector(".fit");
+    fit.innerHTML = frameHTML(fk);
+  }
+  fitAll();
+  for (const fk of Object.keys(FRAMES)) {
+    const sc = document.getElementById("scroller-" + fk);
+    if (sc && keepScroll && scrolls[sc.id] != null) sc.scrollTop = scrolls[sc.id];
+    if (fk === "ax5" && sc) {
+      /* The person scrolled so Recent sits near the top; the page never scrolls by itself. */
+      const row = document.getElementById("recent-row-ax5") || document.getElementById("data-card-ax5");
+      if (row && (!keepScroll || !scrolls[sc.id])) sc.scrollTop = absTop(row, sc) - 8;
+    }
+    layout(fk);
+  }
+  syncChrome();
+}
+function absTop(el, sc) { const a = el.getBoundingClientRect(), b = sc.getBoundingClientRect(); return a.top - b.top + sc.scrollTop; }
+function fitAll() {
+  document.querySelectorAll(".fit").forEach((w) => {
+    const f = w.firstElementChild; if (!f) return;
+    const avail = Math.min(w.parentElement.clientWidth || f.offsetWidth, document.documentElement.clientWidth - 32);
+    const s = Math.min(1, avail / f.offsetWidth);
+    f.style.transform = s < 1 ? `scale(${s})` : "";
+    w.style.width = f.offsetWidth * s + "px"; w.style.height = f.offsetHeight * s + "px";
+  });
+}
+function syncChrome() {
+  document.querySelectorAll("[data-set]").forEach((b) => {
+    const [k, v] = b.dataset.set.split("="); b.setAttribute("aria-pressed", String(S[k] === v));
+  });
+  document.querySelectorAll(".opt").forEach((o) => (o.hidden = S.hide.has(o.dataset.opt)));
+  document.getElementById("labels").setAttribute("aria-pressed", String(document.body.classList.contains("ann")));
+  const live = ROWS.filter((r) => stateOf(r) === "live").length;
+  const base = `${S.c === "bounded" ? "Bounded panel" : "Day book"}. ${live} live rows. Recent cell reads "${entryLive ? cellValue() : "(hidden)"}".`;
+  document.getElementById("note").textContent = base + (noteText ? " " + noteText : "");
+  writeHash();
+}
+function flash(fk, t) {
+  const el = document.getElementById("flash-" + fk); if (!el) return;
+  el.textContent = t; el.classList.add("on"); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove("on"), 1400);
+}
+
+/* ---------- taps ---------- */
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("button"); if (!t) return;
+  if (t.dataset.set) {
+    const [k, v] = t.dataset.set.split("=");
+    S[k] = v;
+    if (k === "s") applyNamedState(v);
+    render(k !== "d" && k !== "s");
+    return;
+  }
+  if (t.dataset.hide) { S.hide.add(t.dataset.hide); syncChrome(); return; }
+  if (t.id === "showall") { S.hide.clear(); syncChrome(); return; }
+  if (t.id === "labels") { document.body.classList.toggle("ann"); syncChrome(); render(); return; }
+  if (t.id === "reenter") {
+    open = false; historyOpen = false; entryLive = anyLive(); rightPick = entryLive ? "recent" : "history";
+    S.s = entryLive ? "closed" : "hidden"; valueAtOpen = cellValue(); render(); return;
+  }
+  if (t.dataset.undo) {
+    const id = t.dataset.undo, r = ROWS.find((x) => x.id === id);
+    if (stateOf(r) !== "live") return;
+    undone[id] = nextTime(); r.fresh = true;
+    /* The row changes in place in every frame: no row is added and none moves. */
+    document.querySelectorAll(`[data-row="${id}"]`).forEach((n) => (n.outerHTML = rowHTML(r, n.dataset.fk)));
+    r.fresh = false;
+    S.s = "undone"; syncChrome();
+    return;
+  }
+  const fk = t.closest(".frame")?.dataset.fk;
+  if (t.dataset.tab) { if (fk) flash(fk, `${t.dataset.tab} tab: not drawn here`); return; }
+  const act = t.dataset.act;
+  if (act === "recent") {
+    if (fk === "open" && S.c === "daybook") { rightPick = "recent"; render(); return; }
+    if (!open) { valueAtOpen = cellValue(); open = true; historyOpen = false; S.s = "open"; }
+    else { open = false; S.s = anyLive() ? "closed" : "nothing"; }
+    render(); return;
+  }
+  if (act === "history") {
+    if (fk === "open" && S.c === "daybook") { rightPick = "history"; render(); return; }
+    /* Recent, History and Sync close one another (history-sync-close-each-other). */
+    open = false; historyOpen = !historyOpen; render(); return;
+  }
+  if (act === "sync") { open = false; historyOpen = false; if (fk) flash(fk, "Sync panel: not drawn here"); render(); return; }
+  if (act) { if (fk) flash(fk, `${t.querySelector(".t")?.textContent}: not drawn here`); }
+});
+window.addEventListener("resize", () => { fitAll(); });
+window.addEventListener("hashchange", () => { readHash(); applyNamedState(S.s); render(false); });
+
+readHash();
+applyNamedState(S.s);
+render(false);
+})();
+</script>
+</body>
+</html>

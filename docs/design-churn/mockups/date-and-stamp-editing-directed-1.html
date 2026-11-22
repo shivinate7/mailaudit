@@ -1,0 +1,1006 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Date and Stamp Editing</title>
+<style>
+/* Colours: shared/tokens.json (design-parchment-ledger). The web app and the native client ship light only,
+   so this page draws one theme. 1 CSS px = 1 pt inside every device frame. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961;
+  --accent:#6F5CA6; --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9;
+  --manila:#EADBBA; --manilaInk:#695832; --amber:#846008;
+  --cochin: Cochin, "Hoefler Text", Palatino, Georgia, serif;
+  --mono: Menlo, ui-monospace, SFMono-Regular, monospace;
+  --sys: -apple-system, system-ui, "SF Pro Text", sans-serif;
+  /* Status bar: unmeasured on the Duo; drawn at the 20 pt floor DuoHandUITests.statusBarFloor uses. */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: env(safe-area-inset-bottom);
+  /* Folded tab bar: top at y 595, 83 pt tall with the bottom inset (measurement duo-fold-and-keyboard). */
+  --tab-h: 83px;
+  /* Open pose: the custom bar under the right page (DuoSpine). 76 pt is the cap a DuoShellUITests comment names. */
+  --spine-tab-h: 76px;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px; --space-6:24px;
+  /* Dynamic Type, Large (default) size, HIG typography page read 2026-11-21 */
+  --t-body:17px; --t-sub:15px; --t-head:17px; --t-call:16px; --t-t2:22px; --t-t3:20px;
+  --micro:10.5px; /* the app's own micro size, HandScreen.micro */
+}
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { background:#E6DCCB; color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+button, input, textarea { font:inherit; color:inherit; }
+button { cursor:pointer; }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+/* ---------- reviewer chrome, outside the screens ---------- */
+.banner { background:var(--manila); color:var(--manilaInk); font:600 13px/1.4 var(--sys); padding:8px 16px; text-align:center; }
+.chrome { max-width:1500px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
+.chrome h1 { font:700 28px/1.2 var(--cochin); margin:0; }
+.kind { margin:0; font-size:15px; }
+.kind b { font-weight:700; }
+.lede { margin:0; max-width:78ch; color:var(--inkSoft); }
+.bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.bar .lab { font-weight:600; min-width:64px; }
+.bar a, .bar button { min-height:44px; padding:0 14px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; font-size:14px; }
+.bar a[aria-current="true"], .bar button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.concept { display:flex; flex-direction:column; gap:12px; padding:16px 0 32px; border-top:1px solid var(--line); }
+.concept[hidden] { display:none; }
+.chead { display:flex; flex-wrap:wrap; gap:12px; align-items:baseline; }
+.chead h2 { font:700 24px/1.2 var(--cochin); margin:0; }
+.chead p { margin:0; max-width:80ch; color:var(--inkSoft); flex:1 1 30ch; }
+.frames { display:flex; flex-wrap:wrap; gap:28px; align-items:flex-start; }
+.fwrap { display:flex; flex-direction:column; gap:8px; max-width:100%; }
+.fcap { font:600 13px/1.3 var(--sys); color:var(--ink); }
+.fcap span { font-weight:400; color:var(--inkSoft); }
+.fit { max-width:100%; overflow-x:auto; }
+.restore { display:none; }
+.restore.show { display:flex; }
+
+/* ---------- device frames ---------- */
+.dev { position:relative; overflow:hidden; background:var(--paper); border:1px solid var(--ink); border-radius:18px; flex:none;
+  font-family:var(--sys); font-size:var(--t-body); line-height:1.3;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.dev[data-device="iphone-duo-folded"] { width:466px; height:678px; }
+.dev[data-device="iphone-duo-unfolded"] { width:951px; height:669px; }
+.dev[data-device="iphone-regular"] { width:420px; height:880px; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 20px; font:600 12px var(--sys); z-index:3; }
+.screen { position:absolute; left:0; right:0; top:var(--sat); bottom:var(--tab-h); display:flex; flex-direction:column; }
+.page { position:absolute; top:0; bottom:0; width:455.5px; overflow:hidden; }
+.page.l { left:0; } .page.r { left:495.5px; }
+.page .screen { bottom:0; }
+.page.r .screen { bottom:var(--spine-tab-h); }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; z-index:6;
+  background:color-mix(in srgb, var(--line) 55%, transparent); border-left:1px solid var(--line); border-right:1px solid var(--line); }
+.tabbar { position:absolute; left:0; right:0; bottom:0; height:var(--tab-h); padding-bottom:var(--sab);
+  background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(12px); border-top:1px solid var(--line);
+  display:grid; grid-template-columns:repeat(4,1fr); align-items:start; padding-top:6px; z-index:4; }
+.page.r .tabbar { height:var(--spine-tab-h); }
+.tab { min-height:48px; display:flex; flex-direction:column; align-items:center; gap:2px; font:500 10px var(--sys); color:var(--inkSoft); background:none; border:0; }
+.tab svg { width:24px; height:24px; }
+.tab[aria-selected="true"] { color:var(--accent); }
+
+/* masthead strip: the three tallies, read live */
+.mastwrap { flex:none; margin:0 16px; display:flex; flex-direction:column; }
+.mast { display:flex; align-items:stretch; border-bottom:1px solid var(--ink); min-height:48px; }
+.mastwrap.inled { margin:0; }
+.seg { display:grid; grid-template-columns:1fr 1fr; padding:2px; border-radius:9px; background:color-mix(in srgb, var(--line) 60%, transparent); flex:none; }
+.seg button { min-height:44px; border:0; border-radius:7px; background:none; font:600 14px var(--sys); color:var(--ink); }
+.seg button[aria-pressed="true"] { background:var(--card); box-shadow:0 1px 2px var(--line); }
+.missing { font:12px/20px var(--mono); color:var(--inkSoft); text-align:center; }
+.missing.pv { color:var(--accent); }
+.mast .cell { flex:1 1 0; display:flex; flex-direction:column; justify-content:center; gap:2px; padding:6px 0; }
+.mast .cell + .cell { border-left:1px solid var(--line); padding-left:10px; }
+.mast .cell:last-child { flex:1.7 1 0; }
+.micro { font:var(--micro)/1.2 var(--mono); letter-spacing:1.2px; text-transform:uppercase; color:var(--inkSoft); }
+.fig { font:600 16px/1.2 var(--mono); color:var(--ink); white-space:nowrap; }
+.fig.pv { color:var(--accent); text-decoration:underline dashed 1px; text-underline-offset:3px; }
+.letter { flex:none; text-align:center; font:700 15px/1 var(--cochin); letter-spacing:6px; padding:10px 0 4px; color:var(--ink); }
+
+/* ruled head row: Showing and Dates (disclosure cells underline their value) */
+.head { flex:none; display:flex; margin:0 16px; border-bottom:1px solid var(--line); min-height:48px; }
+.hcell { flex:1 1 0; display:flex; align-items:center; gap:8px; min-height:48px; background:none; border:0; padding:0; text-align:left; }
+.hcell + .hcell { border-left:1px solid var(--line); padding-left:10px; }
+.hval { font:16px var(--cochin); color:var(--ink); text-decoration:underline 1px var(--line); text-underline-offset:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hval.pv { color:var(--accent); text-decoration-style:dashed; text-decoration-color:var(--accent); }
+.hcell .undo { margin-left:auto; }
+
+/* package list */
+.list { flex:1 1 auto; overflow-y:auto; padding:12px 16px 16px; display:flex; flex-direction:column; gap:12px; }
+.pkg { background:var(--card); border:1px solid var(--line); border-radius:8px; display:flex; flex-direction:column; }
+.pkg .ph { display:flex; align-items:baseline; gap:8px; padding:10px 12px 4px; }
+.pkg .seller { font:700 17px/1.2 var(--cochin); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pkg .cnt { margin-left:auto; font:13px var(--mono); color:var(--inkSoft); white-space:nowrap; }
+.pkg .meta { padding:0 12px 6px; font:12px var(--mono); color:var(--inkSoft); }
+.slot { min-height:48px; display:flex; align-items:center; gap:8px; padding:0 12px; border-top:1px solid var(--line); }
+.slot .lbl { font:var(--micro)/1 var(--mono); letter-spacing:1.2px; text-transform:uppercase; color:var(--inkSoft); width:72px; flex:none; }
+.rowbtn { flex:1 1 auto; min-height:48px; display:flex; align-items:center; gap:8px; background:none; border:0; padding:0; text-align:left; min-width:0; }
+.rowbtn .v { font:16px var(--cochin); color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.rowbtn .v.pv { color:var(--accent); }
+.rowbtn .chev { margin-left:auto; font:14px var(--mono); color:var(--inkSoft); }
+.struck { text-decoration:line-through 1.5px var(--red); color:var(--inkSoft); }
+.band { display:inline-flex; align-items:center; gap:6px; background:var(--manila); color:var(--manilaInk); border-radius:4px; padding:5px 9px;
+  transform:rotate(-3deg); font:600 11px var(--mono); letter-spacing:.8px; text-transform:uppercase; white-space:nowrap; }
+.band.pv { outline:1.5px dashed var(--accent); outline-offset:2px; }
+.band i { font:italic 13px var(--cochin); text-transform:none; letter-spacing:0; font-weight:400; max-width:120px; overflow:hidden; text-overflow:ellipsis; }
+.flag { font:12px var(--mono); color:var(--amber); }
+.more { font:13px var(--cochin); color:var(--inkSoft); text-align:center; padding:4px 0; }
+.undo { min-height:44px; min-width:64px; padding:0 10px; border:1px solid var(--accent); color:var(--accent); background:var(--card);
+  border-radius:8px; font:600 14px var(--sys); flex:none; }
+.note-txt { font:15px var(--cochin); color:var(--ink); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1 1 auto; }
+.gone { min-height:48px; display:flex; align-items:center; gap:8px; padding:0 12px; background:var(--card); border:1px dashed var(--line); border-radius:8px; }
+
+/* ---------- sheet (compact) and editor page (open pose) ---------- */
+.scrim { position:absolute; inset:0; background:color-mix(in srgb, var(--ink) 28%, transparent); z-index:7; }
+.sheet { position:absolute; left:0; right:0; bottom:0; top:calc(var(--sat) + 10px); background:var(--paper); border-radius:12px 12px 0 0;
+  z-index:8; display:flex; flex-direction:column; box-shadow:0 -1px 0 var(--line); }
+.page.r .editor { position:absolute; inset:0; bottom:var(--spine-tab-h); display:flex; flex-direction:column; background:var(--paper); }
+.grab { width:36px; height:5px; border-radius:3px; background:var(--line); margin:6px auto 0; flex:none; }
+.tbar { flex:none; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; min-height:52px; padding:0 8px; }
+.tbar b { font:600 var(--t-head)/1.2 var(--sys); text-align:center; }
+.tb { min-height:44px; min-width:44px; padding:0 10px; background:none; border:0; font:var(--t-body) var(--sys); color:var(--accent); }
+.tb.l { justify-self:start; } .tb.r { justify-self:end; font-weight:600; }
+.tb[aria-disabled="true"] { color:var(--inkSoft); font-weight:400; }
+.body { flex:1 1 auto; overflow-y:auto; padding:4px 16px 24px; display:flex; flex-direction:column; gap:12px; overscroll-behavior:contain; }
+.ctx { display:flex; flex-direction:column; gap:2px; }
+.ctx .seller { font:700 var(--t-t3)/1.2 var(--cochin); }
+.ctx .meta { font:13px var(--mono); color:var(--inkSoft); }
+
+/* calendar: a desk-diary month. Six weeks always, so no tap moves a row. */
+.cal { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:4px 6px 6px; flex:none; }
+.calhead { display:flex; align-items:center; justify-content:space-between; min-height:44px; }
+.calhead b { font:italic 700 var(--t-t3)/1 var(--cochin); }
+.mbtn { width:44px; height:44px; background:none; border:0; font:20px var(--sys); color:var(--accent); border-radius:8px; }
+.mbtn[aria-disabled="true"] { color:var(--line); }
+.wd { display:grid; grid-template-columns:repeat(7,1fr); font:var(--micro)/18px var(--mono); letter-spacing:1px; color:var(--inkSoft); text-align:center; text-transform:uppercase; }
+.wk { display:grid; grid-template-columns:repeat(7,1fr); border-top:1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+.day { position:relative; height:44px; background:none; border:0; padding:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
+.day .n { font:15px/1 var(--mono); width:30px; height:30px; display:grid; place-items:center; border-radius:50%; }
+.day .mk { height:6px; display:flex; gap:3px; }
+.day.blank { pointer-events:none; }
+.day[aria-disabled="true"] .n { color:color-mix(in srgb, var(--inkSoft) 55%, transparent); }
+.day.today .n { box-shadow:inset 0 0 0 1.5px var(--gold); }
+.day.sel .n { background:var(--accent); color:var(--card); box-shadow:none; }
+.day.src .n { text-decoration:line-through 1.5px var(--red); color:var(--inkSoft); }
+.day.inr { background:color-mix(in srgb, var(--accent) 13%, transparent); }
+.day.out .n { color:color-mix(in srgb, var(--inkSoft) 60%, transparent); }
+.day.picked { background:color-mix(in srgb, var(--accent) 10%, transparent); }
+.day.picked .n { box-shadow:inset 0 0 0 1.5px var(--accent); }
+.m { width:6px; height:6px; border-radius:50%; display:block; }
+.m.o { background:var(--ink); border-radius:1px; height:2px; width:8px; margin-top:2px; }
+.m.r { background:var(--green); }
+.m.r.ghost { background:none; box-shadow:inset 0 0 0 1.5px var(--green); }
+.m.s { background:var(--manilaInk); border-radius:1px; }
+.m.s.ghost { background:none; box-shadow:inset 0 0 0 1.5px var(--manilaInk); }
+.key { display:flex; flex-wrap:wrap; gap:4px 12px; font:12px var(--sys); color:var(--inkSoft); }
+.key span { display:inline-flex; align-items:center; gap:4px; }
+
+/* the correction: the old value struck in place, the new one written beside it, as a bookkeeper corrects a ledger */
+.proof { flex:none; min-height:96px; border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:8px; background:var(--card);
+  padding:10px 12px; display:flex; flex-direction:column; gap:4px; }
+.proof.rest { border-left-color:var(--line); }
+.proof .line1 { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 10px; font:var(--t-t3)/1.2 var(--cochin); }
+.proof .was { color:var(--inkSoft); text-decoration:line-through 1.5px var(--red); }
+.proof .now { color:var(--ink); font-weight:700; border-bottom:1.5px solid var(--accent); }
+.proof .arrow { font:14px var(--mono); color:var(--inkSoft); }
+.proof .eff { font:var(--t-sub)/1.35 var(--sys); color:var(--ink); }
+.proof .eff.soft { color:var(--inkSoft); }
+.proof .eff.warn { color:var(--red); }
+.proof .hint { font:var(--t-sub)/1.35 var(--sys); color:var(--inkSoft); }
+.why { font:var(--t-sub)/1.35 var(--sys); color:var(--red); }
+.why:empty { display:none; }
+
+.chips { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.chips.five { grid-template-columns:repeat(5,1fr); }
+.chip { min-height:44px; border:1px solid var(--line); background:var(--card); border-radius:8px; font:14px var(--sys); color:var(--ink); padding:0 6px; }
+.chip[aria-pressed="true"] { border-color:var(--accent); background:color-mix(in srgb, var(--accent) 12%, var(--card)); color:var(--accent); font-weight:600; }
+.cards { display:flex; flex-direction:column; border:1px solid var(--line); border-radius:8px; background:var(--card); }
+.crow { min-height:48px; display:flex; align-items:center; gap:10px; padding:0 12px; background:none; border:0; text-align:left; width:100%; }
+.crow + .crow { border-top:1px solid var(--line); }
+.crow .box { width:24px; height:24px; border:1.5px solid var(--inkSoft); border-radius:6px; flex:none; display:grid; place-items:center; color:var(--card); font-size:15px; }
+.crow[aria-checked="true"] .box { background:var(--accent); border-color:var(--accent); }
+.crow .nm { font:16px var(--cochin); flex:1 1 auto; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.crow .q { font:13px var(--mono); color:var(--inkSoft); }
+.sec { font:600 var(--t-sub)/1.2 var(--sys); color:var(--inkSoft); }
+.notebox { min-height:64px; border:1px solid var(--line); border-radius:8px; background:var(--card); padding:8px 12px; font:16px/1.35 var(--cochin); color:var(--ink); }
+.remove { min-height:44px; align-self:flex-start; padding:0 12px; border:1px solid var(--red); color:var(--red); background:var(--card); border-radius:8px; font:600 14px var(--sys); }
+.remove[data-armed="true"] { background:var(--red); color:var(--card); }
+.blank-page { flex:1; display:flex; flex-direction:column; justify-content:center; gap:8px; padding:32px; text-align:center; color:var(--inkSoft); font:var(--t-call)/1.4 var(--sys); }
+.blank-page b { font:700 var(--t-t3) var(--cochin); color:var(--ink); }
+
+/* ---------- Ledger calendar concept ---------- */
+.dayled { flex:1 1 auto; overflow-y:auto; padding:8px 16px; display:flex; flex-direction:column; gap:8px; min-height:0; }
+.dayled > *, .body > * { flex-shrink:0; }
+.dayled h3 { margin:0; font:italic 700 var(--t-t3)/1.2 var(--cochin); display:flex; align-items:baseline; gap:8px; }
+.dayled h3 small { font:12px var(--mono); color:var(--inkSoft); font-style:normal; font-weight:400; }
+.entry { display:flex; align-items:center; gap:10px; min-height:52px; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:4px 6px 4px 12px; }
+.entry.lift { border:1.5px dashed var(--accent); background:color-mix(in srgb, var(--accent) 8%, var(--card)); }
+.entry .k { width:10px; flex:none; display:flex; justify-content:center; }
+.entry .t { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; }
+.entry .t b { font:700 16px/1.2 var(--cochin); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.entry .t span { font:12px var(--mono); color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.act { min-height:44px; min-width:64px; padding:0 12px; border:1px solid var(--line); background:var(--paper); border-radius:8px; font:600 14px var(--sys); color:var(--accent); flex:none; }
+.act.primary { background:var(--accent); color:var(--card); border-color:var(--accent); }
+.act[aria-disabled="true"] { color:var(--inkSoft); background:var(--paper); border-color:var(--line); }
+.empty { font:15px var(--cochin); color:var(--inkSoft); padding:8px 0; }
+.pbar { flex:none; height:72px; margin:0 8px; display:flex; align-items:center; gap:8px; padding:0 8px 0 12px; border-top:1px solid var(--ink);
+  background:var(--paper); }
+.pbar .msg { flex:1 1 auto; min-width:0; font:var(--t-sub)/1.3 var(--sys); color:var(--ink); display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+.pbar .msg .was { color:var(--inkSoft); text-decoration:line-through 1.5px var(--red); }
+.pbar .msg .now { font-weight:700; border-bottom:1.5px solid var(--accent); }
+.pbar .msg.err { color:var(--red); }
+.lcal { flex:none; padding:0 8px 4px; }
+.lcal .cal { border-radius:8px; }
+.edit { display:flex; flex-direction:column; gap:8px; }
+.edit .eff { font:14px/1.35 var(--sys); }
+.edit .eff.warn { color:var(--red); }
+.edit .eff.soft { color:var(--inkSoft); }
+/* open pose, left page: the month large, with counts */
+.page.l .lcal.big { flex:1 1 auto; display:flex; padding:8px 12px 12px; }
+.page.l .lcal.big .cal { flex:1; display:flex; flex-direction:column; }
+.page.l .lcal.big .weeks { flex:1; display:grid; grid-template-rows:repeat(6,1fr); }
+.page.l .lcal.big .day { height:auto; justify-content:flex-start; padding-top:6px; }
+.cnts { font:10px/1.2 var(--mono); color:var(--inkSoft); display:flex; flex-direction:column; align-items:center; }
+.cnts .r { color:var(--green); } .cnts .s { color:var(--manilaInk); }
+
+/* ---------- AX5: the largest accessibility size (Dynamic Type AX5: body 53, headline 53, subhead 49, title 3 55) ---------- */
+.ax { --t-body:53px; --t-sub:49px; --t-head:53px; --t-call:51px; --t-t3:55px; }
+.ax .mastwrap, .ax .head, .ax .letter { display:none; }
+/* The sheet toolbar and the tab bar keep their default size at AX5, as system bars do; unverified, see notes. */
+.ax .tbar { --t-head:17px; --t-body:17px; }
+.ax .proof .line1 { font-size:var(--t-t3); }
+.ax .proof .arrow { font-size:40px; }
+.ax .ctx .meta, .ax .entry .t span { font-size:36px; }
+.ax .ctx .seller { font-size:var(--t-t3); }
+.daylist { display:flex; flex-direction:column; border:1px solid var(--line); border-radius:8px; background:var(--card); }
+.drow { min-height:64px; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; padding:8px 12px; background:none; border:0; text-align:left; width:100%; }
+.drow + .drow { border-top:1px solid var(--line); }
+.drow .dn { font:var(--t-body)/1.15 var(--sys); }
+.drow .ds { font:36px/1.2 var(--sys); color:var(--inkSoft); }
+.drow[aria-pressed="true"] { background:color-mix(in srgb, var(--accent) 14%, transparent); box-shadow:inset 6px 0 0 var(--accent); }
+.drow[aria-disabled="true"] .dn { color:var(--inkSoft); }
+.drow.src .dn { text-decoration:line-through 3px var(--red); color:var(--inkSoft); }
+.weekbtns { display:flex; flex-direction:column; gap:8px; }
+.weekbtns .act { font-size:40px; min-height:72px; text-align:left; }
+.ax .chips { grid-template-columns:1fr; }
+.ax .chip { font-size:40px; min-height:72px; text-align:left; padding:0 12px; }
+.ax .act, .ax .undo { font-size:40px; min-height:72px; }
+.ax .why { font-size:40px; }
+.ax .pbar { height:auto; max-height:46%; flex-direction:column; align-items:stretch; padding:8px 12px; overflow-y:auto; }
+.ax .pbar .msg { font-size:40px; -webkit-line-clamp:unset; display:block; flex:none; overflow:visible; }
+.ax .pbar .btns { display:flex; gap:8px; flex:none; }
+.ax .pbar .btns > * { flex:1 1 0; padding:0 4px; }
+.ax .pbar { max-height:52%; }
+.ax .entry { flex-direction:column; align-items:stretch; padding:8px 12px; }
+.ax .entry .t b { font-size:var(--t-body); white-space:normal; }
+.ax .entry .t span { white-space:normal; }
+.ax .dayled h3 { font-size:var(--t-t3); flex-direction:column; }
+.ax .dayled h3 small { font-size:36px; }
+.ax .edit .eff { font-size:40px; }
+.ax .notebox { font-size:40px; }
+.ax .remove { font-size:40px; min-height:72px; }
+.ax .sec { font-size:40px; }
+.ax .crow .nm { font-size:40px; white-space:normal; }
+.ax .crow .q { font-size:36px; }
+.ax .key { font-size:36px; }
+.pbar .btns { display:flex; gap:8px; flex:none; }
+
+/* tags: what exists today, and what an option adds */
+[data-tag] { position:relative; }
+body:not(.notags) [data-tag]::after { content:attr(data-tag); position:absolute; right:6px; top:-8px; font:600 10px/13px var(--sys); padding:0 4px;
+  background:var(--paper); white-space:nowrap; z-index:5; pointer-events:none; letter-spacing:0; text-transform:none; transform:none; }
+body:not(.notags) .t-new { outline:2px dashed var(--green); outline-offset:1px; }
+body:not(.notags) .t-new::after { color:var(--green); }
+body:not(.notags) .t-today { outline:2px dashed var(--red); outline-offset:1px; }
+body:not(.notags) .t-today::after { color:var(--red); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .band.landed { animation:land 260ms ease-out; }
+  @keyframes land { from { transform:rotate(-13deg) scale(1.06); } to { transform:rotate(-3deg); } }
+}
+@media (forced-colors: active) {
+  .day.sel .n, .act.primary, .chip[aria-pressed="true"] { forced-color-adjust:none; background:Highlight; color:HighlightText; }
+  .proof, .entry.lift { border:2px solid CanvasText; }
+}
+</style>
+</head>
+<body>
+<div class="banner" role="note">Sample. No seller, card, order, date or figure on this page is real.</div>
+<div class="chrome">
+  <h1>Date and stamp editing</h1>
+  <p class="kind"><b>Designer kind:</b> directed. <b>Direction:</b> calendar-first: pick on a calendar, see the effect live.</p>
+  <p class="lede">Three corrections: the day a package was marked received, the range of order dates in view, and a stamp set wrongly. Each concept below draws all three. Every tap works. Nothing is saved until Save, Move or Show, and each one leaves an Undo where you pressed. Light theme only: the app and the native client ship light (design-parchment-ledger).</p>
+  <div class="bar" role="group" aria-label="Job"><span class="lab">Job</span>
+    <a href="#j=received" data-j="received">Received day</a>
+    <a href="#j=range" data-j="range">Order dates</a>
+    <a href="#j=stamp" data-j="stamp">Stamp</a>
+  </div>
+  <div class="bar" role="group" aria-label="State" id="states"><span class="lab">State</span></div>
+  <div class="bar"><span class="lab">Show</span>
+    <button type="button" id="tags" aria-pressed="true">Today / New tags</button>
+    <button type="button" class="restore" data-restore="sheet">Show Calendar sheet again</button>
+    <button type="button" class="restore" data-restore="ledger">Show Ledger calendar again</button>
+  </div>
+
+  <section class="concept" id="opt-sheet" data-concept="sheet" aria-labelledby="h-sheet">
+    <div class="chead"><h2 id="h-sheet">Calendar sheet</h2>
+      <p>Tap the value you want to correct. A sheet opens on a month with that value marked. Tap the right day: the correction writes itself under the month, the old value struck, the new one beside it, with what else it changes. On the open Duo the editor takes the right page and the left page shows the package changing as you tap.</p>
+      <button type="button" class="act" data-hide="sheet">Hide this concept</button></div>
+    <div class="frames" id="focus-sheet">
+      <div class="fwrap"><div class="fcap">iPhone Duo, folded <span>466 × 678 pt (brief; measurement duo-fold-and-keyboard)</span></div><div class="fit"><div class="dev" data-device="iphone-duo-folded" data-dev="folded" id="sheet-folded" aria-label="Calendar sheet, iPhone Duo, folded"></div></div></div>
+      <div class="fwrap"><div class="fcap">iPhone Duo, open <span>951 × 669 pt, fold strip x 455.5 to 495.5</span></div><div class="fit"><div class="dev" data-device="iphone-duo-unfolded" data-dev="open" id="sheet-open" aria-label="Calendar sheet, iPhone Duo, open"></div></div></div>
+      <div class="fwrap"><div class="fcap">Large phone <span>size not written: drawn at 420 × 880 pt, my pick</span></div><div class="fit"><div class="dev" data-device="iphone-regular" data-dev="phone" id="sheet-phone" aria-label="Calendar sheet, Large phone"></div></div></div>
+      <div class="fwrap"><div class="fcap">iPhone Duo, folded, AX5 text <span>largest accessibility size: body 53 pt</span></div><div class="fit"><div class="dev ax" data-device="iphone-duo-folded" data-dev="ax" id="sheet-ax" aria-label="Calendar sheet, iPhone Duo, folded, AX5 text"></div></div></div>
+    </div>
+  </section>
+
+  <section class="concept" id="opt-ledger" data-concept="ledger" aria-labelledby="h-ledger">
+    <div class="chead"><h2 id="h-ledger">Ledger calendar</h2>
+      <p>The month is the surface. Each day carries its marks: an order placed, cards received, a stamp set. Tap a day to read it. Pick a mark up and tap the day it belongs on. The month sits in the thumb's reach, with the one action bar right above it. On the open Duo the month fills the left page and the day's ledger fills the right.</p>
+      <button type="button" class="act" data-hide="ledger">Hide this concept</button></div>
+    <div class="frames" id="focus-ledger">
+      <div class="fwrap"><div class="fcap">iPhone Duo, folded <span>466 × 678 pt (brief; measurement duo-fold-and-keyboard)</span></div><div class="fit"><div class="dev" data-device="iphone-duo-folded" data-dev="folded" id="ledger-folded" aria-label="Ledger calendar, iPhone Duo, folded"></div></div></div>
+      <div class="fwrap"><div class="fcap">iPhone Duo, open <span>951 × 669 pt, fold strip x 455.5 to 495.5</span></div><div class="fit"><div class="dev" data-device="iphone-duo-unfolded" data-dev="open" id="ledger-open" aria-label="Ledger calendar, iPhone Duo, open"></div></div></div>
+      <div class="fwrap"><div class="fcap">Large phone <span>size not written: drawn at 420 × 880 pt, my pick</span></div><div class="fit"><div class="dev" data-device="iphone-regular" data-dev="phone" id="ledger-phone" aria-label="Ledger calendar, Large phone"></div></div></div>
+      <div class="fwrap"><div class="fcap">iPhone Duo, folded, AX5 text <span>largest accessibility size: body 53 pt</span></div><div class="fit"><div class="dev ax" data-device="iphone-duo-folded" data-dev="ax" id="ledger-ax" aria-label="Ledger calendar, iPhone Duo, folded, AX5 text"></div></div></div>
+    </div>
+  </section>
+</div>
+
+<script>
+"use strict";
+/* ---------- dates: read off the ISO string, never Date.parse (ruled-head-range-picked, test 23.16) ---------- */
+const TODAY = "2026-11-21";
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTH = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const WD = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const P = (s) => { const [y, m, d] = s.split("-").map(Number); return Date.UTC(y, m - 1, d); };
+const F = (t) => new Date(t).toISOString().slice(0, 10);
+const add = (s, n) => F(P(s) + n * 864e5);
+const dow = (s) => new Date(P(s)).getUTCDay();
+const dd = (s) => +s.slice(8) + " " + MON[+s.slice(5, 7) - 1];
+const wdd = (s) => WD[dow(s)] + " " + dd(s);
+const gap = (a, b) => Math.round((P(b) - P(a)) / 864e5);
+const money = (n) => "$" + n.toFixed(2);
+const ymAdd = (ym, n) => { const [y, m] = ym.split("-").map(Number); const t = new Date(Date.UTC(y, m - 1 + n, 1)); return t.toISOString().slice(0, 7); };
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/* the six kinds, in STAMP_KINDS order (src/view-rules.mjs) */
+const KINDS = [["claim","Claim filed"],["refunded","Refunded"],["contacted","Seller contacted"],["reshipped","Reshipped"],["partial","Partial refund"],["other","Other"]];
+const KL = Object.fromEntries(KINDS);
+const isRefund = (k) => k === "refunded" || k === "partial";   /* isRefundStamp */
+const PRESETS = [["all","All time"],[30,"30 days"],[45,"45 days"],[60,"60 days"],[90,"90 days"]];
+
+/* ---------- sample ledger ---------- */
+function seed() {
+  let r = 1234567;
+  const rnd = () => ((r = (r * 48271) % 2147483647) / 2147483647);
+  const sellers = ["Ash Hollow Games","Brightwater Cards","Copperline TCG","Dovetail Collectibles","Elmstead Cards","Foxglove Gaming","Granite Peak TCG","Hollis Card Co.","Ironbark Games","Juniper Cards"];
+  const names = ["Opt","Ponder","Duress","Shock","Giant Growth","Dark Ritual","Disenchant","Mana Leak","Raise the Alarm","Doom Blade","Negate","Unsummon"];
+  const L = [
+    { gk: "p1", seller: "Kestrel TCG", order: "5C1E90A2", ordered: "2026-11-09", stamp: null, cards: [
+      { k: "p1a", n: "Lightning Bolt", q: 2, p: 0.85, day: "2026-11-18" },
+      { k: "p1b", n: "Counterspell", q: 1, p: 1.10, day: "2026-11-18" },
+      { k: "p1c", n: "Swords to Plowshares", q: 1, p: 3.00, day: "2026-11-18" } ] },
+    { gk: "p2", seller: "Pewter Owl Games", order: "7B44D1E0", ordered: "2026-10-28",
+      stamp: { kind: "claim", at: "2026-11-19", note: "Asked support to trace it" }, cards: [
+      { k: "p2a", n: "Brainstorm", q: 2, p: 1.20, day: null },
+      { k: "p2b", n: "Llanowar Elves", q: 1, p: 4.00, day: null } ] },
+    { gk: "p3", seller: "Harbor Lane Cards", order: "A09F3C77", ordered: "2026-11-12", stamp: null, cards: [
+      { k: "p3a", n: "Fatal Push", q: 1, p: 1.75, day: "2026-11-20" },
+      { k: "p3b", n: "Thoughtseize", q: 1, p: 2.50, day: "2026-11-20" },
+      { k: "p3c", n: "Path to Exile", q: 1, p: 2.25, day: null } ] },
+  ];
+  for (let i = 0; i < 38; i++) {
+    let ordered = add("2026-09-21", Math.floor(rnd() * 60));
+    if (ordered >= "2026-10-02" && ordered <= "2026-10-04") ordered = add(ordered, 3); /* keeps one empty span for the empty state */
+    const lag = 6 + Math.floor(rnd() * 9), rd = add(ordered, lag), cards = [];
+    const n = 1 + Math.floor(rnd() * 3);
+    for (let j = 0; j < n; j++) cards.push({ k: `s${i}c${j}`, n: names[Math.floor(rnd() * names.length)], q: rnd() < 0.25 ? 2 : 1,
+      p: Math.round((0.15 + rnd() * 1.6) * 100) / 100, day: rd < TODAY ? rd : null });
+    L.push({ gk: "s" + i, seller: sellers[i % sellers.length], order: (0x10000000 + Math.floor(rnd() * 0xE0000000)).toString(16).toUpperCase(), ordered, stamp: null, cards });
+  }
+  return L;
+}
+const live = (p) => !(p.stamp && isRefund(p.stamp.kind));
+const inRange = (p, f) => !f || (p.ordered >= f.from && p.ordered <= f.to);
+function tally(L, f, override) {
+  let pk = 0, pdone = 0, cin = 0, ct = 0, out = 0, vin = 0, vt = 0;
+  for (const p0 of L) {
+    const p = override && override.gk === p0.gk ? { ...p0, stamp: override.stamp } : p0;
+    if (!live(p) || !inRange(p, f)) continue;
+    pk++; if (p.cards.every((c) => c.day)) pdone++;
+    for (const c of p.cards) { ct += c.q; vt += c.q * c.p; if (c.day) { cin += c.q; vin += c.q * c.p; } else out += c.q * c.p; }
+  }
+  return { pk, pdone, cin, ct, out, vin, vt };
+}
+const qtyOf = (p) => p.cards.reduce((a, c) => a + c.q, 0);
+const outOf = (p) => p.cards.reduce((a, c) => a + (c.day ? 0 : c.q * c.p), 0);
+const recvDays = (p) => [...new Set(p.cards.filter((c) => c.day).map((c) => c.day))].sort();
+function lostFlag(p) {   /* lostMail: 14 and 30 days from the order date; any stamp hides it */
+  if (p.stamp && p.stamp.kind) return "";
+  if (p.cards.every((c) => c.day)) return "";
+  const g = gap(p.ordered, TODAY);
+  return g >= 30 ? `${g}d · refund window closing` : g >= 14 ? `${g}d · may be lost` : "";
+}
+function presetRange(v) { if (v === "all") return null; const n = +v; return { from: add(TODAY, -n), to: TODAY, label: `${n} days`, preset: n }; }
+const rangeLabel = (f) => !f ? "All time" : f.label || (f.from === f.to ? dd(f.from) : `${dd(f.from)} – ${dd(f.to)}`);
+function marksOn(L, day) {
+  let o = 0, r = 0, s = 0;
+  for (const p of L) { if (p.ordered === day) o++; for (const c of p.cards) if (c.day === day) r += c.q; if (p.stamp && p.stamp.kind && p.stamp.at === day) s++; }
+  return { o, r, s };
+}
+const MIN_YM = "2026-09", MAX_YM = TODAY.slice(0, 7);   /* the months the ledger holds orders in */
+
+/* what a stamp change does, said plainly; only what the app really does (ux-statements-are-true) */
+function stampEffects(L, f, p, next) {
+  const was = p.stamp, out = [];
+  const wasR = was && isRefund(was.kind), nowR = next && isRefund(next.kind);
+  if (nowR && !wasR) {
+    const a = tally(L, f), b = tally(L, f, { gk: p.gk, stamp: next });
+    out.push(["warn", `Leaves every count: ${qtyOf(p)} cards and ${money(outOf(p))} leave the still-missing line (${money(a.out)} → ${money(b.out)}).`]);
+    out.push(["", "The package leaves the list on Save. The stamped cell still finds it."]);
+  } else if (wasR && !nowR && next) {
+    out.push(["", `Comes back into every count: ${qtyOf(p)} cards, ${money(outOf(p))} still missing.`]);
+  } else if (!next) {
+    const g = gap(p.ordered, TODAY);
+    out.push(["warn", g >= 14 ? `The lost-mail flag comes back: ordered ${dd(p.ordered)}, ${g} days ago.` : "Counts do not change."]);
+    if (wasR) out.push(["", "The package comes back into every count."]);
+  } else {
+    out.push(["soft", "Counts do not change. Any stamp keeps the lost-mail flag hidden."]);
+  }
+  return out;
+}
+
+/* ---------- frame state ---------- */
+function newState(concept, dev, job) {
+  const st = { concept, dev, job, L: seed(), filter: null, ui: {} };
+  st.ax = dev === "ax";
+  return st;
+}
+const pkgOf = (st, gk) => st.L.find((p) => p.gk === gk);
+
+/* actions: every tap goes through here, for both concepts */
+function act(st, a, v) {
+  const u = st.ui;
+  if (a !== "day" && a !== "cday") u.why = "";
+  switch (a) {
+    /* --- Calendar sheet --- */
+    /* Ledger calendar: List / Month, and a tap on a list value opens the month at that value */
+    case "mode": st.ui = v === "list" ? { list: true, notice: null } : { sel: TODAY, ym: TODAY.slice(0, 7) }; return;
+    case "open-recv":
+    case "open-stamp":
+    case "open-range":
+      if (st.concept === "ledger") {
+        const p = v && pkgOf(st, v);
+        if (a === "open-range") { st.ui = { sel: TODAY, ym: TODAY.slice(0, 7) }; act(st, "range"); return; }
+        const day = a === "open-recv" ? recvDays(p).slice(-1)[0] : p.stamp.at;
+        st.ui = { sel: day, ym: day.slice(0, 7) }; act(st, a === "open-recv" ? "lift" : "sedit", v); return;
+      }
+      if (a === "open-stamp") { const p = pkgOf(st, v);
+        st.ui = { sheet: "stamp", gk: v, kind: p.stamp.kind, day: p.stamp.at, note: p.stamp.note, touched: false, armed: false, ym: p.stamp.at.slice(0, 7) }; break; }
+      if (a === "open-range") { const f = st.filter;
+        st.ui = { sheet: "range", a: f ? f.from : null, b: f ? f.to : null, preset: f ? (f.preset || "custom") : "all", ym: (f ? f.to : TODAY).slice(0, 7) }; break; }
+    { const p = pkgOf(st, v); const src = recvDays(p).slice(-1)[0];
+      st.ui = { sheet: "received", gk: v, src, pick: null, cards: new Set(p.cards.filter((c) => c.day === src).map((c) => c.k)), ym: src.slice(0, 7), notice: u.notice && null }; break; }
+    case "hand": st.ui = { why: "Card in Hand opens over both pages, as it does today. It is not drawn in this mockup." }; break;
+    case "mon": { const n = ymAdd(u.ym, +v); if (n >= MIN_YM && n <= MAX_YM) u.ym = n; break; }
+    case "day": {
+      const off = dayOff(st, v);
+      if (off) { u.why = off; break; }
+      u.why = "";
+      if (u.sheet === "received") u.pick = v === u.src ? null : v;
+      else if (u.sheet === "range") { if (!u.a || u.b) { u.a = v; u.b = null; } else if (v < u.a) { u.b = u.a; u.a = v; } else u.b = v; u.preset = "custom"; }
+      else if (u.sheet === "stamp") { u.day = v; u.touched = true; u.armed = false; }
+      break; }
+    case "card": u.cards.has(v) ? u.cards.delete(v) : u.cards.add(v); break;
+    case "preset": { const r = presetRange(v); u.preset = v === "all" ? "all" : +v; u.a = r ? r.from : null; u.b = r ? r.to : null; if (r) u.ym = r.to.slice(0, 7); break; }
+    case "clear": u.preset = "all"; u.a = u.b = null; break;
+    case "kind": { const p = pkgOf(st, u.gk); u.kind = v; u.armed = false;
+      /* a new kind re-dates the stamp to today, as nextStamp does; a tapped day wins */
+      if (!u.touched) { u.day = v === p.stamp.kind ? p.stamp.at : TODAY; u.ym = u.day.slice(0, 7); } break; }
+    case "cancel": st.ui = { notice: null }; break;
+    case "remove": { if (!u.armed) { u.armed = true; break; }
+      const p = pkgOf(st, u.gk), prev = { ...p.stamp }; p.stamp = null;
+      st.ui = { notice: { at: p.gk, kind: "stamp", text: `Stamp removed from ${p.seller}.`, undo: { type: "stamp", gk: p.gk, prev, next: null } } }; break; }
+    case "save": save(st); break;
+    case "undo": undo(st); break;
+
+    /* --- Ledger calendar --- */
+    case "cday": {
+      if (u.lift) { const off = dayOff(st, v); if (off) { u.why = off; break; } u.why = ""; u.to = v === u.lift.from ? null : v; break; }
+      if (u.range) { if (!u.a || u.b) { u.a = v; u.b = null; } else if (v < u.a) { u.b = u.a; u.a = v; } else u.b = v; break; }
+      if (u.edit) { const off = dayOff(st, v); if (off) { u.why = off; break; } u.why = ""; u.edit.day = v; u.edit.touched = true; u.edit.armed = false; break; }
+      u.sel = v; u.why = ""; u.notice = null; break; }
+    case "lift": { const p = pkgOf(st, v); u.lift = { gk: v, from: u.sel, keys: p.cards.filter((c) => c.day === u.sel).map((c) => c.k) }; u.to = null; u.notice = null; break; }
+    case "putback": u.lift = null; u.to = null; u.why = ""; break;
+    case "move": { const p = pkgOf(st, u.lift.gk), moved = [];
+      for (const c of p.cards) if (u.lift.keys.includes(c.k) && c.day === u.lift.from) { c.day = u.to; moved.push(c.k); }
+      const q = p.cards.filter((c) => moved.includes(c.k)).reduce((s, c) => s + c.q, 0);
+      u.notice = { text: `Moved ${q} cards from ${p.seller} to ${dd(u.to)}.`, undo: { type: "recv", gk: p.gk, keys: moved, from: u.lift.from, to: u.to } };
+      u.sel = u.to; u.ym = u.to.slice(0, 7); u.lift = null; u.to = null; break; }
+    case "range": u.range = true; u.a = u.b = null; u.notice = null; u.edit = null; break;
+    case "rcancel": u.range = false; u.a = u.b = null; break;
+    case "rshow": { const prev = st.filter; st.filter = { from: u.a, to: u.b || u.a };
+      u.range = false; u.notice = { text: `Showing orders from ${rangeLabel(st.filter)}.`, undo: { type: "range", prev } }; u.a = u.b = null; break; }
+    case "rall": { const prev = st.filter; st.filter = null; u.notice = { text: "Showing all time.", undo: { type: "range", prev } }; break; }
+    case "sedit": { const p = pkgOf(st, v); u.edit = { gk: v, kind: p.stamp.kind, day: p.stamp.at, touched: false, armed: false }; u.notice = null; break; }
+    case "skind": { const p = pkgOf(st, u.edit.gk); u.edit.kind = v; u.edit.armed = false;
+      if (!u.edit.touched) u.edit.day = v === p.stamp.kind ? p.stamp.at : TODAY; u.ym = u.edit.day.slice(0, 7); break; }
+    case "scancel": u.edit = null; u.why = ""; break;
+    case "sremove": { if (!u.edit.armed) { u.edit.armed = true; break; }
+      const p = pkgOf(st, u.edit.gk), prev = { ...p.stamp }; p.stamp = null;
+      u.notice = { text: `Stamp removed from ${p.seller}.`, undo: { type: "stamp", gk: p.gk, prev, next: null } }; u.edit = null; break; }
+    case "ssave": { const p = pkgOf(st, u.edit.gk), prev = { ...p.stamp }, next = { kind: u.edit.kind, at: u.edit.day, note: prev.note };
+      p.stamp = next; u.notice = { text: `Stamp saved: ${KL[next.kind]}, ${dd(next.at)}.`, undo: { type: "stamp", gk: p.gk, prev, next } };
+      u.sel = next.at; u.edit = null; break; }
+  }
+}
+function dayOff(st, day) {
+  const u = st.ui;
+  if (day > TODAY) return `${dd(day)} has not happened yet.`;
+  if (st.concept === "sheet" && u.sheet === "range") return "";
+  if (st.concept === "ledger" && u.range) return "";
+  const gk = u.gk || (u.lift && u.lift.gk) || (u.edit && u.edit.gk);
+  const p = gk && pkgOf(st, gk);
+  if (p && day < p.ordered) return `${dd(day)} is before this order was placed (${dd(p.ordered)}).`;
+  return "";
+}
+function save(st) {
+  const u = st.ui;
+  if (u.sheet === "received") {
+    if (!u.pick || !u.cards.size) return;
+    const p = pkgOf(st, u.gk), moved = [];
+    for (const c of p.cards) if (u.cards.has(c.k) && c.day === u.src) { c.day = u.pick; moved.push(c.k); }
+    const q = p.cards.filter((c) => moved.includes(c.k)).reduce((s, c) => s + c.q, 0);
+    st.ui = { notice: { at: p.gk, kind: "recv", text: `Received ${dd(u.pick)}`, sub: `${q} cards moved from ${dd(u.src)}`, undo: { type: "recv", gk: p.gk, keys: moved, from: u.src, to: u.pick } } };
+  } else if (u.sheet === "range") {
+    if (u.preset !== "all" && !u.a) return;
+    const prev = st.filter;
+    const next = u.preset === "all" ? null : (u.preset === "custom" ? { from: u.a, to: u.b || u.a } : presetRange(u.preset));
+    if (next && tally(st.L, next).pk === 0) return;
+    st.filter = next;
+    st.ui = { notice: { at: "dates", kind: "range", undo: { type: "range", prev } } };
+  } else if (u.sheet === "stamp") {
+    const p = pkgOf(st, u.gk), prev = { ...p.stamp }, next = { kind: u.kind, at: u.day, note: u.note };
+    if (prev.kind === next.kind && prev.at === next.at) { st.ui = {}; return; }
+    p.stamp = next;
+    st.ui = { notice: { at: p.gk, kind: "stamp", text: `${KL[next.kind]}, ${dd(next.at)}`, undo: { type: "stamp", gk: p.gk, prev, next } } };
+  }
+}
+/* Undo takes back only its own change (undo-removes-only-its-delta): a card moved again since keeps its new day. */
+function undo(st) {
+  const n = st.ui.notice; if (!n || !n.undo) return;
+  const d = n.undo;
+  if (d.type === "recv") { const p = pkgOf(st, d.gk); for (const c of p.cards) if (d.keys.includes(c.k) && c.day === d.to) c.day = d.from; }
+  if (d.type === "range") st.filter = d.prev;
+  if (d.type === "stamp") { const p = pkgOf(st, d.gk); p.stamp = d.prev; }
+  st.ui.notice = { at: n.at, kind: n.kind, text: "Undone.", undone: true };
+}
+
+/* ---------- drawing ---------- */
+const ICON = {
+  ledger: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M5.5 18.5l2.1-2.1M16.4 7.6l2.1-2.1"/></svg>',
+  orphaned: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3.5 7l8.5 6 8.5-6"/></svg>',
+  tally: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 4L7 20M17 4l-2 16M4 9h16M3 15h16"/></svg>',
+  packages: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5L12 12l8.5-4.5M12 12v9"/></svg>',
+};
+const tabbar = () => `<nav class="tabbar" aria-label="Sections">${[["ledger","Ledger"],["orphaned","Orphaned"],["tally","Tally"],["packages","Packages"]]
+  .map(([k, t]) => `<button type="button" class="tab" role="tab" aria-selected="${k === "packages"}" tabindex="-1">${ICON[k]}<span>${t}</span></button>`).join("")}</nav>`;
+const status = () => `<div class="status" aria-hidden="true"><span>9:41</span><span>●●●</span></div>`;
+
+/* the three ruled tallies, cards : packages : value at 1 : 1 : 1.7, each done/total, then the exact
+   still-missing line (masthead-tallies-unequal-thirds). Whole dollars under 1k, as compact() writes them. */
+function mast(st, pv) {
+  const t = tally(st.L, pv ? pv.f : st.filter, pv && pv.ov), c = pv ? " pv" : "";
+  const usd = (n) => "$" + Math.round(n);
+  return `<div class="mastwrap t-today" data-tag="Today: tallies"><div class="mast"><div class="cell"><span class="micro">Cards</span><span class="fig${c}">${t.cin}/${t.ct}</span></div>`
+    + `<div class="cell"><span class="micro">Packages</span><span class="fig${c}">${t.pdone}/${t.pk}</span></div>`
+    + `<div class="cell"><span class="micro">Value</span><span class="fig${c}">${usd(t.vin)}/${usd(t.vt)}</span></div></div>`
+    + `<div class="missing${c}">${t.ct - t.cin} still missing · ${money(t.out)}</div></div>`;
+}
+
+/* a month. Six week rows always, so a tap never changes the grid's height. */
+function cal(st, ym, cell, actName, big) {
+  const first = ym + "-01", start = add(first, -dow(first));
+  let rows = "";
+  for (let w = 0; w < 6; w++) {
+    let cells = "";
+    for (let d = 0; d < 7; d++) {
+      const day = add(start, w * 7 + d);
+      if (day.slice(0, 7) !== ym) { cells += `<span class="day blank" aria-hidden="true"></span>`; continue; }
+      const c = cell(day);
+      cells += `<button type="button" class="day ${c.cls || ""}" data-a="${actName}" data-v="${day}"${c.off ? ' aria-disabled="true"' : ""}${c.pressed ? ' aria-pressed="true"' : ""} aria-label="${esc(wdd(day) + (c.aria ? ", " + c.aria : ""))}"><span class="n">${+day.slice(8)}</span><span class="mk">${c.marks || ""}</span>${big && c.cnts ? c.cnts : ""}</button>`;
+    }
+    rows += `<div class="wk">${cells}</div>`;
+  }
+  const prev = ymAdd(ym, -1) >= MIN_YM, next = ymAdd(ym, 1) <= MAX_YM;
+  return `<div class="cal t-new" data-tag="New: calendar"><div class="calhead"><button type="button" class="mbtn" data-a="mon" data-v="-1" aria-label="Earlier month"${prev ? "" : ' aria-disabled="true"'}>‹</button>`
+    + `<b>${MONTH[+ym.slice(5) - 1]} ${ym.slice(0, 4)}</b><button type="button" class="mbtn" data-a="mon" data-v="1" aria-label="Later month"${next ? "" : ' aria-disabled="true"'}>›</button></div>`
+    + `<div class="wd" aria-hidden="true">${WD.map((w) => `<span>${w.slice(0, 2)}</span>`).join("")}</div><div class="weeks">${rows}</div></div>`;
+}
+/* AX5: the month becomes a list of the days of one week, one day per row */
+function dayList(st, ym, cell, actName, around) {
+  const base = around || TODAY, start = add(base, -dow(base));
+  let rows = "";
+  for (let i = 0; i < 7; i++) {
+    const day = add(start, i), c = cell(day);
+    rows += `<button type="button" class="drow ${c.cls || ""}" data-a="${actName}" data-v="${day}"${c.off ? ' aria-disabled="true"' : ""} aria-pressed="${!!c.pressed}"><span class="dn">${wdd(day)}</span>${c.words ? `<span class="ds">${c.words}</span>` : ""}</button>`;
+  }
+  return `<div class="weekbtns"><button type="button" class="act" data-a="wk" data-v="-7">Earlier week</button></div><div class="daylist t-new" data-tag="New: day list">${rows}</div><div class="weekbtns"><button type="button" class="act" data-a="wk" data-v="7">Later week</button></div>`;
+}
+const mk = (cls) => `<i class="m ${cls}"></i>`;
+
+/* ===== Calendar sheet ===== */
+function sheetPage(st, pv) {
+  const u = st.ui, f = pv && pv.f !== undefined ? pv.f : st.filter;
+  const n = u.notice;
+  /* the tallies show a preview only when the pending change moves them */
+  const moves = pv && (pv.f !== undefined || (pv.ov && isRefund(pv.ov.stamp.kind) !== isRefund(pkgOf(st, pv.ov.gk).stamp.kind)));
+  let h = `<div class="letter" aria-hidden="true">MANIFEST</div>` + mast(st, moves ? pv : null);
+  const datesUndo = n && n.at === "dates";
+  const dval = pv && pv.f !== undefined ? `<span class="hval pv">${esc(rangeLabel(pv.f))}</span>` : `<span class="hval">${esc(rangeLabel(st.filter))}</span>`;
+  h += `<div class="head"><div class="hcell"><span class="micro">Showing</span><span class="hval">Unreceived</span></div>`
+    + `<div class="hcell t-today" data-tag="Today on web: date cell"><button type="button" class="rowbtn" data-a="open-range" aria-label="Order dates, ${esc(rangeLabel(st.filter))}"><span class="micro">Dates</span>${datesUndo && n.undone ? `<span class="hval">Undone</span>` : dval}</button>${datesUndo && !n.undone ? `<button type="button" class="undo" data-a="undo">Undo</button>` : ""}</div></div>`;
+  h += `<div class="list">`;
+  /* the open Duo's Packages head offers Card in Hand today (PackagesTab, HandScreen.swift) */
+  if (st.dev === "open") h += `<div class="t-today" data-tag="Today: Card in Hand"><button type="button" class="act" data-a="hand" aria-label="Card in Hand, not drawn here">Card in Hand</button></div>`;
+  const shown = st.L.slice(0, 3);
+  for (const p of shown) {
+    const ov = pv && pv.ov && pv.ov.gk === p.gk ? pv.ov : null;
+    if (!inRange(p, f)) continue;
+    if (!live(p)) {
+      if (n && n.at === p.gk && !n.undone) h += `<div class="gone"><span class="note-txt">${esc(p.seller)}: ${esc(KL[p.stamp.kind])}, out of every count.</span><button type="button" class="undo" data-a="undo">Undo</button></div>`;
+      continue;
+    }
+    h += pkgCard(st, p, ov, pv);
+  }
+  const rest = st.L.slice(3).filter((p) => live(p) && inRange(p, f)).length;
+  h += `<div class="more">${rest} more packages</div></div>`;
+  return h;
+}
+function pkgCard(st, p, ov, pv) {
+  const n = st.ui.notice, flag = lostFlag(p), days = recvDays(p), got = p.cards.filter((c) => c.day).reduce((a, c) => a + c.q, 0);
+  let h = `<article class="pkg"><div class="ph"><span class="seller">${esc(p.seller)}</span><span class="cnt">${got} of ${qtyOf(p)}</span></div>`
+    + `<div class="meta">Ordered ${dd(p.ordered)} · ${money(p.cards.reduce((a, c) => a + c.q * c.p, 0))}${flag ? ` · <span class="flag">${flag}</span>` : ""}</div>`;
+  /* received day: new. Shown only when a card is in. */
+  if (days.length) {
+    const last = days[days.length - 1];
+    const pick = pv && pv.recv && pv.recv.gk === p.gk ? pv.recv : null;
+    let val = `<span class="v">${dd(last)}${days.length > 1 ? ` <span class="flag" style="color:var(--inkSoft)">and ${days.length - 1} other day</span>` : ""}</span>`;
+    if (pick) val = `<span class="v"><span class="struck">${dd(pick.src)}</span> <span class="v pv">${dd(pick.pick)}</span></span>`;
+    if (n && n.at === p.gk && n.kind === "recv")
+      h += `<div class="slot t-new" data-tag="New: received day"><span class="lbl">Received</span><span class="note-txt">${n.undone ? "Undone. " + dd(last) : esc(n.text) + `<span style="color:var(--inkSoft)"> · ${esc(n.sub)}</span>`}</span>${n.undone ? "" : `<button type="button" class="undo" data-a="undo">Undo</button>`}</div>`;
+    else h += `<div class="slot t-new" data-tag="New: received day"><span class="lbl">Received</span><button type="button" class="rowbtn" data-a="open-recv" data-v="${p.gk}" aria-label="Received ${dd(last)}, change the day">${val}<span class="chev">›</span></button></div>`;
+  }
+  if (p.stamp && p.stamp.kind) {
+    const s = ov ? ov.stamp : p.stamp;
+    const band = s ? `<span class="band${ov ? " pv" : ""}${n && n.at === p.gk && !n.undone ? " landed" : ""}">${esc(KL[s.kind])} · ${s.at.slice(5)}${s.note ? ` <i>${esc(s.note)}</i>` : ""}</span>` : `<span class="band pv"><span class="struck">${esc(KL[p.stamp.kind])}</span></span>`;
+    if (n && n.at === p.gk && n.kind === "stamp" && !n.undone)
+      h += `<div class="slot t-today" data-tag="Today: stamp band">${band}<button type="button" class="undo" data-a="undo" style="margin-left:auto">Undo</button></div>`;
+    else h += `<div class="slot t-today" data-tag="Today: stamp band"><button type="button" class="rowbtn" data-a="open-stamp" data-v="${p.gk}" aria-label="Stamp ${esc(KL[p.stamp.kind])}, edit">${band}<span class="chev">›</span></button></div>`;
+  } else if (n && n.at === p.gk && n.kind === "stamp") {
+    h += `<div class="slot"><span class="note-txt">${n.undone ? "Undone." : esc(n.text)}</span>${n.undone ? "" : `<button type="button" class="undo" data-a="undo">Undo</button>`}</div>`;
+  }
+  return h + `</article>`;
+}
+function toolbar(title, canSave, saveLabel, reason) {
+  return `<div class="tbar"><button type="button" class="tb l" data-a="cancel" data-first>Cancel</button><b>${title}</b>`
+    + `<button type="button" class="tb r" data-a="save"${canSave ? "" : ` aria-disabled="true" title="${esc(reason)}" aria-describedby="why-save"`}>${saveLabel}</button></div>`;
+}
+/* The refusal line sits inside the correction box, where the eye already is, so nothing under the finger moves. */
+const withWhy = (proof, why) => proof.slice(0, -6) + `<div class="why" id="why-save" role="status">${esc(why || "")}</div></div>`;
+function editorBody(st) {
+  const u = st.ui;
+  if (u.sheet === "received") {
+    const p = pkgOf(st, u.gk);
+    const cell = (day) => {
+      const m = marksOn([p], day), off = day > TODAY || day < p.ordered;
+      let cls = (day === TODAY ? " today" : "") + (day === u.pick ? " sel" : "") + (u.pick && day === u.src ? " src" : "");
+      let marks = (m.o ? mk("o") : "") + (m.r ? mk("r" + (u.pick && day === u.src ? " ghost" : "")) : "") + (day === u.pick ? mk("r") : "");
+      return { cls, off, marks, pressed: day === u.pick, aria: [m.o && "ordered", m.r && "received", off && "not available"].filter(Boolean).join(", "),
+        words: [m.o && "Ordered", m.r && `${m.r} received`, day === u.pick && "New day"].filter(Boolean).join(" · ") };
+    };
+    const moving = p.cards.filter((c) => u.cards.has(c.k)), q = moving.reduce((a, c) => a + c.q, 0);
+    let proof;
+    if (!u.pick) proof = `<div class="proof rest t-new" data-tag="New: correction"><div class="hint">Received ${dd(u.src)}. Tap the day the package really came.</div><div class="eff soft">Days before the order (${dd(p.ordered)}) and after today are off.</div></div>`;
+    else proof = `<div class="proof t-new" data-tag="New: correction"><div class="line1"><span class="was">${dd(u.src)}</span><span class="arrow">→</span><span class="now">${wdd(u.pick)}</span></div>`
+      + `<div class="eff">${q ? `${q} of ${qtyOf(p)} cards move to ${dd(u.pick)}.` : "No cards picked, so nothing moves."}</div>`
+      + `<div class="eff soft">Nothing else changes: the lost-mail flag counts from the order date. Recent gets one row you can undo.</div></div>`;
+    proof = withWhy(proof, u.why);
+    const grid = st.ax ? dayList(st, u.ym, cell, "day", u.wk || u.pick || u.src) : cal(st, u.ym, cell, "day");
+    const cards = `<div class="sec">Cards received ${dd(u.src)}</div><div class="cards" role="group" aria-label="Cards to move">${p.cards.filter((c) => c.day === u.src || u.cards.has(c.k)).map((c) =>
+      `<button type="button" class="crow" role="checkbox" aria-checked="${u.cards.has(c.k)}" data-a="card" data-v="${c.k}"><span class="box">${u.cards.has(c.k) ? "✓" : ""}</span><span class="nm">${esc(c.n)}</span><span class="q">×${c.q}</span></button>`).join("")}</div>`;
+    const ctx = `<div class="ctx"><span class="seller">${esc(p.seller)}</span><span class="meta">Order ${p.order} · ordered ${dd(p.ordered)}</span></div>`;
+    const why = "";
+    return { title: "Received day", can: !!u.pick && q > 0, label: "Save", reason: !u.pick ? "Pick a new day first" : "Pick at least one card",
+      body: ctx + proof + why + grid + cards };
+  }
+  if (u.sheet === "range") {
+    const cell = (day) => {
+      const m = marksOn(st.L, day), lo = u.a, hi = u.b || u.a, inr = lo && day >= lo && day <= hi;
+      const cls = (day === TODAY ? " today" : "") + ((day === u.a || day === u.b) ? " sel" : inr ? " inr" : "") + (day > TODAY ? " out" : "");
+      return { cls, off: day > TODAY, marks: m.o ? mk("o") + (m.o > 1 ? mk("o") : "") : "", pressed: day === u.a || day === u.b,
+        aria: m.o ? `${m.o} orders` : "no orders", words: m.o ? `${m.o} order${m.o > 1 ? "s" : ""}` : "No orders" };
+    };
+    const now = tally(st.L, st.filter);
+    const next = u.preset === "all" ? null : u.a ? { from: u.a, to: u.b || u.a } : undefined;
+    let proof, can = true, reason = "";
+    if (next === undefined) { proof = `<div class="proof rest t-new" data-tag="New: correction"><div class="hint">Tap the first order day, then the last. Or pick a span above.</div><div class="eff soft">Now: ${rangeLabel(st.filter)} · ${now.pk} packages.</div></div>`; can = false; reason = "Pick a first day"; }
+    else {
+      const t = tally(st.L, next);
+      if (!t.pk) { proof = `<div class="proof t-new" data-tag="New: correction"><div class="line1"><span class="now">${rangeLabel(next)}</span></div><div class="eff warn">No orders were placed ${next.from === next.to ? "on that day" : "in those days"}.</div><div><button type="button" class="act" data-a="clear">Clear dates</button></div></div>`; can = false; reason = "No orders in that span"; }
+      else proof = `<div class="proof t-new" data-tag="New: correction"><div class="line1"><span class="was">${esc(rangeLabel(st.filter))}</span><span class="arrow">→</span><span class="now">${esc(u.preset !== "custom" && u.preset !== "all" ? `${u.preset} days` : rangeLabel(next))}</span></div>`
+        + `<div class="eff">${t.pk} packages, ${t.cin} of ${t.ct} cards in, ${money(t.out)} still missing.</div>`
+        + `<div class="eff soft">Was ${now.pk} packages and ${money(now.out)}. Tally and Packages both follow.${u.a && !u.b && u.preset === "custom" ? " Tap a last day, or Show this one day." : ""}</div></div>`;
+    }
+    proof = withWhy(proof, u.why);
+    const chips = `<div class="chips five" role="group" aria-label="Spans">${PRESETS.map(([k, t]) => `<button type="button" class="chip" data-a="preset" data-v="${k}" aria-pressed="${String(u.preset) === String(k)}">${t}</button>`).join("")}</div>`;
+    const grid = st.ax ? dayList(st, u.ym, cell, "day", u.wk || u.b || u.a || TODAY) : cal(st, u.ym, cell, "day");
+    const why = "";
+    return { title: "Order dates", can, label: "Show", reason, body: st.ax ? proof + chips + grid : proof + why + chips + grid };
+  }
+  if (u.sheet === "stamp") {
+    const p = pkgOf(st, u.gk);
+    const cell = (day) => {
+      const m = marksOn([p], day), off = day > TODAY || day < p.ordered, isOld = day === p.stamp.at, moved = u.day !== p.stamp.at;
+      const cls = (day === TODAY ? " today" : "") + (day === u.day ? " sel" : "") + (moved && isOld ? " src" : "");
+      return { cls, off, pressed: day === u.day, marks: (m.o ? mk("o") : "") + (isOld ? mk("s" + (moved ? " ghost" : "")) : "") + (day === u.day && moved ? mk("s") : ""),
+        aria: [m.o && "ordered", isOld && "stamp day", off && "not available"].filter(Boolean).join(", "), words: [m.o && "Ordered", isOld && "Stamp day", day === u.day && moved && "New day"].filter(Boolean).join(" · ") };
+    };
+    const next = { kind: u.kind, at: u.day, note: u.note }, same = next.kind === p.stamp.kind && next.at === p.stamp.at;
+    const effs = stampEffects(st.L, st.filter, p, next);
+    let proof = same ? `<div class="proof rest t-new" data-tag="New: correction"><div class="hint">${esc(KL[p.stamp.kind])}, set ${dd(p.stamp.at)}. Pick the right kind, or tap the day it really happened.</div><div class="eff soft">A new kind starts on today, as it does now. A tapped day wins.</div></div>`
+      : `<div class="proof t-new" data-tag="New: correction"><div class="line1"><span class="was">${esc(KL[p.stamp.kind])} · ${dd(p.stamp.at)}</span><span class="arrow">→</span><span class="now">${esc(KL[u.kind])} · ${dd(u.day)}</span></div>${effs.map(([c, t]) => `<div class="eff ${c}">${esc(t)}</div>`).join("")}</div>`;
+    proof = withWhy(proof, u.why);
+    const chips = `<div class="chips" role="group" aria-label="Stamp kind">${KINDS.map(([k, t]) => `<button type="button" class="chip" data-a="kind" data-v="${k}" aria-pressed="${u.kind === k}">${t}</button>`).join("")}</div>`;
+    const grid = st.ax ? dayList(st, u.ym, cell, "day", u.wk || u.day) : cal(st, u.ym, cell, "day");
+    const why = "";
+    const rmEff = u.armed ? stampEffects(st.L, st.filter, p, null).map(([c, t]) => `<div class="why" style="color:var(--${c === "warn" ? "red" : "inkSoft"})">${esc(t)}</div>`).join("") : "";
+    const rm = `<button type="button" class="remove" data-a="remove" data-armed="${!!u.armed}">${u.armed ? `Tap again to remove stamp from ${qtyOf(p)} cards` : "Remove stamp"}</button>${rmEff}`;
+    const ctx = `<div class="ctx"><span class="seller">${esc(p.seller)}</span><span class="meta">Order ${p.order} · ordered ${dd(p.ordered)}</span></div>`;
+    const note = `<div class="sec">Note</div><div class="notebox" aria-label="Stamp note">${esc(u.note)}</div>`;
+    return { title: "Stamp", can: !same, label: "Save", reason: "Nothing changed yet",
+      body: st.ax ? ctx + proof + chips + why + grid + note + rm : ctx + proof + why + chips + grid + note + rm };
+  }
+  return null;
+}
+function pendingPreview(st) {
+  const u = st.ui;
+  if (u.sheet === "received" && u.pick) return { recv: { gk: u.gk, src: u.src, pick: u.pick } };
+  if (u.sheet === "range") { const next = u.preset === "all" ? null : u.a ? { from: u.a, to: u.b || u.a } : undefined; if (next !== undefined) return { f: next }; }
+  if (u.sheet === "stamp") { const p = pkgOf(st, u.gk); if (u.kind !== p.stamp.kind || u.day !== p.stamp.at) return { ov: { gk: u.gk, stamp: { kind: u.kind, at: u.day, note: u.note } } }; }
+  return null;
+}
+function drawSheet(st) {
+  const ed = st.ui.sheet ? editorBody(st) : null;
+  if (st.dev === "open") {
+    const pv = pendingPreview(st);
+    const left = `<div class="page l"><div class="screen">${sheetPage(st, pv)}</div></div>`;
+    const right = ed ? `<div class="page r"><div class="editor"><div style="height:var(--sat)"></div>${toolbar(ed.title, ed.can, ed.label, ed.reason)}<div class="body">${ed.body}</div></div>${tabbar()}</div>`
+      : `<div class="page r"><div class="screen"><div class="blank-page"><b>Packages is one page today</b>Tap a received day, a stamp or Dates on the left page. The editor opens on this page while you edit, and the left page shows each change as you tap.<span role="status">${esc(st.ui.why || "")}</span></div></div>${tabbar()}</div>`;
+    return status() + left + `<div class="fold" aria-hidden="true"></div>` + right;
+  }
+  let h = status() + `<div class="screen">${sheetPage(st, null)}</div>` + tabbar();
+  if (ed) h += `<div class="scrim" data-a="cancel" aria-hidden="true"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${ed.title}"><div class="grab" aria-hidden="true"></div>${toolbar(ed.title, ed.can, ed.label, ed.reason)}<div class="body">${ed.body}</div></div>`;
+  return h;
+}
+
+/* ===== Ledger calendar ===== */
+function ledgerCell(st) {
+  const u = st.ui, f = st.filter;
+  return (day) => {
+    const m = marksOn(st.L, day);
+    let cls = day === TODAY ? " today" : "";
+    let marks = (m.o ? mk("o") : "") + (m.r ? mk("r") : "") + (m.s ? mk("s") : "");
+    if (u.lift) {
+      if (day === u.lift.from) { cls += u.to ? " src" : " picked"; marks = (m.o ? mk("o") : "") + mk("r ghost") + (m.s ? mk("s") : ""); }
+      if (day === u.to) { cls += " sel"; marks += mk("r"); }
+    } else if (u.edit) {
+      const p = pkgOf(st, u.edit.gk), moved = u.edit.day !== p.stamp.at;
+      if (day === p.stamp.at && moved) cls += " src";
+      if (day === u.edit.day) cls += " sel";
+      if (day === u.edit.day && moved) marks += mk("s");
+    } else if (u.range) {
+      const lo = u.a, hi = u.b || u.a;
+      if (day === u.a || day === u.b) cls += " sel"; else if (lo && day >= lo && day <= hi) cls += " inr";
+    } else if (day === u.sel) cls += " sel";
+    if (!u.range && f && (day < f.from || day > f.to) && !m.r && !m.s) cls += " out";
+    const off = day > TODAY || (u.lift || u.edit ? !!dayOff(st, day) : false);
+    const cnts = `<span class="cnts">${m.o ? `<span>${m.o} ord</span>` : ""}${m.r ? `<span class="r">${m.r} in</span>` : ""}${m.s ? `<span class="s">${m.s} stamp</span>` : ""}</span>`;
+    const words = [m.o && `${m.o} ordered`, m.r && `${m.r} cards in`, m.s && `${m.s} stamp`].filter(Boolean).join(" · ") || "Nothing";
+    return { cls, off, marks, cnts, words, pressed: cls.includes(" sel"),
+      aria: [m.o && `${m.o} orders`, m.r && `${m.r} cards received`, m.s && `${m.s} stamps`].filter(Boolean).join(", ") || "nothing" };
+  };
+}
+function dayLedger(st) {
+  const u = st.ui, day = u.sel, L = st.L;
+  if (u.range) {
+    const lo = u.a, hi = u.b || u.a;
+    if (!lo) return `<div class="dayled"><h3>Order dates</h3><div class="empty">Tap the first day of the orders you want to see.</div></div>`;
+    const t = tally(L, { from: lo, to: hi }), list = L.filter((p) => p.ordered >= lo && p.ordered <= hi);
+    return `<div class="dayled"><h3>${rangeLabel({ from: lo, to: hi })}<small>${t.pk} packages</small></h3>${list.length ? list.slice(0, 6).map((p) =>
+      `<div class="entry"><span class="k">${mk("o")}</span><span class="t"><b>${esc(p.seller)}</b><span>Ordered ${dd(p.ordered)} · ${qtyOf(p)} cards</span></span></div>`).join("") + (list.length > 6 ? `<div class="empty">and ${list.length - 6} more</div>` : "") : `<div class="empty">Tap other days, or Clear to start again.</div>`}</div>`;
+  }
+  if (u.edit) {
+    const p = pkgOf(st, u.edit.gk), e = u.edit, next = { kind: e.kind, at: e.day, note: p.stamp.note }, same = e.kind === p.stamp.kind && e.day === p.stamp.at;
+    const effs = same ? [["soft", "Pick the right kind, or tap the day it really happened. A new kind starts on today, as it does now."]] : stampEffects(L, st.filter, p, next);
+    return `<div class="dayled"><h3>${esc(p.seller)}<small>Stamp</small></h3><div class="edit"><div class="chips" role="group" aria-label="Stamp kind">${KINDS.map(([k, t]) => `<button type="button" class="chip" data-a="skind" data-v="${k}" aria-pressed="${e.kind === k}">${t}</button>`).join("")}</div>`
+      + effs.map(([c, t]) => `<div class="eff ${c}">${esc(t)}</div>`).join("")
+      + `<button type="button" class="remove" data-a="sremove" data-armed="${!!e.armed}">${e.armed ? `Tap again to remove stamp from ${qtyOf(p)} cards` : "Remove stamp"}</button>${e.armed ? stampEffects(L, st.filter, p, null).map(([c, t]) => `<div class="eff ${c}">${esc(t)}</div>`).join("") : ""}</div></div>`;
+  }
+  const m = [];
+  for (const p of L) {
+    const rq = p.cards.filter((c) => c.day === day).reduce((a, c) => a + c.q, 0);
+    if (rq) m.push(`<div class="entry${u.lift && u.lift.gk === p.gk ? " lift" : ""} t-new" data-tag="New: received entry"><span class="k">${mk("r")}</span><span class="t"><b>${esc(p.seller)}</b><span>${rq} of ${qtyOf(p)} cards received</span></span>`
+      + (u.lift ? "" : `<button type="button" class="act" data-a="lift" data-v="${p.gk}" aria-label="Move the day ${esc(p.seller)} was received">Move</button>`) + `</div>`);
+  }
+  for (const p of L) if (p.stamp && p.stamp.kind && p.stamp.at === day) m.push(`<div class="entry t-today" data-tag="Today: stamp"><span class="k">${mk("s")}</span><span class="t"><b>${esc(p.seller)}</b><span>Stamp · ${esc(KL[p.stamp.kind])}</span></span>${u.lift ? "" : `<button type="button" class="act" data-a="sedit" data-v="${p.gk}">Edit</button>`}</div>`);
+  for (const p of L) if (p.ordered === day) m.push(`<div class="entry"><span class="k">${mk("o")}</span><span class="t"><b>${esc(p.seller)}</b><span>Ordered · ${qtyOf(p)} cards · ${money(p.cards.reduce((a, c) => a + c.q * c.p, 0))}</span></span></div>`);
+  return `<div class="dayled"><h3>${wdd(day)}<small>${day === TODAY ? "today" : gap(day, TODAY) + " days ago"}</small></h3>${m.join("") || `<div class="empty">Nothing was ordered, received or stamped on ${dd(day)}.</div>`}</div>`;
+}
+function pbar(st) {
+  const u = st.ui, n = u.notice;
+  const b = (a, t, cls, dis) => `<button type="button" class="act ${cls || ""}" data-a="${a}"${dis ? ` aria-disabled="true"` : ""}>${t}</button>`;
+  let msg, btns = "", err = false;
+  if (u.why) { msg = esc(u.why); err = true; btns = u.lift ? b("putback", "Put back") : u.edit ? b("scancel", "Cancel") : ""; }
+  else if (u.lift) {
+    const p = pkgOf(st, u.lift.gk), q = p.cards.filter((c) => u.lift.keys.includes(c.k)).reduce((a, c) => a + c.q, 0);
+    if (!u.to) { msg = `Picked up ${q} cards from ${esc(p.seller)}, received ${dd(u.lift.from)}. Tap the day they came.`; btns = b("putback", "Put back"); }
+    else { msg = `Move ${q} cards: <span class="was">${dd(u.lift.from)}</span> → <span class="now">${dd(u.to)}</span>. Nothing else changes.`; btns = b("putback", "Put back") + b("move", "Move", "primary"); }
+  } else if (u.edit) {
+    const p = pkgOf(st, u.edit.gk), same = u.edit.kind === p.stamp.kind && u.edit.day === p.stamp.at;
+    msg = same ? `${esc(KL[p.stamp.kind])}, set ${dd(p.stamp.at)}. Tap a day to re-date it.` : `<span class="was">${esc(KL[p.stamp.kind])} · ${dd(p.stamp.at)}</span> → <span class="now">${esc(KL[u.edit.kind])} · ${dd(u.edit.day)}</span>`;
+    btns = b("scancel", "Cancel") + b("ssave", "Save", "primary", same);
+  } else if (u.range) {
+    if (!u.a) { msg = "Tap the first order day."; btns = b("rcancel", "Cancel"); }
+    else {
+      const f = { from: u.a, to: u.b || u.a }, t = tally(st.L, f);
+      if (!t.pk) { msg = `No orders were placed ${f.from === f.to ? "on " + dd(f.from) : rangeLabel(f)}.`; err = true; btns = b("rcancel", "Clear") + b("rshow", "Show", "primary", true); }
+      else { msg = `<span class="now">${rangeLabel(f)}</span>: ${t.pk} packages, ${money(t.out)} still missing.${u.b ? "" : " Tap a last day, or show this one."}`; btns = b("rcancel", "Cancel") + b("rshow", "Show", "primary"); }
+    }
+  } else if (n) { msg = esc(n.text); btns = n.undo && !n.undone ? `<button type="button" class="undo" data-a="undo">Undo</button>` : ""; }
+  else { msg = `Dates: <b>${esc(rangeLabel(st.filter))}</b>. Tap a day to read it.`; btns = (st.filter ? b("rall", "All time") : "") + b("range", "Pick dates"); }
+  return `<div class="pbar t-new" data-tag="New: action bar" role="status"><div class="msg${err ? " err" : ""}">${msg}</div><div class="btns">${btns}</div></div>`;
+}
+/* the way in and out: a List / Month switch at the head of Packages. List is today's view. */
+const seg = (st) => `<div class="seg t-new" data-tag="New: List / Month" role="group" aria-label="Packages as"><button type="button" data-a="mode" data-v="list" aria-pressed="${!!st.ui.list}">List</button><button type="button" data-a="mode" data-v="month" aria-pressed="${!st.ui.list}">Month</button></div>`;
+function drawLedger(st) {
+  const u = st.ui;
+  if (!u.ym) u.ym = (u.sel || TODAY).slice(0, 7);
+  if (u.list) {
+    const list = sheetPage(st, null).replace('<div class="list">', `<div class="list">${seg(st)}`);
+    if (st.dev === "open") return status() + `<div class="page l"><div class="screen">${list}</div></div><div class="fold" aria-hidden="true"></div><div class="page r"><div class="screen"><div class="blank-page"><b>Packages is one page today</b>Tap a received day, a stamp or Dates to open the month at that day.</div></div>${tabbar()}</div>`;
+    return status() + `<div class="screen">${list}</div>` + tabbar();
+  }
+  const pvf = u.range && u.a ? { f: { from: u.a, to: u.b || u.a } } : u.edit ? (() => { const p = pkgOf(st, u.edit.gk); return isRefund(u.edit.kind) !== isRefund(p.stamp.kind) ? { ov: { gk: p.gk, stamp: { kind: u.edit.kind, at: u.edit.day } } } : null; })() : null;
+  const cell = ledgerCell(st);
+  if (st.dev === "open") {
+    const left = `<div class="page l"><div class="screen"><div class="letter" aria-hidden="true">MANIFEST</div>${mast(st, pvf)}<div style="padding:8px 16px 0">${seg(st)}</div><div class="lcal big">${cal(st, u.ym, cell, "cday", true)}</div><div class="key" style="padding:0 16px 10px"><span>${mk("o")} ordered</span><span>${mk("r")} received</span><span>${mk("s")} stamp</span></div></div></div>`;
+    const right = `<div class="page r"><div class="screen">${dayLedger(st)}${pbar(st)}</div>${tabbar()}</div>`;
+    return status() + left + `<div class="fold" aria-hidden="true"></div>` + right;
+  }
+  if (st.ax) {
+    const around = u.wk || u.to || (u.edit && u.edit.day) || u.b || u.a || u.sel || TODAY;
+    return status() + `<div class="screen"><div class="dayled">${seg(st)}${dayList(st, u.ym, cell, "cday", around)}${dayLedger(st).replace(/^<div class="dayled">|<\/div>$/g, "")}</div>${pbar(st)}</div>` + tabbar();
+  }
+  /* compact: the tallies scroll with the day's ledger, so the day gets the room; the bar and the month stay put */
+  return status() + `<div class="screen">${dayLedger(st).replace('<div class="dayled">', `<div class="dayled">${mast(st, pvf).replace('class="mastwrap', 'class="mastwrap inled')}${seg(st)}`)}${pbar(st)}<div class="lcal">${cal(st, u.ym, cell, "cday")}</div></div>` + tabbar();
+}
+
+/* ---------- frames, presets, deep links ---------- */
+const STATES = {
+  received: [["rest","At rest"],["open","Editor open"],["picked","Day picked"],["why","Day refused"],["saved","Saved, Undo"],["undone","Undone"]],
+  range: [["rest","At rest"],["open","Editor open"],["picked","Span picked"],["empty","Span with no orders"],["saved","Shown, Undo"],["undone","Undone"]],
+  stamp: [["rest","At rest"],["open","Editor open"],["picked","Kind and day picked"],["refund","Refunded picked"],["armed","Remove armed"],["saved","Saved, Undo"],["undone","Undone"]],
+};
+function preset(st, job, s) {
+  const run = (...steps) => steps.forEach(([a, v]) => act(st, a, v));
+  const S = st.concept === "sheet";
+  if (job === "received") {
+    if (S) {
+      if (s === "rest") return;
+      run(["open-recv", "p1"]);
+      if (s === "why") run(["day", "2026-11-05"]);
+      if (["picked", "saved", "undone"].includes(s)) run(["day", "2026-11-17"]);
+      if (["saved", "undone"].includes(s)) run(["save"]);
+      if (s === "undone") run(["undo"]);
+    } else {
+      st.ui = { sel: "2026-11-18", ym: "2026-11" };
+      if (s === "rest") return;
+      run(["lift", "p1"]);
+      if (s === "why") run(["cday", "2026-11-05"]);
+      if (["picked", "saved", "undone"].includes(s)) run(["cday", "2026-11-17"]);
+      if (["saved", "undone"].includes(s)) run(["move"]);
+      if (s === "undone") run(["undo"]);
+    }
+  } else if (job === "range") {
+    if (S) {
+      if (s === "rest") return;
+      run(["open-range"]);
+      if (s === "empty") { st.ui.ym = "2026-10"; run(["day", "2026-10-02"], ["day", "2026-10-04"]); }
+      if (["picked", "saved", "undone"].includes(s)) { st.ui.ym = "2026-10"; run(["day", "2026-10-05"], ["day", "2026-11-09"]); st.ui.ym = "2026-11"; }
+      if (["saved", "undone"].includes(s)) run(["save"]);
+      if (s === "undone") run(["undo"]);
+    } else {
+      st.ui = { sel: TODAY, ym: "2026-11" };
+      if (s === "rest") return;
+      run(["range"]);
+      if (s === "empty") { st.ui.ym = "2026-10"; run(["cday", "2026-10-02"], ["cday", "2026-10-04"]); }
+      if (["picked", "saved", "undone"].includes(s)) { run(["cday", "2026-11-02"], ["cday", "2026-11-14"]); }
+      if (["saved", "undone"].includes(s)) run(["rshow"]);
+      if (s === "undone") run(["undo"]);
+    }
+  } else {
+    if (S) {
+      if (s === "rest") return;
+      run(["open-stamp", "p2"]);
+      if (["picked", "saved", "undone"].includes(s)) run(["kind", "contacted"], ["day", "2026-11-14"]);
+      if (s === "refund") run(["kind", "refunded"]);
+      if (s === "armed") run(["remove"]);
+      if (["saved", "undone"].includes(s)) run(["save"]);
+      if (s === "undone") run(["undo"]);
+    } else {
+      st.ui = { sel: "2026-11-19", ym: "2026-11" };
+      if (s === "rest") return;
+      run(["sedit", "p2"]);
+      if (["picked", "saved", "undone"].includes(s)) run(["skind", "contacted"], ["cday", "2026-11-14"]);
+      if (s === "refund") run(["skind", "refunded"]);
+      if (s === "armed") run(["sremove"]);
+      if (["saved", "undone"].includes(s)) run(["ssave"]);
+      if (s === "undone") run(["undo"]);
+    }
+  }
+}
+function draw(el) {
+  const st = el._st;
+  const keep = document.activeElement && el.contains(document.activeElement) ? [document.activeElement.dataset.a, document.activeElement.dataset.v] : null;
+  el.innerHTML = st.concept === "sheet" ? drawSheet(st) : drawLedger(st);
+  /* compact Ledger calendar: while editing, the day's ledger opens at its heading, past the tallies */
+  const led = el.querySelector(".dayled"), h3 = led && led.querySelector("h3");
+  if (led && h3 && (st.ui.edit || st.ui.lift || st.ui.range)) led.scrollTop = h3.getBoundingClientRect().top - led.getBoundingClientRect().top - 8;
+  /* an armed Remove brings itself into view, so the second tap and its effect are on screen */
+  const rm = el.querySelector('.remove[data-armed="true"]'), sc = rm && rm.closest(".body, .dayled");
+  if (rm && sc) sc.scrollTop += rm.getBoundingClientRect().top - sc.getBoundingClientRect().top - 120;
+  if (keep) { const t = el.querySelector(`[data-a="${keep[0]}"]${keep[1] ? `[data-v="${keep[1]}"]` : ""}`); if (t) t.focus(); }
+}
+function opts() {
+  const o = {}; for (const kv of location.hash.slice(1).split("&")) { const [k, v] = kv.split("="); if (k) o[k] = decodeURIComponent(v || ""); }
+  return { j: STATES[o.j] ? o.j : "received", s: o.s || "rest", hide: (o.hide || "").split(",").filter(Boolean), tags: o.tags !== "off" };
+}
+function setHash(patch) { const o = { ...opts(), ...patch }; const parts = [`j=${o.j}`, `s=${o.s}`]; if (o.hide.length) parts.push(`hide=${o.hide.join(",")}`); if (!o.tags) parts.push("tags=off"); location.hash = parts.join("&"); }
+function build() {
+  const o = opts();
+  if (!STATES[o.j].some(([k]) => k === o.s)) o.s = "rest";
+  document.querySelectorAll("[data-j]").forEach((a) => { a.setAttribute("aria-current", String(a.dataset.j === o.j)); a.href = `#j=${a.dataset.j}&s=rest`; });
+  document.getElementById("states").innerHTML = `<span class="lab">State</span>` + STATES[o.j].map(([k, t]) => `<a href="#j=${o.j}&s=${k}" aria-current="${k === o.s}">${t}</a>`).join("");
+  document.body.classList.toggle("notags", !o.tags);
+  document.getElementById("tags").setAttribute("aria-pressed", String(o.tags));
+  for (const sec of document.querySelectorAll(".concept")) {
+    const c = sec.dataset.concept, hidden = o.hide.includes(c);
+    sec.hidden = hidden;
+    document.querySelector(`[data-restore="${c}"]`).classList.toggle("show", hidden);
+    for (const el of sec.querySelectorAll(".dev")) {
+      el._st = newState(c, el.dataset.dev, o.j); preset(el._st, o.j, o.s);
+      if (!el._wired) { el._wired = true; el.addEventListener("click", (e) => {
+        const b = e.target.closest("[data-a]"); if (!b || !el.contains(b)) return;
+        if (b.getAttribute("aria-disabled") === "true" && b.dataset.a !== "day" && b.dataset.a !== "cday") { if (b.title) { el._st.ui.why = b.title; draw(el); } return; }
+        const a = b.dataset.a;
+        if (a === "wk") { const u = el._st.ui; const base = u.wk || u.to || u.pick || (u.edit && u.edit.day) || u.day || u.b || u.a || u.sel || u.src || TODAY; u.wk = add(base, +b.dataset.v); }
+        else act(el._st, a, b.dataset.v);
+        draw(el);
+      }); }
+      draw(el);
+    }
+  }
+}
+document.getElementById("tags").addEventListener("click", () => setHash({ tags: !opts().tags }));
+document.querySelectorAll("[data-hide]").forEach((b) => b.addEventListener("click", () => setHash({ hide: [...new Set([...opts().hide, b.dataset.hide])] })));
+document.querySelectorAll("[data-restore]").forEach((b) => b.addEventListener("click", () => setHash({ hide: opts().hide.filter((h) => h !== b.dataset.restore) })));
+window.addEventListener("hashchange", build);
+build();
+</script>
+</body>
+</html>

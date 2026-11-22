@@ -2,9 +2,9 @@ import ManifestKit
 import SwiftUI
 
 // Card in Hand on the open iPhone Duo (duo-card-in-hand, new-envelope-ends-an-envelope; mockup poses 1, 2 and 4 of
-// docs/design/duo-card-in-hand on origin/design/duo-round2). The query and the held cards sit on the left page, the
-// envelope the card came from on the right. Typing and holding save nothing: a card checks in by the line's own tap, or
-// by Post for held cards (orphaned-mail-never-decides).
+// docs/design/duo-card-in-hand on origin/archive/design/duo-round2). The query and the held cards sit on the left page,
+// the envelope the card came from on the right. Typing and holding save nothing: a card checks in by the line's own
+// tap, or by Post for held cards (orphaned-mail-never-decides).
 //
 // Default, not owner: the mockup makes Card in Hand the Packages tab itself. Here Packages keeps its one-page layout and a
 // `hand-open` control opens this screen over both pages; `hand-close` goes back. The owner is being asked.
@@ -69,8 +69,10 @@ struct HandScreen: View {
     /// What a Post left in the offer's slot, so the lines keep their place under the finger that pressed it. It goes with the
     /// next typed card or New envelope.
     @State private var receipt: Receipt?
-    @State private var scroll = ScrollPosition(edge: .top)
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The system keys are up. The Post bar then sits on the keys, not above the floating tab bar.
+    @State private var keysUp = false
+    @Environment(\.duoCustomBar) private var customBar
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var hand: HandModel { kit.hand }
 
@@ -240,25 +242,27 @@ struct HandScreen: View {
     // MARK: right page
 
     /// The system keys span both pages. The right page keeps SwiftUI's own keyboard avoidance, the house pattern of
-    /// OrphanedView. The offer sits under the sender, high on the page, so it clears the keys with no read of them. It shows by
-    /// scrolling the page to its top, where the sender is. The left page's content keeps its place: its scroll view only gets
-    /// shorter, at offset 0 (no-layout-shift-under-pointer).
+    /// OrphanedView. The sender stays at the top of the page, the lines scroll under it, and the Post bar is pinned at the foot,
+    /// above the keys. So Post and the sender are on the page at any scroll, and the lines keep the order sender, lines. The left
+    /// page's content keeps its place: its scroll view only gets shorter, at offset 0 (no-layout-shift-under-pointer).
     private var rightPage: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                if pastTransit {
-                    PastTransitPage(model: kit.transit, back: { pastTransit = false }, onChange: afterWrite)
-                } else {
-                    answer
-                    if !kit.transit.rows.isEmpty { transitBox }
+        VStack(spacing: 0) {
+            if let pkg = envelopePkg { head(pkg) }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    if pastTransit {
+                        PastTransitPage(model: kit.transit, back: { pastTransit = false }, onChange: afterWrite)
+                    } else {
+                        answer
+                        if !kit.transit.rows.isEmpty { transitBox }
+                    }
                 }
+                .padding(.horizontal, 16).padding(.bottom, 16).padding(.top, envelopePkg == nil ? 16 : 8)
             }
-            .padding(16)
         }
-        .scrollPosition($scroll)
-        .onChange(of: offerVisible) { _, shown in
-            if shown { withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { scroll.scrollTo(edge: .top) } }
-        }
+        .safeAreaInset(edge: .bottom, spacing: 0) { slotBar }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in keysUp = true }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in keysUp = false }
         // The line check-ins are on this page. Packages' own checkin-error sits under this screen. An overlay at the top, where the
         // keys never reach and the bar does not float, adds no row, so nothing moves under a finger (no-layout-shift-under-pointer).
         .overlay(alignment: .top) {
@@ -274,10 +278,10 @@ struct HandScreen: View {
         .accessibilityIdentifier("hand-answer")
     }
 
-    /// The post offer is on the page: the envelope is the one answer and its held card has an offer here.
-    private var offerVisible: Bool {
-        guard !pastTransit, hand.hits.count < 2, let gk = shown, let o = hand.offer else { return false }
-        return o.gk == gk && o.heldCopies > 0
+    /// The one envelope the answer page names, when it names one: the typed card has a single hit and the past-transit page is not up.
+    private var envelopePkg: Package? {
+        guard !pastTransit, hand.hits.count < 2 else { return nil }
+        return shown.flatMap { gk in packages.liveRows.first { $0.gk == gk } }
     }
 
     @ViewBuilder private var answer: some View {
@@ -285,7 +289,7 @@ struct HandScreen: View {
         if hand.hits.count >= 2 {
             tie
         } else if let pkg = shown.flatMap({ gk in packages.liveRows.first { $0.gk == gk } }) {
-            envelope(pkg)
+            lines(pkg)
         } else if trimmed.isEmpty {
             Text("Type the card in hand. The envelope it came from shows here.")
                 .font(.cochin(14, relativeTo: .body)).foregroundStyle(Parchment.inkSoft)
@@ -318,26 +322,36 @@ struct HandScreen: View {
         pkg.items.reduce(0) { $0 + max(0, $1.qty - (packages.received[$1.key] ?? 0)) }
     }
 
-    private func envelope(_ pkg: Package) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            micro("It came from")
+    /// The sender, pinned above the lines so "Post ... here" always names its envelope.
+    /// From AX3 up the head draws the seller alone, so the lines keep room (owner item 105 a, 2026-11-19); the sender line and
+    /// the order date move into the head's VoiceOver label. hand-who keeps the seller as its label for the UI tests, and its
+    /// value (HandPostBar.headValue) carries the rest, so one VoiceOver stop reads "seller, the sender, ordered D" (the container label alone is not a stop).
+    @ViewBuilder private func head(_ pkg: Package) -> some View {
+        let slim = typeSize >= .accessibility3
+        let stack = VStack(alignment: .leading, spacing: 8) {
+            if !slim { micro("It came from") }
             Text(pkg.seller).font(.cochin(22, relativeTo: .title2).weight(.bold)).foregroundStyle(Parchment.ink)
                 .accessibilityIdentifier("hand-who")
-            Text("ordered \(pkg.date)").font(.mono(11, relativeTo: .caption)).foregroundStyle(Parchment.inkSoft)
-            // Under the sender, so "Post ... here" names its envelope and the button sits high, clear of the keys. The slot
-            // keeps its height as a receipt after a Post, so no line moves under the finger that pressed it.
-            if let o = hand.offer, o.gk == pkg.gk, o.heldCopies > 0 {
-                postBox(o)
-            } else if let r = receipt, r.offer.gk == pkg.gk {
-                receiptBox(r)
-            }
-            VStack(spacing: 0) {
-                ForEach(pkg.items, id: \.key) { item in line(item) }
-            }
-            .background(Parchment.card)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Parchment.line, lineWidth: 1))
+                .accessibilityValue(slim ? HandPostBar.headValue(date: pkg.date) : "")
+            if !slim { Text("ordered \(pkg.date)").font(.mono(11, relativeTo: .caption)).foregroundStyle(Parchment.inkSoft) }
         }
+        .padding(.horizontal, 16).padding(.top, slim ? 8 : 16).padding(.bottom, 8).frame(maxWidth: .infinity, alignment: .leading)
+        .background(Parchment.paper)
+        .overlay(alignment: .bottom) { Rectangle().fill(Parchment.line).frame(height: 1) }
+        if slim {
+            stack.accessibilityElement(children: .contain).accessibilityLabel(HandPostBar.headLabel(seller: pkg.seller, date: pkg.date))
+        } else {
+            stack
+        }
+    }
+
+    private func lines(_ pkg: Package) -> some View {
+        VStack(spacing: 0) {
+            ForEach(pkg.items, id: \.key) { item in line(item) }
+        }
+        .background(Parchment.card)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Parchment.line, lineWidth: 1))
     }
 
     private func line(_ item: LedgerItem) -> some View {
@@ -358,38 +372,60 @@ struct HandScreen: View {
             })
     }
 
-    /// Only for a held card. It checks in the offered copies, the typed card with them, and never runs by itself.
-    private func postBox(_ o: HandOffer) -> some View { slot(offerContent(o)) }
-
-    private func offerContent(_ o: HandOffer) -> some View {
-        let total = o.plan.reduce(0) { $0 + $1.take }
-        return VStack(alignment: .leading, spacing: 8) {
-            Text("Your held card came with this envelope. Nothing is checked in until you post.")
-                .font(.cochin(13, relativeTo: .footnote)).foregroundStyle(Parchment.ink)
-            Button { Task { await post() } } label: {
-                MiniLabel(title: "Post \(total) cards here, \(o.heldCopies) held", bold: true, text: Parchment.card, fill: Parchment.accent, border: Parchment.accent)
+    /// The foot of the page: the Post offer for a held card, or after a Post its receipt. The receipt holds the offer's height
+    /// until the next card or New envelope, so the lines do not grow into the slot under the finger that pressed it
+    /// (no-layout-shift-under-pointer). One row, 53 pt with a title that fits one line at the cap (a long title wraps and grows the bar) (owner items 103 b and 104 a, 2026-11-19).
+    @ViewBuilder private var slotBar: some View {
+        if let pkg = envelopePkg {
+            if let o = hand.offer, o.gk == pkg.gk, o.heldCopies > 0 {
+                pinned(offerRow(o), id: "hand-offer-bar", children: .contain)
+            } else if let r = receipt, r.offer.gk == pkg.gk {
+                pinned(offerRow(r.offer).hidden().overlay(alignment: .leading) { receiptRow(r) }, id: "hand-receipt", children: .combine)
             }
-            .buttonStyle(.plain).accessibilityIdentifier("hand-post")
         }
     }
 
-    private func slot(_ content: some View) -> some View {
-        content.padding(12).frame(maxWidth: .infinity, alignment: .leading)
-            .background(Parchment.manila.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+    /// A hairline, the manila tint, and 4 pt above and below the 44 pt row: 1 + 4 + 44 + 4 = 53 pt. The text is capped at
+    /// xxxLarge, so the bar holds 53 pt while the title fits one line at the cap (a long title wraps and grows the bar); the Post button's large-content viewer shows it large. With the keys up
+    /// the page's own keyboard safe area already ends at their drawn top, so a pad of its own would lift the Post button off
+    /// the keys. With the keys down it clears the floating tab bar. The id sits on the bar before that pad, so its frame is the 53 pt and not the tab-bar clearance.
+    private func pinned(_ content: some View, id: String, children: AccessibilityChildBehavior) -> some View {
+        VStack(spacing: 0) {
+            Rectangle().fill(Parchment.line).frame(height: 1)
+            content.padding(.vertical, 4).padding(.horizontal, 16).frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        .background(Parchment.manila.opacity(0.5)).background(Parchment.paper)
+        .accessibilityElement(children: children).accessibilityIdentifier(id)
+        .padding(.bottom, keysUp ? 0 : (customBar ? DuoBarMetrics.height : 0))
     }
 
-    /// The offer's own layout, hidden, sizes the slot, so the receipt is as tall as the offer at any text size.
-    private func receiptBox(_ r: Receipt) -> some View {
-        slot(offerContent(r.offer).hidden().overlay(alignment: .topLeading) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(r.refused ? "Not posted." : "Posted with this envelope. The next card you type clears this line.")
-                    .font(.cochin(13, relativeTo: .footnote)).foregroundStyle(Parchment.ink)
-                Text(r.line).font(r.refused ? .cochin(13, relativeTo: .footnote) : .mono(12, relativeTo: .caption))
-                    .foregroundStyle(r.refused ? Parchment.red : Parchment.manilaInk)
-                    .frame(minHeight: 44, alignment: .leading)
+    /// Only for a held card. The button alone, full width: it checks in the offered copies, the typed card with them, and never
+    /// runs by itself. The held sentence is not drawn; it opens the button's VoiceOver hint (HandPostBar.hint).
+    private func offerRow(_ o: HandOffer) -> some View {
+        let total = o.plan.reduce(0) { $0 + $1.take }
+        let title = "Post \(total) cards here, \(o.heldCopies) held"
+        return Button { Task { await post() } } label: {
+            MiniLabel(title: title, bold: true, text: Parchment.card, fill: Parchment.accent, border: Parchment.accent, wide: true)
+        }
+        .buttonStyle(.plain).accessibilityHint(HandPostBar.hint).accessibilityIdentifier("hand-post")
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        .accessibilityShowsLargeContentViewer { Text(title) }
+    }
+
+    /// What a Post left in the slot, on one row: "Posted." and the count, or "Not posted." and why. The long count can overrun
+    /// the row at the capped size, so the second text alone is the fallback; the explicit label keeps both for VoiceOver.
+    private func receiptRow(_ r: Receipt) -> some View {
+        let tail = Text(r.line).font(r.refused ? .cochin(13, relativeTo: .footnote) : .mono(12, relativeTo: .caption))
+            .foregroundStyle(r.refused ? Parchment.red : Parchment.manilaInk)
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                Text(r.refused ? "Not posted." : "Posted.").font(.cochin(13, relativeTo: .footnote)).foregroundStyle(Parchment.ink)
+                tail
             }
-        })
-        .accessibilityElement(children: .combine).accessibilityIdentifier("hand-receipt")
+            tail
+        }
+        .accessibilityElement(children: .ignore).accessibilityLabel(HandPostBar.receiptLabel(refused: r.refused, line: r.line))
     }
 
     private struct Receipt {

@@ -11,8 +11,8 @@ seller, and it is the working view for when the mail comes. **Tally** pools one 
 across every seller, which answers "did all four arrive" and carries the cost
 basis. **Orphaned** holds a package that arrives with no way to tell who sent it.
 
-The app presents itself as MANIFEST. The project name, the repo name and the
-storage namespace do not follow the masthead. See `masthead-is-not-project-name`.
+The masthead is MANIFEST. Home-screen labels read CH Post on iOS and web. Project, repo,
+storage namespace follow neither. See `masthead-is-not-project-name`.
 
 ## How to read this file
 

@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Order Check Concepts</title>
+<style>
+/* Tokens. Space on the 4 px house step, radius 8 (house tokens.md). Colours are this designer's own picks, by role. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px; --space-6: 24px; --space-8: 32px;
+  --radius: 8px;
+  --font: -apple-system, system-ui, "Helvetica Neue", sans-serif;
+  --mono: "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --page: #E4E8E6; --page-text: #1B2421; --page-text-2: #4F5B57; --page-line: #C3CCC8;
+  --bg: #EEF1F0; --surface: #FFFFFF; --surface-2: #F5F7F6; --text: #17201D; --text-2: #56625E; --line: #D5DCD9;
+  --accent: #1E5A86; --on-accent: #FFFFFF; --accent-bg: #E3EDF5;
+  --ok: #2B7349; --ok-bg: #E4F1E8;
+  --warn: #855600; --warn-bg: #FBF0D6;
+  --bad: #B42318; --bad-bg: #FBE9E7;
+  --quiet: #6A7672;
+  --scrim: rgba(12, 18, 16, .36);
+  --hinge: #2A302E;
+  --tag-new: #6A4FC8; --tag-today: #6A7672;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #0C1110; --page-text: #DCE4E1; --page-text-2: #93A19C; --page-line: #2C3734;
+    --bg: #101614; --surface: #19211E; --surface-2: #202A26; --text: #E7EEEB; --text-2: #9DABA6; --line: #2E3A36;
+    --accent: #7DB6E3; --on-accent: #0A1A27; --accent-bg: #16293A;
+    --ok: #72C796; --ok-bg: #13291D;
+    --warn: #E4B552; --warn-bg: #2E240E;
+    --bad: #FF8E80; --bad-bg: #36160F;
+    --quiet: #8C9A95;
+    --scrim: rgba(0, 0, 0, .55);
+    --hinge: #000000;
+    --tag-new: #B6A2FF; --tag-today: #8C9A95;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #0C1110; --page-text: #DCE4E1; --page-text-2: #93A19C; --page-line: #2C3734;
+  --bg: #101614; --surface: #19211E; --surface-2: #202A26; --text: #E7EEEB; --text-2: #9DABA6; --line: #2E3A36;
+  --accent: #7DB6E3; --on-accent: #0A1A27; --accent-bg: #16293A;
+  --ok: #72C796; --ok-bg: #13291D;
+  --warn: #E4B552; --warn-bg: #2E240E;
+  --bad: #FF8E80; --bad-bg: #36160F;
+  --quiet: #8C9A95;
+  --scrim: rgba(0, 0, 0, .55);
+  --hinge: #000000;
+  --tag-new: #B6A2FF; --tag-today: #8C9A95;
+  color-scheme: dark;
+}
+
+/* Dynamic Type, iOS default size (HIG typography, read 2026-11-21). */
+.screen {
+  --lt-s: 34px; --lt-l: 41px; --t2-s: 22px; --t2-l: 28px; --t3-s: 20px; --t3-l: 25px;
+  --hl-s: 17px; --hl-l: 22px; --bd-s: 17px; --bd-l: 22px; --co-s: 16px; --co-l: 21px;
+  --sb-s: 15px; --sb-l: 20px; --fn-s: 13px; --fn-l: 18px; --c1-s: 12px; --c1-l: 16px; --c2-s: 11px; --c2-l: 13px;
+  /* Drawn insets: not measured on a device, and no Apple page gives them. */
+  --inset-top: 44px; --inset-bottom: 20px;
+}
+/* AX5, the largest accessibility size (same HIG table). */
+.screen.ax5 {
+  --lt-s: 60px; --lt-l: 70px; --t2-s: 56px; --t2-l: 66px; --t3-s: 55px; --t3-l: 65px;
+  --hl-s: 53px; --hl-l: 62px; --bd-s: 53px; --bd-l: 62px; --co-s: 51px; --co-l: 60px;
+  --sb-s: 49px; --sb-l: 58px; --fn-s: 44px; --fn-l: 52px; --c1-s: 43px; --c1-l: 51px; --c2-s: 40px; --c2-l: 48px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--page-text); font-family: var(--font); font-size: 15px; line-height: 20px; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Page chrome, outside the device frames. */
+.banner { position: sticky; top: 0; z-index: 20; background: var(--warn-bg); color: var(--text); border-bottom: 2px dashed var(--warn); padding: var(--space-2) var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); align-items: center; }
+.banner strong { font-weight: 700; }
+.chrome { padding: var(--space-6) var(--space-4) var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); max-width: 1500px; }
+.chrome h1 { margin: 0; font-size: 28px; line-height: 34px; }
+.chrome p { margin: 0; max-width: 72ch; color: var(--page-text-2); }
+.controls { display: flex; flex-direction: column; gap: var(--space-3); }
+.ctl-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.ctl-row > span { min-width: 6rem; color: var(--page-text-2); }
+.chip { min-height: 36px; padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid var(--page-line); background: transparent; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--page-text); color: var(--page); border-color: var(--page-text); }
+.legend { display: flex; flex-wrap: wrap; gap: var(--space-3); color: var(--page-text-2); }
+.legend .k-new { border: 2px dashed var(--tag-new); padding: 0 var(--space-2); border-radius: var(--radius); }
+.legend .k-today { border: 2px dashed var(--tag-today); padding: 0 var(--space-2); border-radius: var(--radius); }
+
+.concept { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); border-top: 1px solid var(--page-line); }
+.concept[hidden] { display: none; }
+.concept-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-4); }
+.concept-head h2 { margin: 0; font-size: 22px; line-height: 28px; }
+.concept-head p { margin: 0; color: var(--page-text-2); max-width: 80ch; flex: 1 1 30ch; }
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-6); align-items: flex-start; }
+.frame-wrap { display: flex; flex-direction: column; gap: var(--space-2); }
+.frame-cap { color: var(--page-text-2); font-size: 13px; line-height: 18px; max-width: 466px; }
+
+/* Device frames. 1 CSS px stands for 1 pt. */
+.device { position: relative; border: 1px solid var(--page-line); border-radius: var(--radius); overflow: hidden; background: var(--bg); flex: none; }
+.device.open { display: grid; grid-template-columns: 455.5px 40px 455.5px; }
+.hinge { background: var(--hinge); }
+.page { position: relative; height: 100%; overflow: hidden; }
+
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--bg); color: var(--text); font-family: var(--font); font-size: var(--bd-s); line-height: var(--bd-l); padding-top: max(env(safe-area-inset-top), var(--inset-top)); overflow: hidden; }
+.statusbar { position: absolute; top: 0; left: 0; right: 0; height: var(--inset-top); display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-6); font-size: 15px; line-height: 20px; font-weight: 600; }
+.statusbar .sys { display: flex; gap: var(--space-1); align-items: center; }
+.statusbar .sys i { display: block; width: 18px; height: 10px; border: 1.5px solid currentColor; border-radius: 3px; }
+.statusbar .sys b { display: block; width: 4px; height: 10px; background: currentColor; border-radius: 1px; }
+.homebar { position: absolute; bottom: 6px; left: 50%; width: 134px; margin-left: -67px; height: 5px; border-radius: 3px; background: var(--text); opacity: .8; }
+
+.scroll { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; padding: 0 var(--space-4) var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); min-height: 0; }
+.scroll.anchor-end > :first-child { margin-top: auto; }
+.bottom { flex: none; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-4) max(env(safe-area-inset-bottom), var(--inset-bottom)); }
+
+.t-lt { font-size: var(--lt-s); line-height: var(--lt-l); font-weight: 700; margin: 0; }
+.t-t2 { font-size: var(--t2-s); line-height: var(--t2-l); font-weight: 700; margin: 0; }
+.t-t3 { font-size: var(--t3-s); line-height: var(--t3-l); font-weight: 600; margin: 0; }
+.t-hl { font-size: var(--hl-s); line-height: var(--hl-l); font-weight: 600; margin: 0; }
+.t-bd { font-size: var(--bd-s); line-height: var(--bd-l); margin: 0; }
+.t-co { font-size: var(--co-s); line-height: var(--co-l); margin: 0; }
+.t-sb { font-size: var(--sb-s); line-height: var(--sb-l); margin: 0; }
+.t-fn { font-size: var(--fn-s); line-height: var(--fn-l); margin: 0; }
+.dim { color: var(--text-2); }
+.stack { display: flex; flex-direction: column; gap: var(--space-2); }
+.stack-1 { display: flex; flex-direction: column; gap: var(--space-1); }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+
+/* Native controls. */
+.btn { min-height: 44px; min-width: 44px; padding: var(--space-2) var(--space-5); border-radius: 999px; border: 0; cursor: pointer; font-size: var(--hl-s); line-height: var(--hl-l); font-weight: 600; display: inline-flex; align-items: center; justify-content: center; text-align: center; }
+.btn.primary { background: var(--accent); color: var(--on-accent); }
+.btn.tinted { background: var(--accent-bg); color: var(--accent); }
+.btn.plain { background: transparent; color: var(--accent); padding-left: var(--space-2); padding-right: var(--space-2); }
+.btn.wide { width: 100%; }
+.btn.busy { background: var(--surface-2); color: var(--text-2); cursor: default; }
+.lbls { display: grid; }
+.lbls > span { grid-area: 1 / 1; visibility: hidden; }
+.lbls > span.on { visibility: visible; }
+
+.glyph { flex: none; width: calc(var(--hl-l) + 6px); height: calc(var(--hl-l) + 6px); }
+.tone-ok { color: var(--ok); } .tone-acc { color: var(--accent); } .tone-bad { color: var(--bad); } .tone-warn { color: var(--warn); } .tone-quiet { color: var(--quiet); }
+.spin { animation: spin 1.1s linear infinite; transform-origin: 50% 50%; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.group { background: var(--surface); border-radius: var(--radius); display: flex; flex-direction: column; }
+.group > .cell { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1) var(--space-3); min-height: 44px; padding: var(--space-2) var(--space-4); border-top: 1px solid var(--line); }
+.group > .cell:first-child { border-top: 0; }
+
+.orders { background: var(--surface); border-radius: var(--radius); display: flex; flex-direction: column; }
+.orow { display: flex; align-items: center; gap: var(--space-3); min-height: 44px; padding: var(--space-2) var(--space-4); border-top: 1px solid var(--line); }
+.orow:first-child { border-top: 0; }
+.orow .who { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.orow .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.orow .nodot { flex: none; width: 10px; }
+.sec-h { padding: 0 var(--space-4); }
+
+.disc { display: flex; flex-direction: column; gap: var(--space-2); }
+.disc-btn { background: none; border: 0; padding: var(--space-2) 0; min-height: 44px; display: flex; align-items: center; gap: var(--space-2); color: var(--accent); cursor: pointer; font-size: var(--sb-s); line-height: var(--sb-l); text-align: left; }
+.disc-btn svg { flex: none; transition: transform .15s; }
+.disc-btn[aria-expanded="true"] svg { transform: rotate(90deg); }
+.raw { font-family: var(--mono); font-size: var(--fn-s); line-height: var(--fn-l); background: var(--surface-2); border-radius: var(--radius); padding: var(--space-3); overflow-wrap: anywhere; }
+
+/* Tab bar: floats at the bottom (HIG tab bars). Tab bars keep their size at accessibility sizes; iOS offers the large content viewer instead. */
+.tabbar { display: flex; justify-content: space-around; align-items: center; gap: var(--space-1); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: var(--space-1); min-height: 56px; font-size: 10px; line-height: 12px; }
+.tab { flex: 1 1 0; min-height: 48px; min-width: 44px; border: 0; background: none; border-radius: 999px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; color: var(--text-2); font-size: 10px; line-height: 12px; font-weight: 500; }
+.tab[aria-selected="true"] { color: var(--accent); background: var(--accent-bg); }
+
+/* Sheets (HIG sheets: Done on the trailing edge of the top bar). */
+.sheet-scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 5; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; top: 12%; z-index: 6; background: var(--bg); border-radius: var(--radius) var(--radius) 0 0; display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.sheet .grab { width: 36px; height: 5px; border-radius: 3px; background: var(--line); align-self: center; margin-top: var(--space-2); }
+.sheet-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 var(--space-2); min-height: 52px; }
+.sheet-bar .ttl { text-align: center; }
+/* iOS caps bar titles at large text sizes, so bars keep their default size. */
+.ax5 .sheet-bar, .ax5 .navtitle { --hl-s: 17px; --hl-l: 22px; }
+.navtitle { flex: none; margin: 0; min-height: 44px; display: flex; align-items: center; justify-content: center; font-size: var(--hl-s); line-height: var(--hl-l); font-weight: 600; }
+.sheet-bar .done { justify-self: end; }
+.toast { position: absolute; left: var(--space-4); right: var(--space-4); z-index: 7; background: var(--text); color: var(--bg); border-radius: var(--radius); padding: var(--space-3) var(--space-4); font-size: var(--sb-s); line-height: var(--sb-l); }
+
+/* Mockup tags. Dashed, so a reader never takes them for UI. */
+.tag { position: relative; outline: 2px dashed var(--tag-new); outline-offset: 2px; }
+.tag.today { outline-color: var(--tag-today); }
+.tag::after { content: "New: " attr(data-tag); position: absolute; right: 2px; top: 2px; z-index: 4; font: 600 10px/14px var(--font); color: #fff; background: var(--tag-new); padding: 0 6px; border-radius: 4px; white-space: nowrap; pointer-events: none; }
+.btn.tag::after { top: -9px; }
+.tag.today::after { content: "Today: " attr(data-tag); background: var(--tag-today); }
+body.notags .tag { outline: 0; }
+body.notags .tag::after { display: none; }
+.ax5 .tag, .phone .tag { outline: 0; }
+.ax5 .tag::after, .phone .tag::after { display: none; }
+
+/* Concept: status strip. */
+.strip { display: flex; align-items: center; gap: var(--space-2); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--space-1) var(--space-1) var(--space-1) 0; }
+.strip.bad { background: var(--bad-bg); border-color: var(--bad); }
+.strip.warn { background: var(--warn-bg); border-color: var(--warn); }
+.strip-open { flex: 1 1 auto; min-width: 0; min-height: 52px; display: flex; align-items: center; gap: var(--space-3); background: none; border: 0; padding: var(--space-1) var(--space-3); text-align: left; cursor: pointer; border-radius: var(--radius); }
+.strip-open .txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.ax5 .strip, .ax5 .strip-open { flex-wrap: wrap; }
+
+/* Concept: answer page. */
+.answer { display: flex; flex-direction: column; gap: var(--space-3); padding-top: var(--space-4); }
+.answer .q { color: var(--text-2); }
+.answer .a { font-size: var(--lt-s); line-height: var(--lt-l); font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+.answer .a.bad { color: var(--bad); }
+.answer .mark { display: flex; align-items: center; gap: var(--space-2); }
+.reason { background: var(--bad-bg); border-radius: var(--radius); padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1); }
+.reason.warn { background: var(--warn-bg); }
+.dock { display: flex; flex-direction: column; gap: var(--space-2); }
+
+/* Concept: mail slot. */
+.slot { background: var(--surface); border-radius: var(--radius); display: flex; flex-direction: column; border-top: 6px solid var(--text); position: relative; }
+.slot::before { content: ""; position: absolute; left: var(--space-6); right: var(--space-6); top: -6px; height: 2px; background: var(--bg); }
+.slot.bad { border-top-color: var(--bad); }
+.slot.warn { border-top-color: var(--warn); }
+.slot.run { border-top-color: var(--accent); }
+.slot-sweep { position: absolute; top: -6px; left: 0; height: 6px; width: 30%; background: var(--on-accent); opacity: .6; animation: sweep 1.4s ease-in-out infinite; }
+@keyframes sweep { from { left: -30%; } to { left: 100%; } }
+.slot-main { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); padding: var(--space-2) var(--space-2) var(--space-2) 0; }
+.slot-open { flex: 1 1 12rem; min-width: 0; min-height: 52px; display: flex; align-items: center; gap: var(--space-3); background: none; border: 0; padding: var(--space-1) var(--space-3); text-align: left; cursor: pointer; border-radius: var(--radius); }
+.slot-open .txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.slot-open svg.chev { flex: none; transition: transform .15s; }
+.slot-open[aria-expanded="true"] svg.chev { transform: rotate(-90deg); }
+.slot-drawer { padding: 0 var(--space-4) var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); border-bottom: 1px solid var(--line); }
+.seam { display: flex; align-items: center; gap: var(--space-2); color: var(--text-2); }
+.seam::before, .seam::after { content: ""; flex: 1 1 auto; height: 1px; background: var(--line); }
+.landed .orow { background: var(--accent-bg); }
+.empty { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; padding: var(--space-4) 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .spin, .slot-sweep { animation: none; }
+  .slot-sweep { display: none; }
+}
+@media (forced-colors: active) {
+  .slot { border-top: 6px solid CanvasText; }
+  .tab[aria-selected="true"] { outline: 2px solid Highlight; }
+}
+</style>
+</head>
+<body>
+<div class="banner" role="note"><strong>Sample.</strong><span>No figure, seller, time or error on this page is real. Designer kind: blind. Designer: orders-job-blind-2.</span></div>
+
+<header class="chrome">
+  <h1>Did my new orders come in, or is it broken?</h1>
+  <p>Three ways to show the order helper that runs on the person's computer: when it last ran, what it found, whether it failed and why, and a way to start it from the phone. Every button in the frames works. Pick a state below, or press inside a frame.</p>
+  <div class="controls">
+    <div class="ctl-row" role="group" aria-label="State"><span>State</span><span id="state-chips" class="cluster"></span></div>
+    <div class="ctl-row" role="group" aria-label="Theme"><span>Theme</span>
+      <button class="chip" data-theme-set="auto">Device</button><button class="chip" data-theme-set="light">Light</button><button class="chip" data-theme-set="dark">Dark</button></div>
+    <div class="ctl-row"><span>Mockup</span>
+      <button class="chip" id="tags-toggle" aria-pressed="true">Today and New labels</button>
+      <button class="chip" id="fail-toggle" aria-pressed="false">Next check fails</button>
+      <button class="chip" id="show-all" hidden>Show hidden concepts</button></div>
+    <div class="legend"><span class="k-today">Today: given in the brief</span><span class="k-new">New: needs data or a link the brief does not give</span></div>
+  </div>
+</header>
+
+<main>
+<section class="concept" id="concept-strip" data-concept="strip" aria-labelledby="h-strip">
+  <div class="concept-head"><h2 id="h-strip">Status strip</h2><p>The order list stays the first screen. One strip above the tab bar answers the question; a press opens the detail sheet. Open, the detail lives on the right page.</p><button class="chip" data-hide="strip">Hide this concept</button></div>
+  <div class="frames">
+    <div class="frame-wrap"><div class="device" data-device="iphone-duo-folded" style="width:466px;height:678px"><div class="screen" data-frame="strip-folded"></div></div><div class="frame-cap">Duo folded, 466 x 678</div></div>
+    <div class="frame-wrap"><div class="device open" data-device="iphone-duo-unfolded" style="width:951px;height:669px"><div class="page"><div class="screen" data-frame="strip-open-l"></div></div><div class="hinge" aria-hidden="true"></div><div class="page"><div class="screen" data-frame="strip-open-r"></div></div></div><div class="frame-cap">Duo open, 951 x 669, hinge 455.5 to 495.5</div></div>
+    <div class="frame-wrap"><div class="device" data-device="iphone-regular" style="width:402px;height:874px"><div class="screen phone" data-frame="strip-phone"></div></div><div class="frame-cap">Large phone. Size not written: drawn at 402 x 874.</div></div>
+    <div class="frame-wrap"><div class="device" data-device="iphone-duo-folded-ax5" style="width:466px;height:678px"><div class="screen ax5" data-frame="strip-ax5"></div></div><div class="frame-cap">Duo folded, largest text (AX5)</div></div>
+  </div>
+</section>
+
+<section class="concept" id="concept-answer" data-concept="answer" aria-labelledby="h-answer">
+  <div class="concept-head"><h2 id="h-answer">Answer page</h2><p>A tab of its own, named Order check. Its first screen is the person's question and a one-line answer, with Check now in the thumb's reach. Open, the right page shows what the check brought, or how to fix it.</p><button class="chip" data-hide="answer">Hide this concept</button></div>
+  <div class="frames">
+    <div class="frame-wrap"><div class="device" data-device="iphone-duo-folded" style="width:466px;height:678px"><div class="screen" data-frame="answer-folded"></div></div><div class="frame-cap">Duo folded, 466 x 678</div></div>
+    <div class="frame-wrap"><div class="device open" data-device="iphone-duo-unfolded" style="width:951px;height:669px"><div class="page"><div class="screen" data-frame="answer-open-l"></div></div><div class="hinge" aria-hidden="true"></div><div class="page"><div class="screen" data-frame="answer-open-r"></div></div></div><div class="frame-cap">Duo open, 951 x 669, hinge 455.5 to 495.5</div></div>
+    <div class="frame-wrap"><div class="device" data-device="iphone-regular" style="width:402px;height:874px"><div class="screen phone" data-frame="answer-phone"></div></div><div class="frame-cap">Large phone. Size not written: drawn at 402 x 874.</div></div>
+    <div class="frame-wrap"><div class="device" data-device="iphone-duo-folded-ax5" style="width:466px;height:678px"><div class="screen ax5" data-frame="answer-ax5"></div></div><div class="frame-cap">Duo folded, largest text (AX5)</div></div>
+  </div>
+</section>
+
+<section class="concept" id="concept-slot" data-concept="slot" aria-labelledby="h-slot">
+  <div class="concept-head"><h2 id="h-slot">Mail slot</h2><p>Bold. The order list runs upward from the thumb, newest at the bottom. The helper is a slot the new orders drop through, right above the tab bar. Open, the hinge is the line: the left page holds what the last check brought, the right page everything before.</p><button class="chip" data-hide="slot">Hide this concept</button></div>
+  <div class="frames">
+    <div class="frame-wrap"><div class="device" data-device="iphone-duo-folded" style="width:466px;height:678px"><div class="screen" data-frame="slot-folded"></div></div><div class="frame-cap">Duo folded, 466 x 678</div></div>
+    <div class="frame-wrap"><div class="device open" data-device="iphone-duo-unfolded" style="width:951px;height:669px"><div class="page"><div class="screen" data-frame="slot-open-l"></div></div><div class="hinge" aria-hidden="true"></div><div class="page"><div class="screen" data-frame="slot-open-r"></div></div></div><div class="frame-cap">Duo open, 951 x 669, hinge 455.5 to 495.5</div></div>
+    <div class="frame-wrap"><div class="device" data-device="iphone-regular" style="width:402px;height:874px"><div class="screen phone" data-frame="slot-phone"></div></div><div class="frame-cap">Large phone. Size not written: drawn at 402 x 874.</div></div>
+    <div class="frame-wrap"><div class="device" data-device="iphone-duo-folded-ax5" style="width:466px;height:678px"><div class="screen ax5" data-frame="slot-ax5"></div></div><div class="frame-cap">Duo folded, largest text (AX5)</div></div>
+  </div>
+</section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  var CONCEPTS = ["strip", "answer", "slot"];
+  var KINDS = ["folded", "open", "phone", "ax5"];
+  var STATES = [
+    ["new", "New orders"], ["none", "Nothing new"], ["running", "Running"], ["waiting", "Waiting for computer"],
+    ["failed", "Failed"], ["stale", "Stale"], ["unknown", "Unknown"], ["never", "Never run"], ["stopped", "Stopped"]
+  ];
+  var OLD = [["Northgate Supply", 2, "Nov 18"], ["Lumen & Co", 5, "Nov 17"], ["Tall Pines Shop", 1, "Nov 15"], ["Copper Kettle Goods", 2, "Nov 14"], ["Bellweather Supply", 4, "Nov 12"], ["Orchard Lane Shop", 3, "Nov 11"], ["Fieldstone Goods", 1, "Nov 9"]];
+  var FOUND3 = [["Pike Street Goods", 3, "Nov 21"], ["Harbor Trading", 1, "Nov 21"], ["Wren & Daughter", 6, "Nov 20"]];
+  var FOUND2 = [["Marlow Goods", 2, "Nov 21"], ["Ash & Elm", 1, "Nov 21"]];
+  var RAW = "HTTP 401 on GET /account/orders: session expired";
+
+  function base(s) {
+    var b = { s: s, found: [], older: FOUND3.concat(OLD), at: "9:14", ago: "27 minutes ago", started: "9:38", startedAgo: "3 minutes ago", asked: "9:40" };
+    if (s === "new") { b.found = FOUND3; b.older = OLD; }
+    if (s === "never") { b.older = []; }
+    if (s === "stopped") { b.at = "9:39"; }
+    return b;
+  }
+
+  var st = {}, ui = {}, timers = {}, failNext = false, hidden = {};
+  CONCEPTS.forEach(function (c) { st[c] = base("new"); timers[c] = []; });
+
+  function esc(t) { return String(t).replace(/[&<>"]/g, function (m) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]; }); }
+  function n(k) { return k === 1 ? "1 new order" : k + " new orders"; }
+  function u(f) { if (!ui[f]) ui[f] = { sheet: false, fix: false, disc: false, drawer: false, tab: "check", toast: "" }; return ui[f]; }
+
+  var G = {
+    ok: '<svg viewBox="0 0 28 28" class="glyph tone-ok" aria-hidden="true"><circle cx="14" cy="14" r="12" fill="currentColor"/><path d="M8.5 14.5l3.8 3.8 7.4-8" fill="none" stroke="var(--surface)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    none: '<svg viewBox="0 0 28 28" class="glyph tone-ok" aria-hidden="true"><circle cx="14" cy="14" r="11" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M8.5 14.5l3.8 3.8 7.4-8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    run: '<svg viewBox="0 0 28 28" class="glyph tone-acc" aria-hidden="true"><circle cx="14" cy="14" r="11" fill="none" stroke="currentColor" stroke-opacity=".25" stroke-width="3"/><path class="spin" d="M14 3a11 11 0 0 1 11 11" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>',
+    wait: '<svg viewBox="0 0 28 28" class="glyph tone-acc" aria-hidden="true"><circle cx="14" cy="14" r="11" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M14 8v6.5l4 2.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+    bad: '<svg viewBox="0 0 28 28" class="glyph tone-bad" aria-hidden="true"><path d="M14 3l12 21H2z" fill="currentColor"/><path d="M14 10.5v6.5" stroke="var(--surface)" stroke-width="2.6" stroke-linecap="round"/><circle cx="14" cy="20.5" r="1.6" fill="var(--surface)"/></svg>',
+    stale: '<svg viewBox="0 0 28 28" class="glyph tone-warn" aria-hidden="true"><rect x="3" y="3" width="22" height="22" rx="5" fill="currentColor"/><path d="M14 8v6.5l4 2.5" fill="none" stroke="var(--surface)" stroke-width="2.6" stroke-linecap="round"/></svg>',
+    unknown: '<svg viewBox="0 0 28 28" class="glyph tone-warn" aria-hidden="true"><circle cx="14" cy="14" r="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-dasharray="4 3"/><path d="M11 11.2a3.2 3.2 0 1 1 4.4 3c-.9.4-1.4 1-1.4 2v.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="14" cy="20.3" r="1.4" fill="currentColor"/></svg>',
+    never: '<svg viewBox="0 0 28 28" class="glyph tone-quiet" aria-hidden="true"><circle cx="14" cy="14" r="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-dasharray="4 3"/></svg>',
+    stopped: '<svg viewBox="0 0 28 28" class="glyph tone-quiet" aria-hidden="true"><circle cx="14" cy="14" r="11" fill="none" stroke="currentColor" stroke-width="2.4"/><rect x="10" y="10" width="8" height="8" rx="1.5" fill="currentColor"/></svg>'
+  };
+  var CHEV = '<svg class="chev" width="10" height="16" viewBox="0 0 10 16" aria-hidden="true"><path d="M2 2l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var CHEV_S = '<svg width="8" height="12" viewBox="0 0 8 12" aria-hidden="true"><path d="M2 1.5l4 4.5-4 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  /* One home for every word a state shows. */
+  function info(x) {
+    var k = x.found.length, i = { tone: "ok", glyph: G.ok, act: "run", tag: "", tagKind: "today" };
+    switch (x.s) {
+      case "new": i.title = n(k) + " came in"; i.sub = "Checked today at " + x.at + ", " + x.ago + "."; i.ans = "Yes. " + n(k) + " came in."; i.last = "Today at " + x.at; i.got = n(k); i.tag = "helper status"; break;
+      case "none": i.glyph = G.none; i.title = "No new orders"; i.sub = "Checked today at " + x.at + ", " + x.ago + ". The sellers' site had nothing new."; i.ans = "No. The last check found nothing new."; i.last = "Today at " + x.at; i.got = "Nothing new"; i.tag = "helper status"; break;
+      case "running": i.tone = "acc"; i.glyph = G.run; i.title = "Checking for new orders"; i.sub = "Started at " + x.started + ", " + x.startedAgo + "."; i.ans = "Checking now."; i.act = "stop"; i.last = "Started at " + x.started; i.got = "When it ends"; i.tag = "helper status"; break;
+      case "waiting": i.tone = "acc"; i.glyph = G.wait; i.title = "Waiting for your computer"; i.sub = "Asked at " + x.asked + ". The check starts when your computer picks it up."; i.ans = "Not yet. Your computer has not started the check."; i.act = "cancel"; i.last = "Asked at " + x.asked; i.got = "When it ends"; i.tag = "computer picks up the ask"; i.tagKind = "new"; break;
+      case "failed": i.tone = "bad"; i.glyph = G.bad; i.title = "The " + x.at + " check failed"; i.sub = "The sellers' site signed the helper out."; i.ans = "No. The last check failed."; i.raw = RAW; i.last = "Today at " + x.at; i.got = "Not known"; i.fix = true; i.tag = "helper status and error text"; break;
+      case "stale": i.tone = "warn"; i.glyph = G.stale; i.title = "No check since Thursday"; i.sub = "Your computer may be asleep or off."; i.ans = "Maybe not. There has been no check since Thursday."; i.last = "Thursday at 22:10"; i.got = "Not known"; i.tag = "stale after a set time"; i.tagKind = "new"; break;
+      case "unknown": i.tone = "warn"; i.glyph = G.unknown; i.title = "Can't tell if the helper ran"; i.sub = "This phone couldn't read the helper's status."; i.ans = "Can't tell. This phone couldn't read the helper."; i.act = "reread"; i.last = "Not known"; i.got = "Not known"; i.tag = "a status read can fail"; i.tagKind = "new"; break;
+      case "reading": i.tone = "acc"; i.glyph = G.run; i.title = "Reading the helper's status"; i.sub = "This takes a moment."; i.ans = "Reading the helper."; i.act = "busy"; i.last = "Not known"; i.got = "Not known"; i.tag = "a status read can fail"; i.tagKind = "new"; break;
+      case "never": i.tone = "quiet"; i.glyph = G.never; i.title = "No check yet"; i.sub = "The helper has not checked for orders yet."; i.ans = "Not yet. The helper has never checked."; i.last = "Never"; i.got = "Nothing yet"; i.tag = "helper status"; break;
+      case "stopped": i.tone = "quiet"; i.glyph = G.stopped; i.title = "Check stopped"; i.sub = "You stopped it at " + x.at + ", before it finished."; i.ans = "Not from this check. You stopped it."; i.last = "Stopped at " + x.at; i.got = "Not known"; i.tag = "helper status"; break;
+    }
+    return i;
+  }
+
+  function tagAttr(on, i) { return on && i.tag ? ' data-tag="' + esc(i.tag) + '"' : ""; }
+  function tagCls(on, i) { return on && i.tag ? " tag" + (i.tagKind === "today" ? " today" : "") : ""; }
+
+  /* The one action button. Its box holds the widest label, so a press never resizes it. */
+  function actBtn(c, f, i, cls, idAttr) {
+    var labels = [["run", "Check now"], ["stop", "Stop check"], ["cancel", "Cancel the ask"], ["reread", "Try again"], ["busy", "Reading"]];
+    var spans = labels.map(function (l) { return '<span class="' + (l[0] === i.act ? "on" : "") + '"' + (l[0] === i.act ? "" : ' aria-hidden="true"') + ">" + l[1] + "</span>"; }).join("");
+    var busy = i.act === "busy";
+    var tag = (i.act === "run") ? ' data-tag="start from this phone"' : "";
+    return '<button class="btn ' + (busy ? "busy" : (i.act === "stop" || i.act === "cancel" ? "tinted" : "primary")) + " " + (cls || "") + (tag ? " tag" : "") + '"' + tag + (idAttr || "") +
+      (busy ? ' aria-disabled="true" title="Reading the helper\'s status"' : ' data-act="' + i.act + '"') + ' data-c="' + c + '" data-f="' + f + '"><span class="lbls">' + spans + "</span></button>";
+  }
+
+  function rows(list, mark) {
+    return list.map(function (o) {
+      return '<div class="orow">' + (mark ? '<span class="dot" aria-hidden="true"></span>' : '<span class="nodot"></span>') +
+        '<div class="who"><span class="t-bd">' + esc(o[0]) + (mark ? '<span style="position:absolute;left:-9999px"> (new)</span>' : "") + '</span><span class="t-sb dim">' + o[1] + (o[1] === 1 ? " item" : " items") + ", ordered " + o[2] + "</span></div></div>";
+    }).join("");
+  }
+
+  function disclosure(c, f, i) {
+    if (!i.raw) return "";
+    var open = u(f).disc;
+    return '<div class="disc"><button class="disc-btn" aria-expanded="' + open + '" data-act="disc" data-c="' + c + '" data-f="' + f + '">' + CHEV_S + "What the helper said</button>" +
+      (open ? '<div class="raw">' + esc(i.raw) + "</div>" : "") + "</div>";
+  }
+
+  function fixBtn(c, f, i, cls) {
+    return i.fix ? '<button class="btn plain ' + (cls || "") + '" data-act="fix" data-c="' + c + '" data-f="' + f + '">How to sign in again</button>' : "";
+  }
+
+  function fixSteps() {
+    return '<ol class="stack t-bd" style="padding-left:1.4em;margin:0">' +
+      "<li>On your computer, open the order helper.</li>" +
+      "<li>Sign in to the sellers' site when it asks.</li>" +
+      "<li>Come back here and press Check now.</li></ol>";
+  }
+
+  function statusBar() { return '<div class="statusbar" aria-hidden="true"><span>9:41</span><span class="sys"><b></b><b></b><i></i></span></div>'; }
+  /* Standard inline title: the screen's name matches its tab label (ux-one-plain-name). */
+  function navTitle(t) { return '<h1 class="navtitle">' + esc(t) + "</h1>"; }
+  function homeBar() { return '<div class="homebar" aria-hidden="true"></div>'; }
+
+  function tabbar(c, f, tabs, sel) {
+    var icons = {
+      orders: '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+      check: '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v4h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      settings: '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
+    };
+    var names = { orders: "Orders", check: "Order check", settings: "Settings" };
+    return '<nav class="tabbar" role="tablist" aria-label="Sections">' + tabs.map(function (t) {
+      return '<button class="tab" role="tab" aria-selected="' + (t === sel) + '" data-act="tab" data-tab="' + t + '" data-c="' + c + '" data-f="' + f + '">' + icons[t] + "<span>" + names[t] + "</span></button>";
+    }).join("") + "</nav>";
+  }
+
+  function toast(f, bottom) {
+    var t = u(f).toast;
+    return t ? '<div class="toast" role="status" style="bottom:' + bottom + 'px">' + esc(t) + "</div>" : "";
+  }
+
+  function ordersEmpty(c, f, i, withButton) {
+    return '<div class="empty"><p class="t-bd">No orders yet. The helper adds them here when it checks.</p>' + (withButton ? actBtn(c, f, i) : "") + "</div>";
+  }
+
+  function factsGroup(i) {
+    var label = (i.act === "stop" || i.act === "cancel") ? "This check" : "Last check";
+    return '<div class="group"><div class="cell"><span class="t-bd">' + label + '</span><span class="t-bd dim">' + esc(i.last) + '</span></div><div class="cell"><span class="t-bd">Found</span><span class="t-bd dim">' + esc(i.got) + "</span></div></div>";
+  }
+
+  /* ---------- Status strip ---------- */
+  function stripBody(c, f, i, tags) {
+    var tone = i.tone === "bad" ? "bad" : (i.tone === "warn" ? "warn" : "");
+    return '<div class="stack' + tagCls(tags, i) + '"' + tagAttr(tags, i) + '><div class="cluster" style="flex-wrap:nowrap;align-items:flex-start">' + i.glyph +
+      '<div class="stack-1"><p class="t-t3' + (tone === "bad" ? " tone-bad" : "") + '">' + esc(i.title) + '</p><p class="t-sb dim">' + esc(i.sub) + "</p></div></div>" +
+      disclosure(c, f, i) + "</div>" + factsGroup(i);
+  }
+
+  function stripCompact(c, f, kind, x, i) {
+    var tags = kind === "folded";
+    var U = u(f);
+    var list = x.s === "never" ? ordersEmpty(c, f, i, false) :
+      (x.found.length ? '<p class="t-fn dim sec-h">From the ' + esc(x.at) + ' check</p><div class="orders' + (tags ? " tag" : "") + '"' + (tags ? ' data-tag="which orders the check brought"' : "") + ">" + rows(x.found, true) + '</div><p class="t-fn dim sec-h">Earlier</p>' : "") +
+      (x.older.length ? '<div class="orders">' + rows(x.older, false) + "</div>" : "");
+    var tone = i.tone === "bad" ? " bad" : (i.tone === "warn" ? " warn" : "");
+    var short = x.s === "new" || x.s === "none" ? "Today at " + x.at : (x.s === "failed" ? i.sub : (x.s === "running" ? "Started at " + x.started : i.sub));
+    var inner = (i.act === "stop" || i.act === "cancel" || x.s === "never") ? actBtn(c, f, i) : "";
+    var strip = '<div class="strip' + tone + tagCls(tags, i) + '"' + tagAttr(tags, i) + (kind === "folded" ? ' id="strip-status"' : "") + '>' +
+      '<button class="strip-open" data-act="sheet" data-c="' + c + '" data-f="' + f + '" aria-haspopup="dialog">' + i.glyph + '<span class="txt"><span class="t-hl">' + esc(i.title) + '</span><span class="t-fn dim">' + esc(short) + "</span></span>" + CHEV + "</button>" + inner + "</div>";
+    var sheet = "";
+    if (U.sheet) {
+      sheet = '<div class="sheet-scrim" data-act="sheet-close" data-c="' + c + '" data-f="' + f + '"></div><div class="sheet" role="dialog" aria-label="Order check"><span class="grab"></span>' +
+        '<div class="sheet-bar"><span></span><span class="t-hl ttl">Order check</span><button class="btn plain done" data-act="sheet-close" data-c="' + c + '" data-f="' + f + '">Done</button></div>' +
+        '<div class="scroll">' + stripBody(c, f, i, tags) + "</div>" +
+        '<div class="bottom">' + (U.fix ? '<div class="stack"><p class="t-hl">How to sign in again</p>' + fixSteps() + "</div>" : "") + actBtn(c, f, i, "wide") + (U.fix ? "" : fixBtn(c, f, i, "wide")) + "</div>" + homeBar() + "</div>";
+    }
+    /* At accessibility sizes the strip would fill the screen, so it joins the top of the list and scrolls with it. */
+    if (kind === "ax5") return statusBar() + '<div class="scroll"><h1 class="t-lt">Orders</h1>' + strip + list + "</div>" +
+      '<div class="bottom">' + tabbar(c, f, ["orders", "settings"], "orders") + "</div>" + toast(f, 96) + homeBar() + sheet;
+    return statusBar() + '<div class="scroll"><h1 class="t-lt">Orders</h1>' + list + "</div>" +
+      '<div class="bottom">' + strip + tabbar(c, f, ["orders", "settings"], "orders") + "</div>" + toast(f, 150) + homeBar() + sheet;
+  }
+
+  function stripOpen(c, f, side, x, i) {
+    if (side === "l") {
+      var list = x.s === "never" ? ordersEmpty(c, f, i, false) :
+        (x.found.length ? '<p class="t-fn dim sec-h">From the ' + esc(x.at) + ' check</p><div class="orders">' + rows(x.found, true) + '</div><p class="t-fn dim sec-h">Earlier</p>' : "") +
+        (x.older.length ? '<div class="orders">' + rows(x.older, false) + "</div>" : "");
+      return statusBar() + '<div class="scroll"><h1 class="t-lt">Orders</h1>' + list + '</div><div class="bottom">' + tabbar(c, f, ["orders", "settings"], "orders") + "</div>" + toast(f, 96) + homeBar();
+    }
+    var U = u(f);
+    return statusBar() + '<div class="scroll"><h1 class="t-lt">Order check</h1>' + stripBody(c, f, i, true) +
+      (U.fix || i.fix ? (i.fix ? '<div class="stack"><p class="t-hl">How to sign in again</p>' + fixSteps() + "</div>" : "") : "") + "</div>" +
+      '<div class="bottom">' + actBtn(c, f, i, "wide") + "</div>" + homeBar();
+  }
+
+  /* ---------- Answer page ---------- */
+  function answerBlock(c, f, kind, x, i, tags) {
+    var bad = x.s === "failed";
+    return '<div class="answer' + tagCls(tags, i) + '"' + tagAttr(tags, i) + '><p class="t-hl q">Did new orders come in?</p>' +
+      '<div class="mark">' + i.glyph + "</div>" +
+      '<p class="a' + (bad ? " bad" : "") + '"' + (kind === "folded" ? ' id="answer-sentence"' : "") + ">" + esc(i.ans) + "</p>" +
+      (x.s === "never" ? "" : bad ? '<div class="reason"><p class="t-bd">' + esc(i.sub) + "</p>" + disclosure(c, f, i) + "</div>" :
+        (x.s === "stale" || x.s === "unknown" ? '<div class="reason warn"><p class="t-bd">' + esc(i.sub) + "</p></div>" : '<p class="t-bd dim">' + esc(i.sub) + "</p>")) + "</div>";
+  }
+
+  function answerCompact(c, f, kind, x, i) {
+    var U = u(f), tags = kind === "folded";
+    if (U.tab === "orders") {
+      var list = x.s === "never" ? ordersEmpty(c, f, i, false) : '<div class="orders">' + rows(x.found, true) + rows(x.older, false) + "</div>";
+      return statusBar() + '<div class="scroll"><h1 class="t-lt">Orders</h1>' + list + '</div><div class="bottom">' + tabbar(c, f, ["orders", "check", "settings"], "orders") + "</div>" + toast(f, 96) + homeBar();
+    }
+    var found = x.found.length ? '<div class="stack"><p class="t-fn dim sec-h">Found in the ' + esc(x.at) + ' check</p><div class="orders' + (tags ? " tag" : "") + '"' + (tags ? ' data-tag="which orders the check brought"' : "") + ">" + rows(x.found, true) + "</div></div>" : "";
+    var fix = U.fix ? '<div class="sheet-scrim" data-act="fix-close" data-c="' + c + '" data-f="' + f + '"></div><div class="sheet" role="dialog" aria-label="How to sign in again"><span class="grab"></span><div class="sheet-bar"><span></span><span class="t-hl ttl">How to sign in again</span><button class="btn plain done" data-act="fix-close" data-c="' + c + '" data-f="' + f + '">Done</button></div><div class="scroll' + (tags ? " tag" : "") + '"' + (tags ? ' data-tag="sign-in steps"' : "") + ">" + fixSteps() + "</div>" + homeBar() + "</div>" : "";
+    var dock = '<div class="dock">' + actBtn(c, f, i, "wide") + fixBtn(c, f, i, "wide") + "</div>";
+    /* At accessibility sizes the dock follows the answer in the scroll, so the answer keeps the screen. */
+    if (kind === "ax5") return statusBar() + navTitle("Order check") + '<div class="scroll">' + answerBlock(c, f, kind, x, i, tags) + dock + found + "</div>" +
+      '<div class="bottom">' + tabbar(c, f, ["orders", "check", "settings"], "check") + "</div>" + toast(f, 96) + homeBar() + fix;
+    return statusBar() + navTitle("Order check") + '<div class="scroll">' + answerBlock(c, f, kind, x, i, tags) + found + "</div>" +
+      '<div class="bottom">' + dock + tabbar(c, f, ["orders", "check", "settings"], "check") + "</div>" + toast(f, 96) + homeBar() + fix;
+  }
+
+  function answerOpen(c, f, side, x, i) {
+    var U = u(f);
+    if (side === "l") {
+      return statusBar() + navTitle("Order check") + '<div class="scroll">' + answerBlock(c, f, "open", x, i, true) + "</div>" +
+        '<div class="bottom"><div class="dock">' + actBtn(c, f, i, "wide") + "</div>" + tabbar(c, f, ["orders", "check", "settings"], "check") + "</div>" + toast(f, 96) + homeBar();
+    }
+    var body;
+    if (x.s === "failed") body = '<h2 class="t-t2">How to sign in again</h2><div class="tag" data-tag="sign-in steps">' + fixSteps() + "</div>";
+    else if (x.found.length) body = '<h2 class="t-t2">Found in the ' + esc(x.at) + ' check</h2><div class="orders tag" data-tag="which orders the check brought">' + rows(x.found, true) + "</div>";
+    else if (x.s === "never") body = '<h2 class="t-t2">Orders</h2><p class="t-bd">No orders yet. The helper adds them here when it checks.</p>';
+    else body = '<h2 class="t-t2">Earlier orders</h2><div class="orders">' + rows(x.older, false) + "</div>";
+    return statusBar() + '<div class="scroll" style="padding-top:var(--space-4)">' + body + "</div>" + homeBar();
+  }
+
+  /* ---------- Mail slot ---------- */
+  function slotBand(c, f, kind, x, i, tags) {
+    var U = u(f);
+    var tone = i.tone === "bad" ? " bad" : (i.tone === "warn" ? " warn" : (i.tone === "acc" ? " run" : ""));
+    var short = x.s === "new" || x.s === "none" ? "Today at " + x.at : (x.s === "running" ? "Started at " + x.started : i.sub);
+    var drawer = U.drawer ? '<div class="slot-drawer">' + factsGroup(i) +
+      (i.raw ? '<p class="t-bd">' + esc(i.sub) + "</p>" + disclosure(c, f, i) + fixBtn(c, f, i) : "") +
+      (U.fix ? '<div class="stack' + (tags ? " tag" : "") + '"' + (tags ? ' data-tag="sign-in steps"' : "") + ">" + fixSteps() + "</div>" : "") + "</div>" : "";
+    return '<div class="slot' + tone + tagCls(tags, i) + '"' + tagAttr(tags, i) + (kind === "folded" ? ' id="slot-band"' : "") + ">" + (x.s === "running" ? '<span class="slot-sweep" aria-hidden="true"></span>' : "") + drawer +
+      '<div class="slot-main"><button class="slot-open" aria-expanded="' + U.drawer + '" data-act="drawer" data-c="' + c + '" data-f="' + f + '">' + i.glyph +
+      '<span class="txt"><span class="t-hl">' + esc(i.title) + '</span><span class="t-fn dim">' + esc(short) + "</span></span>" + CHEV + "</button>" + actBtn(c, f, i) + "</div></div>";
+  }
+
+  function slotCompact(c, f, kind, x, i) {
+    var tags = kind === "folded";
+    var body;
+    if (x.s === "never") body = '<div class="empty"><p class="t-bd">No orders yet. New orders drop in here, just above the slot, when the helper checks.</p></div>';
+    else {
+      body = (x.older.length ? '<div class="orders">' + rows(x.older.slice().reverse(), false) + "</div>" : "") +
+        (x.found.length ? '<p class="seam t-fn">Brought by the ' + esc(x.at) + ' check</p><div class="orders landed' + (tags ? " tag" : "") + '"' + (tags ? ' data-tag="which orders the check brought"' : "") + ">" + rows(x.found.slice().reverse(), true) + "</div>" :
+          '<p class="seam t-fn">' + (x.s === "none" ? "Nothing came through at " + esc(x.at) : "Nothing new has come through") + "</p>");
+    }
+    /* At accessibility sizes the slot is the last item of the list, so it scrolls with it instead of covering it. */
+    if (kind === "ax5") return statusBar() + navTitle("Orders") + '<div class="scroll anchor-end" data-anchor="end">' + body + slotBand(c, f, kind, x, i, tags) + "</div>" +
+      '<div class="bottom">' + tabbar(c, f, ["orders", "settings"], "orders") + "</div>" + toast(f, 96) + homeBar();
+    return statusBar() + navTitle("Orders") + '<div class="scroll anchor-end" data-anchor="end">' + body + "</div>" +
+      '<div class="bottom">' + slotBand(c, f, kind, x, i, tags) + tabbar(c, f, ["orders", "settings"], "orders") + "</div>" + toast(f, 96) + homeBar();
+  }
+
+  function slotOpen(c, f, side, x, i) {
+    if (side === "l") {
+      var body;
+      if (x.s === "never") body = '<div class="empty"><p class="t-bd">No orders yet. New orders drop in here when the helper checks.</p></div>';
+      else if (x.found.length) body = '<h2 class="t-t2">Brought by the ' + esc(x.at) + ' check</h2><div class="orders landed tag" data-tag="which orders the check brought">' + rows(x.found.slice().reverse(), true) + "</div>";
+      else body = '<div class="empty"><p class="t-bd dim">' + (x.s === "none" ? "Nothing came through at " + esc(x.at) + "." : "Nothing new has come through.") + " Earlier orders are on the right.</p></div>";
+      return statusBar() + navTitle("Orders") + '<div class="scroll anchor-end" data-anchor="end">' + body + "</div>" +
+        '<div class="bottom">' + slotBand(c, f, "open", x, i, true) + tabbar(c, f, ["orders", "settings"], "orders") + "</div>" + toast(f, 96) + homeBar();
+    }
+    var list = x.older.length ? '<div class="orders">' + rows(x.older, false) + "</div>" : '<p class="t-bd dim">No earlier orders.</p>';
+    return statusBar() + '<div class="scroll"><h1 class="t-lt">Earlier</h1>' + list + "</div>" + homeBar();
+  }
+
+  /* ---------- Render ---------- */
+  function render(c) {
+    var x = st[c], i = info(x);
+    KINDS.forEach(function (kind) {
+      if (kind === "open") {
+        ["l", "r"].forEach(function (side) {
+          var f = c + "-open-" + side, el = document.querySelector('[data-frame="' + f + '"]');
+          var keep = keepScroll(el);
+          el.innerHTML = c === "strip" ? stripOpen(c, f, side, x, i) : (c === "answer" ? answerOpen(c, f, side, x, i) : slotOpen(c, f, side, x, i));
+          restoreScroll(el, keep);
+        });
+      } else {
+        var f = c + "-" + kind, el = document.querySelector('[data-frame="' + f + '"]');
+        var keep = keepScroll(el);
+        el.innerHTML = c === "strip" ? stripCompact(c, f, kind, x, i) : (c === "answer" ? answerCompact(c, f, kind, x, i) : slotCompact(c, f, kind, x, i));
+        restoreScroll(el, keep);
+      }
+    });
+  }
+  function keepScroll(el) { var s = el.querySelectorAll(".scroll"); return Array.prototype.map.call(s, function (n) { return n.scrollTop; }); }
+  function restoreScroll(el, keep) {
+    Array.prototype.forEach.call(el.querySelectorAll(".scroll"), function (n, k) {
+      if (n.dataset.anchor === "end") n.scrollTop = n.scrollHeight; else if (keep[k] != null) n.scrollTop = keep[k];
+    });
+  }
+  function renderAll() { CONCEPTS.forEach(render); }
+
+  /* ---------- Acts ---------- */
+  function clear(c) { timers[c].forEach(clearTimeout); timers[c] = []; }
+  function later(c, ms, fn) { timers[c].push(setTimeout(function () { fn(); render(c); }, ms)); }
+
+  function run(c) {
+    clear(c);
+    var prev = st[c];
+    var all = prev.found.concat(prev.older);
+    st[c] = Object.assign({}, prev, { s: "waiting", asked: "9:41", prev: prev });
+    later(c, 1400, function () { st[c] = Object.assign({}, st[c], { s: "running", started: "9:41", startedAgo: "just now" }); });
+    later(c, 4200, function () {
+      var already = all.some(function (o) { return o[0] === FOUND2[0][0]; });
+      if (failNext) st[c] = Object.assign(base("failed"), { at: "9:41", ago: "just now", older: all });
+      else if (already) st[c] = Object.assign(base("none"), { at: "9:42", ago: "just now", older: all });
+      else st[c] = Object.assign(base("new"), { at: "9:41", ago: "just now", found: FOUND2, older: all });
+    });
+  }
+
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-act]");
+    if (b) {
+      var c = b.dataset.c, f = b.dataset.f, a = b.dataset.act, U = u(f);
+      if (a === "run") run(c);
+      else if (a === "stop") { clear(c); var p = st[c].prev || base("new"); st[c] = Object.assign({}, p, { s: "stopped", at: "9:42", found: [], older: p.found.concat(p.older) }); }
+      else if (a === "cancel") { clear(c); st[c] = st[c].prev || base("new"); }
+      else if (a === "reread") { clear(c); st[c] = Object.assign({}, st[c], { s: "reading" }); later(c, 1200, function () { st[c] = base("new"); }); }
+      else if (a === "disc") U.disc = !U.disc;
+      else if (a === "sheet") U.sheet = true;
+      else if (a === "sheet-close") { U.sheet = false; U.fix = false; }
+      else if (a === "fix") U.fix = !U.fix;
+      else if (a === "fix-close") U.fix = false;
+      else if (a === "drawer") U.drawer = !U.drawer;
+      else if (a === "tab") {
+        var t = b.dataset.tab;
+        if (t === "settings") { U.toast = "Settings is not part of this mockup."; setTimeout(function () { U.toast = ""; render(c); }, 1800); }
+        else if (c === "answer") U.tab = t;
+      }
+      render(c);
+      var again = document.querySelector('[data-frame="' + f + '"] [data-act="' + a + '"]');
+      if (again && a !== "tab") again.focus({ preventScroll: true });
+      return;
+    }
+    var hide = e.target.closest("[data-hide]");
+    if (hide) { hidden[hide.dataset.hide] = true; applyHidden(); return; }
+    var th = e.target.closest("[data-theme-set]");
+    if (th) { setTheme(th.dataset.themeSet); writeHash(); return; }
+    var sc = e.target.closest("[data-state]");
+    if (sc) { setAll(sc.dataset.state); writeHash(); return; }
+  });
+
+  function applyHidden() {
+    var any = false;
+    CONCEPTS.forEach(function (c) { var h = !!hidden[c]; document.getElementById("concept-" + c).hidden = h; any = any || h; });
+    document.getElementById("show-all").hidden = !any;
+  }
+  document.getElementById("show-all").addEventListener("click", function () { hidden = {}; applyHidden(); });
+  document.getElementById("tags-toggle").addEventListener("click", function () {
+    var on = this.getAttribute("aria-pressed") !== "true"; this.setAttribute("aria-pressed", on); document.body.classList.toggle("notags", !on); writeHash();
+  });
+  document.getElementById("fail-toggle").addEventListener("click", function () {
+    failNext = this.getAttribute("aria-pressed") !== "true"; this.setAttribute("aria-pressed", failNext);
+  });
+
+  var curState = "new", curTheme = "auto";
+  function setAll(s) {
+    curState = s;
+    CONCEPTS.forEach(function (c) { clear(c); st[c] = base(s); });
+    Object.keys(ui).forEach(function (k) { ui[k].sheet = false; ui[k].fix = false; ui[k].drawer = false; ui[k].disc = false; ui[k].tab = "check"; });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-state]"), function (b) { b.setAttribute("aria-pressed", b.dataset.state === s); });
+    renderAll();
+  }
+  function setTheme(t) {
+    curTheme = t;
+    if (t === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", t);
+    Array.prototype.forEach.call(document.querySelectorAll("[data-theme-set]"), function (b) { b.setAttribute("aria-pressed", b.dataset.themeSet === t); });
+  }
+
+  /* Deep links: #s=failed&t=dark&c=slot&open=drawer&tags=0 */
+  function readHash() {
+    var h = {};
+    location.hash.replace(/^#/, "").split("&").forEach(function (kv) { var p = kv.split("="); if (p[0]) h[p[0]] = decodeURIComponent(p[1] || ""); });
+    return h;
+  }
+  function writeHash() {
+    var parts = ["s=" + curState];
+    if (curTheme !== "auto") parts.push("t=" + curTheme);
+    var only = CONCEPTS.filter(function (c) { return !hidden[c]; });
+    if (only.length === 1) parts.push("c=" + only[0]);
+    if (document.body.classList.contains("notags")) parts.push("tags=0");
+    history.replaceState(null, "", "#" + parts.join("&"));
+  }
+  function applyHash() {
+    var h = readHash();
+    setTheme(h.t === "dark" || h.t === "light" ? h.t : "auto");
+    var tagsOn = h.tags !== "0";
+    document.body.classList.toggle("notags", !tagsOn);
+    document.getElementById("tags-toggle").setAttribute("aria-pressed", tagsOn);
+    hidden = {};
+    if (CONCEPTS.indexOf(h.c) >= 0) CONCEPTS.forEach(function (c) { if (c !== h.c) hidden[c] = true; });
+    applyHidden();
+    var s = STATES.some(function (x) { return x[0] === h.s; }) ? h.s : "new";
+    setAll(s);
+    if (h.open) {
+      CONCEPTS.forEach(function (c) {
+        ["folded", "phone", "ax5", "open-l", "open-r"].forEach(function (k) {
+          var U = u(c + "-" + k);
+          if (h.open === "sheet") U.sheet = true;
+          if (h.open === "drawer") U.drawer = true;
+          if (h.open === "why") { U.disc = true; U.sheet = true; U.drawer = true; }
+          if (h.open === "fix") { U.fix = true; U.sheet = true; U.drawer = true; }
+        });
+      });
+      renderAll();
+    }
+  }
+
+  document.getElementById("state-chips").innerHTML = STATES.map(function (x) { return '<button class="chip" data-state="' + x[0] + '" aria-pressed="false">' + x[1] + "</button>"; }).join("");
+  window.addEventListener("hashchange", applyHash);
+  applyHash();
+})();
+</script>
+</body>
+</html>

@@ -70,6 +70,10 @@ The gap for the Pull and Push anyway asks is closed. On 2026-10-12 the owner rem
 
 Tests 21.4 and 62.1 to 62.10 pin the bar. Tests 63.4 to 63.7 pin the Ledger tab's order and its current tab. Tests 63.21 to 63.24 pin the armed Reset's count, its neighbours and its first focus. Tests 61.8 to 61.9, 61.11 to 61.16, 61.41 to 61.42 and 61.43 to 61.57 pin the other rules. Tests 61.33 to 61.35 cover a draft that survives a tab change. The test pins check the DOM, not geometry.
 
+## Orphaned composer keys
+
+Owner, page item 86 a, 2026-11-18 23:22 CST: the Orphaned form gets a drag on the list that hides the keys. Option b (leave it as it is) and option c (point the test at the Return key) are not chosen. The drag is built, and both `OrphanedUITests` tests that pin it (`testDraggingTheListHidesTheComposerKeysAndKeepsTheDraft`, `testComposerDraftSurvivesAViewChange`) are green on the iPhone 18 Pro in run 44959141568 (job 137014856223, pro-ui-a). The drag ends at y=393 and the keys' top edge sits at y=590, so the mode is `.immediately`. That run's two contrast audit failures belong to debts `orphaned-composer-contrast` and `tally-audit-contrast-flags`.
+
 ## Holes, named
 
 - The chip-gap reach of claim 12, and its unmeasured 12px gap: debt `chip-gap-tolerance-at-12px`.

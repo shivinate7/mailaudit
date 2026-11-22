@@ -1,0 +1,1 @@
+- lane-lint-unknown-here: 2026-11-18, mailaudit #342 and #350: the standalone lane lint (`merge --lane-lint`) reads "unknown" here, because the lane-touched-tests workflow lives in claude-settings and no `touched` job exists in this repo's workflows. Use `merge --confirm`, never `--lint-unknown-ok`. Decision: unmeasured.

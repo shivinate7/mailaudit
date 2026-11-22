@@ -1,6 +1,6 @@
 // Card in Hand UI tests on the open iPhone Duo (decisions duo-card-in-hand and new-envelope-ends-an-envelope; mockup
-// poses 1, 2, 4 and 6 of docs/design/duo-card-in-hand on origin/design/duo-round2). The model is HandModel and
-// PastTransitModel in ManifestKit; their unit tests are HandModelTests and PastTransitModelTests.
+// poses 1, 2, 4 and 6 of docs/design/duo-card-in-hand on origin/archive/design/duo-round2). The model is
+// HandModel and PastTransitModel in ManifestKit; their unit tests are HandModelTests and PastTransitModelTests.
 //
 // Red-first and NOT RUN by the test-author (the Duo is another agent's to boot). They compile against this branch
 // and fail on a missing element. The builder runs them red, then green. How to run: DuoShellUITests.swift, same
@@ -49,7 +49,11 @@
 //             container whose children are reachable), and inside a row the buttons labelled "Claim filed" and "Refunded".
 //             There is no button labelled "Lost" (item 25, deferred). past-transit-summary (the page's count line; its label
 //             starts "<N> envelope"). A red row (30 days from the order date) shows no "claim by" in any of its texts.
-//   Keys      With the system keys up, hand-post lies wholly above the keyboard's top edge, with no scroll by the user.
+//   Keys      With the system keys up, hand-post lies wholly above the keys' drawn top (keyboardDrawnAbove, 44 pt above the keyboard
+//             frame), with no scroll by the user. The Post button's bottom sits 4 pt (the bar's foot) above that drawn top.
+//   Bar       hand-offer-bar is the pinned Post bar while a held card offers: its whole frame, the 1 pt hairline included. The bar
+//             tests read its height and expect 53 pt.
+//   Receipt   A saved Post leaves hand-receipt in the same slot: "Posted." and "N cards checked in · M was held", one row, 53 pt tall.
 //   Sender    With the offer shown and the keys up, the "It came from" line and hand-who lie below the status bar and above the
 //             keyboard's top edge, hittable, together with hand-post. The "It came from" line has no identifier: the test finds it
 //             by its label, any case (the screen sets it in capitals).
@@ -81,6 +85,15 @@ final class DuoHandUITests: XCTestCase {
     static let accessibilityXL = "UICTContentSizeCategoryAccessibilityXL"
     /// The text size of the AccessibilityXXXL (AX5) chip case. The chip is capped at xxxLarge, so it must still fit its field.
     static let accessibilityXXXL = "UICTContentSizeCategoryAccessibilityXXXL"
+    /// The Post bar's height (decision duo-card-in-hand): a 1 pt hairline, 4 pt, the 44 pt button row, 4 pt. The tests hold it at the normal
+    /// size and at AccessibilityXXXL, with a title that fits one line at the cap. A long title wraps and grows the bar; no test here forces that.
+    static let postBarHeight: CGFloat = 53
+    /// The bar's foot under the Post button. With the keys up the bar ends at the keys' drawn top, so the button's bottom edge sits this far above it.
+    static let postBarFoot: CGFloat = 4
+    /// The seller of the envelope the held Lightning Bolt and Path to Exile offer name (C1, Gamma Cards in the seed).
+    static let gammaSeller = "Gamma Cards"
+    /// The order date of that envelope: every C1 item in shared/fixtures/ledger.json is dated this.
+    static let gammaDate = "2026-06-01"
 
     static let bolt = "C1|0|pLightningBolt"
     static let path = "C1|1|pPathtoExile"
@@ -463,7 +476,8 @@ final class DuoHandUITests: XCTestCase {
 
         let k = requireKeysUp(app)
         let f = post.frame
-        XCTAssertLessThanOrEqual(f.maxY, k.minY, "the Post button, frame \(f), is under the keys, which start at y \(k.minY): the owner must scroll to reach it")
+        let drawnTop = k.minY - Self.keyboardDrawnAbove
+        XCTAssertLessThanOrEqual(f.maxY, drawnTop, "the Post button, frame \(f), is under the keys' drawn top at y \(drawnTop) (the keyboard frame starts at y \(k.minY), drawn \(Self.keyboardDrawnAbove) pt higher): the owner must scroll to reach it")
         XCTAssertTrue(post.isHittable, "the Post button, frame \(f), is not hittable with the keys up and no scroll")
         keepShot(app, "hand-post-clears-keys")
     }
@@ -497,6 +511,134 @@ final class DuoHandUITests: XCTestCase {
         clear(who, "the seller name (hand-who)")
         clear(post, "the Post button (hand-post)")
         keepShot(app, "hand-post-keeps-sender")
+    }
+
+    /// Pose: flat, system keys up, normal text size. The Post bar is pinned at the foot of the page, above the keys: the Post button's
+    /// bottom edge sits postBarFoot (4 pt) above the keys' drawn top (keyboardDrawnAbove), 2 pt of tolerance. A bar with no foot, and
+    /// the 8 pt foot of the old bar, both fail. Frames only: no tap, no scroll.
+    func testPostBarPinsAboveTheKeysAtTheirDrawnTop() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let post = offerPost(app)
+        _ = requireKeysUp(app)
+        let keys = app.keyboards.firstMatch
+        waitUntilStill([keys, post])
+
+        let keysTop = keys.frame.minY - Self.keyboardDrawnAbove
+        let f = post.frame
+        XCTAssertLessThanOrEqual(abs(f.maxY - (keysTop - Self.postBarFoot)), Self.tolerance, "the Post button, frame \(f), ends at y \(f.maxY), not \(Self.postBarFoot) pt above the keys' drawn top at y \(keysTop) (the keyboard frame starts at y \(keys.frame.minY), drawn \(Self.keyboardDrawnAbove) pt higher): the bar's foot under the button is wrong")
+        keepShot(app, "hand-post-pinned")
+    }
+
+    /// Pose: flat, system keys up, normal text size. The Post bar sits below the lines pane: the Post button's top is at or under the
+    /// bottom of the envelope's first line, Lightning Bolt. The lines scroll above the bar, not under it. Main puts the offer above
+    /// the lines, so this fails there. Frames only: no tap, no scroll.
+    func testPostBarSitsBelowTheFirstLine() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let post = offerPost(app)
+        let line = need(app, "hand-line:\(Self.bolt)", "the first line of Gamma Cards, which the Post bar must sit under")
+        _ = requireKeysUp(app)
+        waitUntilStill([post, line])
+
+        let lineFrame = line.frame, postFrame = post.frame
+        XCTAssertGreaterThanOrEqual(postFrame.minY, lineFrame.maxY - Self.tolerance, "the Post button, frame \(postFrame), starts above the bottom of the first line, frame \(lineFrame): the offer sits above the lines, not below them")
+        keepShot(app, "hand-post-below-lines")
+    }
+
+    /// Pose: flat, normal text size. The held card's Post bar is 53 pt tall: hand-offer-bar's whole frame, the hairline included. Frames only.
+    func testPostOfferBarIsFiftyThreePointsTall() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        _ = offerPost(app)
+        let bar = need(app, "hand-offer-bar", "the Post bar a held card offers")
+        waitUntilStill([bar])
+        let h = bar.frame.height
+        XCTAssertEqual(h, Self.postBarHeight, accuracy: 1, "the Post bar, frame \(bar.frame), is \(h) pt tall, not 53 pt (decision duo-card-in-hand)")
+        keepShot(app, "hand-post-bar-53")
+    }
+
+    /// Pose: flat, launched at AccessibilityXXXL. The text is capped at xxxLarge, so the Post bar stays 53 pt at the largest size. Frames only.
+    func testPostOfferBarStaysFiftyThreePointsTallAtAccessibilityXXXL() {
+        let app = XCUIApplication.launchedOnSeed(extra: ["-UIPreferredContentSizeCategoryName", Self.accessibilityXXXL])
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        _ = offerPost(app)
+        let bar = need(app, "hand-offer-bar", "the Post bar a held card offers")
+        waitUntilStill([bar])
+        let h = bar.frame.height
+        XCTAssertEqual(h, Self.postBarHeight, accuracy: 1, "the Post bar, frame \(bar.frame), is \(h) pt tall at AccessibilityXXXL, not 53 pt: the text cap does not hold the bar (decision duo-card-in-hand)")
+    }
+
+    /// Pose: flat, normal text size. The held card's sentence "Your held card came with this envelope." is not drawn on the screen: it
+    /// moves into the Post button's VoiceOver hint. The hint itself is not tested here, because XCUITest reads no hint
+    /// (PackageBulkUITests.swift, PackageStampUITests.swift).
+    func testHeldSentenceLeavesTheScreen() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        _ = offerPost(app)
+        let sentence = app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "Your held card came with this envelope.")).firstMatch
+        XCTAssertFalse(sentence.exists, "\"Your held card came with this envelope.\" is still drawn on the screen, alone or inside a longer text: it belongs in the button's VoiceOver hint (decision duo-card-in-hand)")
+    }
+
+    /// Pose: flat, normal text size. The head keeps the full sender block: "It came from" shows above the seller. Control for the
+    /// AccessibilityXL and AccessibilityXXXL cases, which must not show it. Not run at AccessibilityL: there the Duo's hand-open sits
+    /// under the tab bar and Card in Hand cannot open (debt hand-open-under-bar-at-l).
+    func testHeadKeepsItsSenderLineAtTheNormalSize() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        _ = offerPost(app)
+        _ = need(app, "hand-who", "the seller of the envelope the held card came from")
+        let came = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "It came from")).firstMatch
+        XCTAssertTrue(came.waitForExistence(timeout: 5), "\"It came from\" is not drawn on the head at the normal size: the head keeps the full sender block there (decision duo-card-in-hand)")
+    }
+
+    /// Pose: flat, launched at `size`, the held card's offer up. From AccessibilityXL the head keeps the seller alone: "It came from" and
+    /// the order date are not drawn, and hand-who still shows the seller. Frames and labels only.
+    func assertHeadShowsOnlyTheSeller(at size: String) {
+        let app = XCUIApplication.launchedOnSeed(extra: ["-UIPreferredContentSizeCategoryName", size])
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let post = offerPost(app)
+        let who = need(app, "hand-who", "the seller of the envelope the held card came from")
+        waitUntilStill([who, post])
+        XCTAssertEqual(who.label, Self.gammaSeller, "the head shows \"\(who.label)\", not the seller \"\(Self.gammaSeller)\" alone")
+        let came = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "It came from")).firstMatch
+        XCTAssertFalse(came.exists, "\"It came from\" is still drawn on the head at \(size): from AccessibilityXL the head keeps the seller alone (decision duo-card-in-hand)")
+        let dated = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "ordered")).firstMatch
+        XCTAssertFalse(dated.exists, "the order date is still drawn on the head at \(size): from AccessibilityXL it moves to the head's VoiceOver label (decision duo-card-in-hand)")
+    }
+
+    /// Pose: flat, launched at AccessibilityXL: the head is the seller alone.
+    func testHeadShowsOnlyTheSellerAtAccessibilityXL() {
+        assertHeadShowsOnlyTheSeller(at: Self.accessibilityXL)
+    }
+
+    /// Pose: flat, launched at AccessibilityXXXL: the head is the seller alone.
+    func testHeadShowsOnlyTheSellerAtAccessibilityXXXL() {
+        assertHeadShowsOnlyTheSeller(at: Self.accessibilityXXXL)
+    }
+
+    /// Pose: flat, launched at AccessibilityXL. The text the size hides is spoken twice: one element's label holds "It came from", the seller
+    /// and the order date ("ordered ..."), and hand-who's value holds the sender and the order date. Labels and values only.
+    func testHeadSpeaksItsFullTextAtAccessibilityXL() {
+        let app = XCUIApplication.launchedOnSeed(extra: ["-UIPreferredContentSizeCategoryName", Self.accessibilityXL])
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        _ = offerPost(app)
+        let spoken = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@ AND label CONTAINS %@", "came from", Self.gammaSeller, "ordered"))
+            .firstMatch
+        XCTAssertTrue(spoken.waitForExistence(timeout: 5), "no one element's label holds \"It came from\", the seller and \"ordered\" at AccessibilityXL: the head's VoiceOver label does not carry the text the size hides (decision duo-card-in-hand)")
+
+        let who = need(app, "hand-who", "the seller of the envelope the held card came from")
+        let value = who.value as? String ?? ""
+        XCTAssertTrue(value.contains("ordered") && value.contains(Self.gammaDate), "hand-who's value is \"\(value)\", not the sender and the order date \"\(Self.gammaDate)\": the slim head's spoken value is dropped (decision duo-card-in-hand)")
     }
 
     /// Pose: flat, system keys up. A held name's Suspense box shows, and the one match row must clear the keys. A box above
@@ -764,8 +906,8 @@ final class DuoHandUITests: XCTestCase {
         assertLinesStayPut(app, before, after: "when Post was refused")
     }
 
-    /// Pose: flat. A Post that saves leaves its receipt in the offer's slot, under the sender: its text, and the line that says the
-    /// next card clears it (HandScreen `receiptBox`). The next card is in the same envelope, so a receipt that stayed would show.
+    /// Pose: flat. A Post that saves leaves its receipt in the offer's slot at the foot of the page: "Posted." and the count
+    /// (HandScreen `receiptRow`). The next card is in the same envelope, so a receipt that stayed would show.
     /// The envelope is read first, so the receipt is judged on the page that should carry it.
     func testPostReceiptShowsItsTextThenClearsOnTheNextCard() {
         let app = XCUIApplication.launchedOnSeed()
@@ -777,14 +919,48 @@ final class DuoHandUITests: XCTestCase {
 
         let receipt = need(app, "hand-receipt", "the receipt a saved Post leaves in the offer's slot")
         onRightPage(receipt, app, "the receipt")
-        XCTAssertTrue(receipt.label.contains("Posted with this envelope. The next card you type clears this line."),
-                      "the receipt does not read the saved line: \"\(receipt.label)\"")
+        XCTAssertTrue(receipt.label.contains("Posted."), "the receipt does not read \"Posted.\": \"\(receipt.label)\"")
         XCTAssertTrue(receipt.label.contains("2 cards checked in \u{00B7} 1 was held"), "the receipt does not count the post: \"\(receipt.label)\"")
         keepShot(app, "hand-post-receipt")
 
         typeCard(app, "Swords to Plowshares")
         XCTAssertEqual(need(app, "hand-who", "the envelope of the next card").label, "Gamma Cards", "the next card does not show its envelope")
         waitGone(app.element("hand-receipt"), "the receipt is still shown after the next card was typed")
+    }
+
+    /// Pose: flat, system keys up, normal text size. A saved Post leaves one row in the offer's slot: hand-receipt is 53 pt tall, the Post
+    /// bar's height (a 1 pt hairline, 4 pt, the 44 pt button row, 4 pt), so the slot keeps the bar's height and no line moves under the
+    /// finger. Frames only, read after the one Post tap.
+    func testPostReceiptIsOneRowFiftyThreePointsTall() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let post = offerPost(app)
+        _ = requireKeysUp(app)
+        post.tap()
+        waitGone(app.element("hand-post"), "the post is still offered after it posted")
+
+        let receipt = need(app, "hand-receipt", "the receipt a saved Post leaves in the offer's slot")
+        waitUntilStill([receipt])
+        let h = receipt.frame.height
+        XCTAssertEqual(h, Self.postBarHeight, accuracy: 1, "the receipt, frame \(receipt.frame), is \(h) pt tall, not one 53 pt row: the slot would change height under the finger")
+        keepShot(app, "hand-post-receipt-row")
+    }
+
+    /// Pose: flat, launched at AccessibilityXXXL. At the text cap the saved Post's receipt is still one 53 pt row in the offer's slot. Frames
+    /// only, read after the one Post tap. The long plural count is not forced here.
+    func testPostReceiptIsOneRowFiftyThreePointsTallAtAccessibilityXXXL() {
+        let app = XCUIApplication.launchedOnSeed(extra: ["-UIPreferredContentSizeCategoryName", Self.accessibilityXXXL])
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let post = offerPost(app)
+        post.tap()
+        waitGone(app.element("hand-post"), "the post is still offered after it posted at AccessibilityXXXL")
+
+        let receipt = need(app, "hand-receipt", "the receipt a saved Post leaves in the offer's slot at AccessibilityXXXL")
+        waitUntilStill([receipt])
+        let h = receipt.frame.height
+        XCTAssertEqual(h, Self.postBarHeight, accuracy: 1, "the receipt, frame \(receipt.frame), is \(h) pt tall at AccessibilityXXXL, not one 53 pt row: the slot would change height under the finger")
     }
 
     /// Pose: flat. New envelope ends the envelope with its receipt. The answer page is then on its empty state, and when the same

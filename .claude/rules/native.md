@@ -53,7 +53,6 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-orphaned-colours-unbuilt` — The native Orphaned composer audits flag text with no element.
 - `orphaned-composer-contrast` — The ready Orphaned composer fails contrast on its card count and its Save (duo-ui run 42653870499, job pro-ui-a, 2 of 2 tries).
 - `tabbar-hides-partial-controls` — The tab-bar skip never checks a control partly under the bar.
-- `native-candidate-lines-wrap` — Native candidate seller and meta lines wrap.
 - `native-undo-notice-padding` — The native Undo notice pads 4pt, not 8pt.
 - `composer-fields-two-lines` — The envelope composer's two-line card name and note fields are right on the phone.
 - `native-discard-arm-unpinned` — No test pins the native Discard arm.
@@ -92,12 +91,12 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `duo-bar-dynamic-type-clips` — The Duo tab bar labels clip at every accessibility text size.
 - `duo-stacked-poses-unbuilt` — The Duo has no stacked poses.
 - `duo-hand-mockup-gaps` — Eight parts of the Card in Hand mockup are not built.
+- `duo-post-bar-unmeasured-s-m` — The pinned Post bar of Card in Hand is read at L and AX5 (`duo-card-in-hand`), the slim head at AX3 and AX5; the bar at S, M and AX3 is unmeasured.
 - `hand-stale-checkin-error` — A good post leaves an old check-in error showing.
 - `stamped-toggle-clears-error` — The stamped toggle clears a failed check-in's error.
 - `tally-reorders-on-reload` — The native Tally re-sorts on every reload.
 - `packages-reload-counts-split` — A check-in during a Packages reload can revert its checkbox.
 - `checkin-error-bar-is-sans` — The native check-in error bar is set in sans on material.
-- `hand-post-top-scroll-unpinned` — No test pins the scroll to the page top when Post shows.
 - `hand-open-under-bar-at-l` — At AccessibilityL the Card in Hand control sits under the tab bar.
 - `hand-tap-label-unpinned` — No test pins the tapped name's sideways place.
 - `duo-left-page-dead-margin` — The Duo left page scrolls past its end by the bar's height, which no run has measured (a `DuoShellUITests` comment caps the bar at 76 pt); low priority, after restyle's step 8.
@@ -108,7 +107,6 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-discard-panel-covers-head` — The native armed Discard panel covers the envelope header.
 - `native-axl-rows-break` — Three native rows break at accessibility text sizes.
 - `sim-test-diagnose-and-pin` — sim-test runs simctl diagnose and can pick the Duo.
-- `composer-keys-cover-tab-bar` — The Orphaned composer's keys cover the tab bar, so a draft test stays red.
 - `masthead-at-ax-sizes` — At accessibility sizes the stacked masthead hides figures at rest.
 - `duo-filter-cell-under-bar` — On the open Duo at AX3, the Packages "0 stamped" cell sits under the bar.
 - `tally-name-breaks-mid-word` — On the 18 Pro at AX3, a Tally name breaks mid-word.

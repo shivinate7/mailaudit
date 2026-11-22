@@ -1,0 +1,1052 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Weekly recap mockups</title>
+<style>
+/* Tokens. Spacing on the 4 px step and an 8 px radius (house tokens). Colours by role,
+   chosen by this designer: the house file gives no colour values. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
+  --radius: 8px;
+
+  /* iOS Dynamic Type, default size "Large" (Apple typography page, read 2026-11-21). Size / leading. */
+  --t-large: 34px; --l-large: 41px;
+  --t-title1: 28px; --l-title1: 34px;
+  --t-title2: 22px; --l-title2: 28px;
+  --t-title3: 20px; --l-title3: 25px;
+  --t-head: 17px; --l-head: 22px;
+  --t-body: 17px; --l-body: 22px;
+  --t-callout: 16px; --l-callout: 21px;
+  --t-sub: 15px; --l-sub: 20px;
+  --t-foot: 13px; --l-foot: 18px;
+  --t-cap1: 12px; --l-cap1: 16px;
+  --t-cap2: 11px; --l-cap2: 13px;
+
+  --font: -apple-system, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --viewer: #D8DDE4;
+  --viewer-text: #1B2027;
+  --surface: #EEF1F4;
+  --surface-raised: #FFFFFF;
+  --surface-sunk: #E1E6EC;
+  --text: #15191F;
+  --text-muted: #4E5764;
+  --line: #C9D0D9;
+  --action: #1A5BCB;
+  --on-action: #FFFFFF;
+  --came: #0B6A52;
+  --came-fill: #2E8C70;
+  --came-soft: #D3EBE2;
+  --out: #5E4592;
+  --out-soft: #E4DDF2;
+  --late: #A3301B;
+  --late-soft: #F7DDD6;
+  --ghost: #6B7480;
+  --banner: #FFF3BF;
+  --banner-text: #3D3200;
+  --hinge: #2A2F36;
+  --scrim: rgba(21, 25, 31, 0.32);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --viewer: #22262C;
+    --viewer-text: #E6EAF0;
+    --surface: #15181D;
+    --surface-raised: #1F232A;
+    --surface-sunk: #2A2F37;
+    --text: #ECEFF3;
+    --text-muted: #A6AFBC;
+    --line: #3A414B;
+    --action: #82AEFF;
+    --on-action: #0E1726;
+    --came: #5ACCA8;
+    --came-fill: #3FA886;
+    --came-soft: #173E33;
+    --out: #C2AEEA;
+    --out-soft: #342A4C;
+    --late: #FF957B;
+    --late-soft: #4B231A;
+    --ghost: #9BA4B1;
+    --banner: #4A3F0A;
+    --banner-text: #FFF0B0;
+    --hinge: #050607;
+    --scrim: rgba(0, 0, 0, 0.5);
+  }
+}
+:root[data-theme="dark"] {
+  --viewer: #22262C;
+  --viewer-text: #E6EAF0;
+  --surface: #15181D;
+  --surface-raised: #1F232A;
+  --surface-sunk: #2A2F37;
+  --text: #ECEFF3;
+  --text-muted: #A6AFBC;
+  --line: #3A414B;
+  --action: #82AEFF;
+  --on-action: #0E1726;
+  --came: #5ACCA8;
+  --came-fill: #3FA886;
+  --came-soft: #173E33;
+  --out: #C2AEEA;
+  --out-soft: #342A4C;
+  --late: #FF957B;
+  --late-soft: #4B231A;
+  --ghost: #9BA4B1;
+  --banner: #4A3F0A;
+  --banner-text: #FFF0B0;
+  --hinge: #050607;
+  --scrim: rgba(0, 0, 0, 0.5);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--viewer);
+  color: var(--viewer-text);
+  font-family: var(--font);
+  font-size: var(--t-body);
+  line-height: var(--l-body);
+}
+button { font: inherit; color: inherit; }
+
+/* Viewer chrome (outside the device frames) */
+.viewer { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-4); }
+.banner {
+  background: var(--banner); color: var(--banner-text);
+  border-radius: var(--radius); padding: var(--space-3) var(--space-4);
+  font-weight: 600;
+}
+.meta { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); align-items: baseline; }
+.meta h1 { font-size: var(--t-title2); line-height: var(--l-title2); margin: 0; }
+.new-tag {
+  border: 2px dashed currentColor; border-radius: var(--radius);
+  padding: 0 var(--space-2); font-size: var(--t-foot); line-height: var(--l-foot);
+}
+.controls { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-6); align-items: center; }
+.ctl { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.ctl-label { font-size: var(--t-foot); color: var(--viewer-text); opacity: 0.85; }
+.seg { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); }
+.seg button, .vbtn, .ctl select {
+  min-height: 44px; padding: 0 var(--space-3); border-radius: var(--radius);
+  border: 1px solid var(--line); background: var(--surface-raised); color: var(--text);
+  font-size: var(--t-sub);
+}
+.seg button[aria-pressed="true"] { background: var(--action); color: var(--on-action); border-color: var(--action); }
+.concept-chip { display: inline-flex; gap: 0; }
+.concept-chip > button:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+.concept-chip > .hide { border-radius: 0 var(--radius) var(--radius) 0; border-left: 0; font-size: var(--t-foot); }
+.concept-desc { max-width: 72ch; margin: 0; font-size: var(--t-sub); line-height: var(--l-sub); }
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-8) var(--space-6); align-items: flex-start; }
+.frame-wrap { display: flex; flex-direction: column; gap: var(--space-2); }
+.frame-cap { font-size: var(--t-foot); line-height: var(--l-foot); }
+.frame-wrap[hidden] { display: none; }
+
+/* Device frames */
+.frame {
+  position: relative; overflow: hidden;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface); color: var(--text);
+}
+.frame[data-pose="folded"] { width: 466px; height: 678px; }
+.frame[data-pose="open"] { width: 951px; height: 669px; display: grid; grid-template-columns: 455.5px 40px 455.5px; }
+.frame[data-pose="phone"] { width: 466px; height: 678px; resize: both; min-width: 320px; min-height: 560px; max-width: 100%; }
+.hinge {
+  background: var(--hinge); color: #8E96A1; display: flex; align-items: center; justify-content: center;
+  writing-mode: vertical-rl; font-size: var(--t-cap2); letter-spacing: 0;
+}
+.screen {
+  position: relative; height: 100%; overflow: hidden; container-type: inline-size;
+  display: flex; flex-direction: column;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  font-size: var(--t-body); line-height: var(--l-body);
+  -webkit-tap-highlight-color: transparent;
+}
+.scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.navbar, .navbar-inline, .toolbar, .pager, .grabber { flex: none; }
+
+/* Largest accessibility size, AX5 (Apple typography page, read 2026-11-21) */
+.ax5 {
+  --t-large: 60px; --l-large: 70px;
+  --t-title1: 58px; --l-title1: 68px;
+  --t-title2: 56px; --l-title2: 66px;
+  --t-title3: 55px; --l-title3: 65px;
+  --t-head: 53px; --l-head: 62px;
+  --t-body: 53px; --l-body: 62px;
+  --t-callout: 51px; --l-callout: 60px;
+  --t-sub: 49px; --l-sub: 58px;
+  --t-foot: 44px; --l-foot: 52px;
+  --t-cap1: 43px; --l-cap1: 51px;
+  --t-cap2: 40px; --l-cap2: 48px;
+}
+
+/* Type styles */
+.t-large { font-size: var(--t-large); line-height: var(--l-large); font-weight: 700; margin: 0; }
+.t-title1 { font-size: var(--t-title1); line-height: var(--l-title1); font-weight: 700; margin: 0; }
+.t-title2 { font-size: var(--t-title2); line-height: var(--l-title2); font-weight: 400; margin: 0; }
+.t-title3 { font-size: var(--t-title3); line-height: var(--l-title3); font-weight: 600; margin: 0; }
+.t-head { font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; margin: 0; }
+.t-body { font-size: var(--t-body); line-height: var(--l-body); margin: 0; }
+.t-callout { font-size: var(--t-callout); line-height: var(--l-callout); margin: 0; }
+.t-sub { font-size: var(--t-sub); line-height: var(--l-sub); margin: 0; }
+.t-foot { font-size: var(--t-foot); line-height: var(--l-foot); margin: 0; }
+.t-cap1 { font-size: var(--t-cap1); line-height: var(--l-cap1); margin: 0; }
+.t-cap2 { font-size: var(--t-cap2); line-height: var(--l-cap2); margin: 0; }
+.muted { color: var(--text-muted); }
+.num { font-variant-numeric: tabular-nums; }
+.c-came { color: var(--came); }
+.c-out { color: var(--out); }
+.c-late { color: var(--late); }
+
+/* iOS-like chrome inside a frame */
+.navbar { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4) var(--space-2); }
+.navbar-inline {
+  display: grid; grid-template-columns: minmax(44px, 1fr) auto minmax(44px, 1fr); align-items: center;
+  min-height: 44px; padding: 0 var(--space-2); gap: var(--space-2);
+}
+.navbar-inline .title { text-align: center; }
+.navbar-inline .trail { justify-self: end; }
+.ax5 .navbar-inline { grid-template-columns: 1fr; }
+.ax5 .navbar-inline .title { text-align: start; padding: 0 var(--space-2); }
+.ax5 .navbar-inline .trail { justify-self: start; }
+.back, .plain-btn {
+  min-height: 44px; min-width: 44px; border: 0; background: none; color: var(--action);
+  display: inline-flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-2);
+  font-size: var(--t-body); cursor: pointer; text-align: start;
+}
+.plain-btn[disabled] { color: var(--text-muted); opacity: 0.55; cursor: default; }
+.toolbar {
+  display: grid; grid-template-columns: minmax(44px, 1fr) auto minmax(44px, 1fr); align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-2) var(--space-3); border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface-raised) 88%, transparent);
+}
+.toolbar .mid { text-align: center; }
+.toolbar .end { justify-self: end; }
+.ax5 .toolbar { grid-template-columns: 1fr 1fr; }
+.ax5 .toolbar .mid { display: none; }
+
+.group {
+  list-style: none; margin: 0; padding: 0; background: var(--surface-raised);
+  border-radius: var(--radius); overflow: hidden;
+}
+.group > li + li .row-body { border-top: 1px solid var(--line); }
+.row {
+  width: 100%; min-height: 44px; border: 0; background: none; text-align: start; cursor: pointer;
+  display: grid; grid-template-columns: auto 1fr auto; gap: var(--space-3); align-items: center;
+  padding: 0 0 0 var(--space-4);
+}
+.row-body {
+  display: grid; grid-template-columns: 1fr auto; gap: var(--space-3); align-items: center;
+  padding: var(--space-3) var(--space-4) var(--space-3) 0; grid-column: 2 / 4;
+}
+.row-text { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.row[aria-current="true"] { background: var(--surface-sunk); }
+.row:active { background: var(--surface-sunk); }
+.chev { color: var(--text-muted); font-size: var(--t-head); }
+.ax5 .row-body { grid-template-columns: 1fr; }
+.ax5 .row-body .chev { display: none; }
+.static-row { display: grid; grid-template-columns: 1fr auto; gap: var(--space-3); padding: var(--space-3) var(--space-4); align-items: baseline; }
+.ax5 .static-row { grid-template-columns: 1fr; }
+.group > li + li > .static-row { border-top: 1px solid var(--line); }
+.section-head { padding: 0 var(--space-4); }
+.inset { padding: 0 var(--space-4); }
+.stack { display: flex; flex-direction: column; gap: var(--space-3); }
+.stack-lg { display: flex; flex-direction: column; gap: var(--space-6); padding-bottom: var(--space-6); }
+
+/* Glyphs: one shape per status, so status never rests on colour alone. */
+.glyph { width: 14px; height: 14px; border-radius: 3px; flex: none; display: inline-block; }
+.ax5 .glyph { width: 32px; height: 32px; }
+.g-came { background: var(--came-fill); border: 2px solid var(--came-fill); }
+.g-out { border: 2px solid var(--out); background: transparent; }
+.g-late { border: 2px solid var(--late); background: repeating-linear-gradient(135deg, var(--late) 0 2px, transparent 2px 5px); }
+.g-nodate { border: 2px dashed var(--text-muted); background: transparent; }
+
+/* State blocks */
+.state-block { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6) var(--space-4); }
+.fill-btn {
+  min-height: 44px; border: 0; border-radius: var(--radius); background: var(--action); color: var(--on-action);
+  font-weight: 600; padding: var(--space-2) var(--space-4); align-self: flex-start; cursor: pointer;
+}
+.fill-btn[aria-busy="true"] { opacity: 0.8; }
+details.machine { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); }
+details.machine summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--action); }
+.skel { background: var(--surface-sunk); border-radius: var(--radius); }
+.press-note { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); }
+
+/* Summary concept */
+.verdict { padding: 0 var(--space-4); }
+.verdict .late { color: var(--late); font-weight: 600; }
+.cmp { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-1) 0; }
+.cmp .bar { height: 6px; border-radius: 3px; }
+.cmp .bar.now { background: var(--came-fill); }
+.cmp .bar.prev { background: none; border: 1px dashed var(--ghost); height: 6px; }
+.ax5 .cmp { display: none; }
+.split { display: grid; grid-template-columns: 1fr auto; gap: var(--space-2); }
+
+/* Sheet (folded and phone only; the open pose shows detail on the right page) */
+.sheet-scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 5; }
+.sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; top: 18%; z-index: 6;
+  background: var(--surface); border-radius: 12px 12px 0 0; display: flex; flex-direction: column;
+  box-shadow: 0 -1px 0 var(--line);
+}
+.grabber { width: 36px; height: 5px; border-radius: 3px; background: var(--line); align-self: center; margin-top: var(--space-2); }
+
+/* Tide line concept */
+.tide { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4) var(--space-4); }
+.tide-week { font-weight: 600; }
+.tide-total { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: var(--space-1) var(--space-3); }
+.tt-k { display: inline-flex; align-items: center; gap: var(--space-2); }
+.tide-chart { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); touch-action: pan-y; user-select: none; }
+.tcol {
+  border: 0; background: none; padding: 0 3px; margin: 0; display: flex; flex-direction: column; cursor: pointer;
+  min-width: 0; color: inherit; border-radius: var(--radius);
+}
+.tcol.today { background: var(--surface-sunk); }
+.tcol[aria-current="true"] { box-shadow: inset 0 0 0 2px var(--action); }
+.t-above { position: relative; display: flex; flex-direction: column-reverse; gap: 2px; }
+.t-below { display: flex; flex-direction: column; gap: 2px; padding-top: 4px; }
+.t-ghost { position: absolute; left: 1px; right: 1px; bottom: 0; border: 1.5px dashed var(--ghost); border-radius: 3px; z-index: 0; }
+.blk { display: block; flex: none; width: 100%; border-radius: 3px; position: relative; z-index: 1; }
+.blk.came, .hblk.came { background: var(--came-fill); }
+.blk.out, .hblk.out { border: 2px solid var(--out); background: var(--surface); }
+.blk.late, .hblk.late { border: 2px solid var(--late); background: repeating-linear-gradient(135deg, var(--late) 0 2px, var(--surface) 2px 5px); }
+.blk.nodate, .hblk.nodate { border: 2px dashed var(--text-muted); background: var(--surface); }
+.t-axis {
+  display: flex; flex-direction: column; align-items: center; padding: var(--space-1) 0 var(--space-1);
+  border-top: 2px solid var(--text); margin: 0 -3px; color: var(--text);
+}
+.tcol.future .t-axis { color: var(--text-muted); }
+.today-tag { font-weight: 600; }
+.tide-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.trow {
+  width: 100%; border: 0; background: var(--surface-raised); border-radius: var(--radius); text-align: start;
+  display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); cursor: pointer;
+}
+.hbar { display: flex; gap: 2px; min-height: 16px; }
+.hblk { display: block; height: 16px; border-radius: 3px; }
+.pager {
+  display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; gap: var(--space-2);
+  padding: var(--space-1) var(--space-2) var(--space-2); border-top: 1px solid var(--line);
+}
+.pager .plain-btn { font-size: var(--t-title2); justify-content: center; }
+.pager-mid { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); }
+.dots { display: flex; gap: var(--space-2); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+.dot.on { background: var(--text); }
+.ax5 .pager { grid-template-columns: 1fr 1fr; }
+.ax5 .pager-mid { display: none; }
+.ax5 .pager .plain-btn { font-size: var(--t-title1); }
+.ax5 .tide-total { flex-direction: column; }
+@media (forced-colors: active) {
+  .blk, .hblk, .t-ghost { border: 2px solid CanvasText; }
+  .blk.came, .hblk.came { background: CanvasText; }
+  .tcol[aria-current="true"] { outline: 2px solid Highlight; }
+  .dot.on { background: CanvasText; }
+}
+
+/* Exceptions first concept */
+.week-list { list-style: none; margin: 0; padding: 0 0 var(--space-6); display: flex; flex-direction: column; gap: var(--space-3); }
+.week-row {
+  width: 100%; min-height: 44px; border: 0; border-radius: var(--radius); background: var(--surface-raised);
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-4); text-align: start; cursor: pointer;
+}
+.week-row[aria-current="true"] { box-shadow: inset 0 0 0 2px var(--action); }
+.wk-status { display: inline-flex; align-items: center; gap: var(--space-2); }
+.week-open { display: flex; flex-direction: column; gap: var(--space-3); }
+.week-open-head { display: flex; flex-direction: column; gap: var(--space-1); }
+.allwell { color: var(--came); padding: var(--space-2) 0; }
+.row.static { cursor: default; }
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.ax5 .tiles { grid-template-columns: 1fr; }
+.tile {
+  border: 0; border-radius: var(--radius); background: var(--surface-raised); text-align: start;
+  display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4); min-height: 44px;
+}
+button.tile { cursor: pointer; }
+.tile-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); }
+.tile-head .chev { font-size: var(--t-foot); }
+.cmp + .t-foot, .row-text > .t-foot { display: block; }
+button.tile:active, .week-row:active { background: var(--surface-sunk); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .sheet { animation: rise 220ms ease-out; }
+  @keyframes rise { from { transform: translateY(24px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+}
+:focus-visible { outline: 3px solid var(--action); outline-offset: 2px; }
+@media (forced-colors: active) {
+  .g-came { background: CanvasText; border-color: CanvasText; }
+  .g-out, .g-late, .g-nodate { border-color: CanvasText; }
+  .row[aria-current="true"] { outline: 2px solid Highlight; }
+}
+</style>
+</head>
+<body>
+<div class="viewer">
+  <div class="banner" role="note">Sample. No figure, seller or date on this page is real.</div>
+  <div class="meta">
+    <h1>Weekly recap</h1>
+    <span>Designer kind: blind. Designer: weekly-recap-blind-2.</span>
+    <span class="new-tag">New: weekly recap screen</span>
+  </div>
+  <div class="controls" id="controls">
+    <div class="ctl"><span class="ctl-label" id="lab-concept">Concept</span><div class="seg" id="concepts" role="group" aria-labelledby="lab-concept"></div></div>
+    <div class="ctl"><label class="ctl-label" for="sel-state">State</label>
+      <select id="sel-state">
+        <option value="loaded">Normal week</option>
+        <option value="allwell">Nothing late</option>
+        <option value="unknown">Some dates unknown</option>
+        <option value="quiet">No cards this week</option>
+        <option value="loading">Loading</option>
+        <option value="failed">Read failed</option>
+        <option value="empty">No orders at all</option>
+      </select></div>
+    <div class="ctl"><label class="ctl-label" for="sel-dev">Device</label>
+      <select id="sel-dev">
+        <option value="all">All frames</option>
+        <option value="folded">Duo folded</option>
+        <option value="open">Duo open</option>
+        <option value="ax5">Duo folded, largest text</option>
+        <option value="phone">Large phone</option>
+      </select></div>
+    <div class="ctl"><span class="ctl-label" id="lab-theme">Theme</span>
+      <div class="seg" role="group" aria-labelledby="lab-theme">
+        <button type="button" data-theme-btn="auto">System</button>
+        <button type="button" data-theme-btn="light">Light</button>
+        <button type="button" data-theme-btn="dark">Dark</button>
+      </div></div>
+    <button type="button" class="vbtn" id="show-all" hidden>Show hidden concepts</button>
+  </div>
+  <p class="concept-desc" id="concept-desc"></p>
+  <div class="frames" id="frames">
+    <div class="frame-wrap" id="w-f-folded"><p class="frame-cap">Duo, folded: 466 x 678 pt, one hand, touch only.</p>
+      <div class="frame" id="f-folded" data-device="iphone-duo-folded" data-pose="folded" role="region" aria-label="Duo, folded"></div></div>
+    <div class="frame-wrap" id="w-f-open"><p class="frame-cap">Duo, open: 951 x 669 pt, two pages, hinge gap from x 455.5 to 495.5. Nothing crosses it.</p>
+      <div class="frame" id="f-open" data-device="iphone-duo-unfolded" data-pose="open" role="region" aria-label="Duo, open"></div></div>
+    <div class="frame-wrap" id="w-f-ax5"><p class="frame-cap">Duo, folded, largest accessibility text (AX5). The page scrolls.</p>
+      <div class="frame" id="f-ax5" data-device="iphone-duo-folded-ax5" data-pose="folded" role="region" aria-label="Duo, folded, largest text"></div></div>
+    <div class="frame-wrap" id="w-f-phone"><p class="frame-cap">Large phone, portrait. Stand-in size: no size is written for this device, so the frame starts at the folded Duo size (466 x 678). Drag its corner to resize it.</p>
+      <div class="frame" id="f-phone" data-device="iphone-large-portrait" data-pose="phone" role="region" aria-label="Large phone"></div></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- Sample data ---------- */
+  var TODAY = "2026-11-21";            // sample "today", a Saturday
+  var WEEKS = ["2026-11-16", "2026-11-09", "2026-11-02"]; // Monday starts, newest first
+  var FIRST_WEEK = "2026-11-02";       // no data before this week
+
+  function D(s) { var p = s.split("-"); return Date.UTC(+p[0], +p[1] - 1, +p[2]); }
+  function S(t) { return new Date(t).toISOString().slice(0, 10); }
+  function add(s, n) { return S(D(s) + n * 86400000); }
+  function diff(a, b) { return Math.round((D(a) - D(b)) / 86400000); }
+  var DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  var DOWL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  var MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  function dow(s) { return new Date(D(s)).getUTCDay(); }
+  function dnum(s) { return +s.slice(8); }
+  function mon(s) { return MON[+s.slice(5, 7) - 1]; }
+  function shortDate(s) { return DOW[dow(s)] + " " + dnum(s) + " " + mon(s); }
+  function range(start) { var e = add(start, 6); return dnum(start) + "–" + dnum(e) + " " + mon(e); }
+  function money(n) { return "$" + n.toFixed(2); }
+  function plural(n, one, many) { return n + " " + (n === 1 ? one : many); }
+
+  // [seller, cards, cost, expected, arrived]
+  var BASE = [
+    ["Harbor Lane Cards", 6, 8.40, "2026-11-17", "2026-11-16"],
+    ["Old Mill Games", 3, 4.10, "2026-11-16", "2026-11-16"],
+    ["Copper Fox Cards", 7, 11.85, "2026-11-18", "2026-11-17"],
+    ["Quiet Street TCG", 2, 2.30, "2026-11-18", "2026-11-18"],
+    ["Blue Gate Cards", 9, 14.60, "2026-11-19", "2026-11-18"],
+    ["Fern and Finch", 4, 5.25, "2026-11-19", "2026-11-19"],
+    ["Northpine Collectibles", 5, 7.90, "2026-11-21", "2026-11-20"],
+    ["Little Dune Cards", 3, 3.40, "2026-11-20", "2026-11-20"],
+    ["Ridgeway Cards", 2, 5.40, "2026-11-21", "2026-11-21"],
+    ["Pebble Road Cards", 4, 6.20, "2026-11-19", null],
+    ["Kestrel Hobby", 3, 5.20, "2026-11-18", null],
+    ["Sunfield TCG", 5, 8.15, "2026-11-23", null],
+    ["Willow Post Cards", 6, 10.40, "2026-11-22", null],
+    ["Marrow Cards", 2, 3.10, "2026-11-24", null],
+    ["Ashgrove Games", 3, 5.70, "2026-11-25", null],
+    ["Brightwater Cards", 4, 5.10, "2026-11-10", "2026-11-09"],
+    ["Tallow Lane", 8, 12.30, "2026-11-11", "2026-11-10"],
+    ["Cinder Box Games", 6, 7.75, "2026-11-12", "2026-11-12"],
+    ["Juniper TCG", 5, 9.20, "2026-11-12", "2026-11-13"],
+    ["Saltmarsh Cards", 6, 8.05, "2026-11-14", "2026-11-14"],
+    ["Hollow Oak Cards", 7, 9.10, "2026-11-03", "2026-11-02"],
+    ["Meridian Games", 12, 15.60, "2026-11-04", "2026-11-04"],
+    ["Lantern Row", 4, 6.30, "2026-11-06", "2026-11-05"],
+    ["Gullwing TCG", 10, 13.90, "2026-11-07", "2026-11-07"]
+  ];
+
+  function packages(state) {
+    if (state === "empty" || state === "loading" || state === "failed") return [];
+    return BASE.map(function (r, i) {
+      var p = { id: "p" + i, seller: r[0], cards: r[1], cost: r[2], expected: r[3], arrived: r[4] };
+      p.ordered = add(r[3], -9);
+      if (state === "allwell" && (p.seller === "Pebble Road Cards" || p.seller === "Kestrel Hobby")) p.arrived = "2026-11-21";
+      if (state === "unknown" && /Sunfield|Marrow|Ashgrove/.test(p.seller)) p.expected = null;
+      if (state === "quiet" && p.arrived && p.arrived >= WEEKS[0]) { p.arrived = null; p.expected = add(p.expected, 9); }
+      return p;
+    });
+  }
+
+  function sum(list, k) { return list.reduce(function (a, p) { return a + p[k]; }, 0); }
+  function recap(pk, wi) {
+    var start = WEEKS[wi], end = add(start, 6);
+    var asof = end < TODAY ? end : TODAY;
+    var prevStart = add(start, -7), prevEnd = add(start, -1);
+    var arrived = pk.filter(function (p) { return p.arrived && p.arrived >= start && p.arrived <= end; });
+    var prevKnown = prevStart >= FIRST_WEEK;
+    var prev = prevKnown ? pk.filter(function (p) { return p.arrived && p.arrived >= prevStart && p.arrived <= prevEnd; }) : null;
+    var out = pk.filter(function (p) { return p.ordered <= asof && (!p.arrived || p.arrived > asof); });
+    var late = out.filter(function (p) { return p.expected && p.expected < asof; });
+    var nodate = out.filter(function (p) { return !p.expected; });
+    var r = {
+      wi: wi, start: start, end: end, asof: asof, current: wi === 0,
+      arrived: arrived, prev: prev, out: out, late: late, nodate: nodate,
+      cardsIn: sum(arrived, "cards"), moneyIn: sum(arrived, "cost"),
+      cardsPrev: prev ? sum(prev, "cards") : null,
+      cardsOut: sum(out, "cards"), moneyOut: sum(out, "cost"),
+      lateCards: sum(late, "cards"), lateMoney: sum(late, "cost"),
+      noData: pk.length === 0
+    };
+    return r;
+  }
+  function weekName(wi) { return wi === 0 ? "This week" : wi === 1 ? "Last week" : "2 weeks ago"; }
+  function lateDays(p, asof) { return diff(asof, p.expected); }
+  function pkLine(p, r) {
+    if (p.arrived && p.arrived <= r.asof) return "Came " + shortDate(p.arrived);
+    if (!p.expected) return "No expected date";
+    if (p.expected < r.asof) return "Due " + shortDate(p.expected) + ", " + plural(lateDays(p, r.asof), "day", "days") + " late";
+    return "Due " + shortDate(p.expected);
+  }
+
+  /* ---------- Page state ---------- */
+  var CONCEPTS = [
+    { key: "summary", name: "Plain summary",
+      desc: "Plain summary: one sentence answers the week, three rows hold the facts, and a row opens its packages. Week paging sits in the bottom toolbar, in thumb reach." },
+    { key: "tide", name: "Tide line",
+      desc: "Tide line (the bold one): the week is one picture. Cards that came stack above a line on the day they came. Cards still out hang below it on the day they are due, and a late one is hatched. A tap on a day opens its packages. Swipe the picture, or use the toolbar, to change week." },
+    { key: "exceptions", name: "Exceptions first",
+      desc: "Exceptions first: the screen is a list of weeks. The open week names only what is not normal, or says All is well, then gives the four numbers. Tap a week to open it." }
+  ];
+  var FRAMES = [
+    { id: "f-folded", pose: "folded", dev: "iphone-duo-folded", filter: "folded", cap: "Duo, folded: 466 x 678 pt, one hand, touch only." },
+    { id: "f-open", pose: "open", dev: "iphone-duo-unfolded", filter: "open", cap: "Duo, open: 951 x 669 pt, two pages, hinge gap from x 455.5 to 495.5 (nothing crosses it)." },
+    { id: "f-ax5", pose: "folded", ax5: true, dev: "iphone-duo-folded-ax5", filter: "ax5", cap: "Duo, folded, largest accessibility text (AX5). The page scrolls." },
+    { id: "f-phone", pose: "phone", dev: "iphone-large-portrait", filter: "phone", cap: "Large phone, portrait. No size is written for this device, so the frame starts at the folded Duo size. Drag its corner to resize it." }
+  ];
+
+  var view = { c: "summary", s: "loaded", t: "auto", d: "all", hidden: [] };
+  var ui = {};
+  function resetUi() {
+    ui = {};
+    FRAMES.forEach(function (f) { ui[f.id] = { stack: [], sel: null, week: 0, sheet: null, open: 0, local: null, busy: false }; });
+  }
+
+  function readHash() {
+    var h = location.hash.replace(/^#/, "");
+    h.split("&").forEach(function (kv) {
+      var p = kv.split("="); if (p.length !== 2) return;
+      var k = p[0], v = decodeURIComponent(p[1]);
+      if (k === "c" && CONCEPTS.some(function (c) { return c.key === v; })) view.c = v;
+      if (k === "s") view.s = v;
+      if (k === "t" && /^(auto|light|dark)$/.test(v)) view.t = v;
+      if (k === "d") view.d = v;
+      if (k === "x" && v === "ax5") view.d = "ax5";
+      if (k === "h") view.hidden = v ? v.split(",") : [];
+    });
+  }
+  function writeHash() {
+    var parts = ["c=" + view.c, "s=" + view.s];
+    if (view.t !== "auto") parts.push("t=" + view.t);
+    if (view.d !== "all") parts.push("d=" + view.d);
+    if (view.hidden.length) parts.push("h=" + view.hidden.join(","));
+    history.replaceState(null, "", "#" + parts.join("&"));
+  }
+
+  /* ---------- Shared pieces ---------- */
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function glyph(kind) { return '<span class="glyph g-' + kind + '" aria-hidden="true"></span>'; }
+
+  function stateBlock(state, fid) {
+    var u = ui[fid];
+    if (state === "loading") {
+      return '<div class="state-block" aria-busy="true"><p class="t-sub muted">Reading your orders.</p>' +
+        '<div class="skel" style="height:34px;width:60%"></div>' +
+        '<div class="skel" style="height:84px"></div>' +
+        '<div class="skel" style="height:180px"></div></div>';
+    }
+    if (state === "failed") {
+      return '<div class="state-block" role="alert"><p class="t-title3">Your orders could not be read, so this week cannot be shown.</p>' +
+        '<button type="button" class="fill-btn" data-act="retry"' + (u.busy ? ' aria-busy="true" disabled' : "") + '>' + (u.busy ? "Trying again…" : "Try again") + '</button>' +
+        '<details class="machine"><summary>What the reader said</summary><p class="t-foot">Sample text: read failed, code 0.</p></details></div>';
+    }
+    if (state === "empty") {
+      return '<div class="state-block"><p class="t-title3">No orders yet. Import an order history and your week shows here.</p>' +
+        '<button type="button" class="fill-btn" data-act="import">Import orders</button>' +
+        (u.importNote ? '<p class="press-note" role="status">This opens the import screen, which this mockup does not draw.</p>' : "") + '</div>';
+    }
+    return null;
+  }
+  function stateOf(fid) { return ui[fid].local || view.s; }
+
+  function weekToolbar(r, fid, label) {
+    var older = r.wi < WEEKS.length - 1, newer = r.wi > 0;
+    return '<div class="toolbar" role="toolbar" aria-label="Week">' +
+      '<button type="button" class="plain-btn" data-act="week" data-dir="1"' + (older ? "" : ' disabled title="No earlier week has data" aria-label="Earlier week. None: no earlier week has data"') + '>‹ Earlier</button>' +
+      (label ? '<p class="mid t-head num" aria-live="polite">' + esc(label) + '</p>' : '<span class="mid"></span>') +
+      '<button type="button" class="plain-btn end" data-act="week" data-dir="-1"' + (newer ? "" : ' disabled title="This is the newest week" aria-label="Later week. None: this is the newest week"') + '>Later ›</button>' +
+      '</div>';
+  }
+
+  function pkRows(list, r) {
+    if (!list.length) return "";
+    return '<ul class="group">' + list.map(function (p) {
+      var kind = p.arrived && p.arrived <= r.asof ? "came" : !p.expected ? "nodate" : p.expected < r.asof ? "late" : "out";
+      return '<li><div class="static-row"><div class="row-text"><p class="t-body">' + glyph(kind) + " " + esc(p.seller) + '</p>' +
+        '<p class="t-sub muted num">' + plural(p.cards, "card", "cards") + ". " + pkLine(p, r) + '</p></div>' +
+        '<p class="t-body num">' + money(p.cost) + '</p></div></li>';
+    }).join("") + '</ul>';
+  }
+
+  /* ---------- Concept: Plain summary ---------- */
+  var SUM_KINDS = {
+    came: { label: "Came", list: function (r) { return r.arrived; } },
+    out: { label: "Still out", list: function (r) { return r.out; } },
+    late: { label: "Late", list: function (r) { return r.late; } },
+    nodate: { label: "No due date", list: function (r) { return r.nodate; } }
+  };
+
+  function verdict(r) {
+    var past = !r.current;
+    var a;
+    if (r.cardsIn === 0) a = past ? "No cards came that week." : "No cards came this week yet.";
+    else {
+      a = plural(r.cardsIn, "card", "cards") + " came";
+      if (r.cardsPrev === null) a += ". There is no earlier week to compare.";
+      else {
+        var d = r.cardsIn - r.cardsPrev;
+        a += d > 0 ? ", " + d + " more than the week before." : d < 0 ? ", " + (-d) + " fewer than the week before." : ", the same as the week before.";
+      }
+    }
+    var b;
+    if (r.late.length) b = '<span class="late">' + plural(r.late.length, "package is", "packages are").replace(" is", past ? " was" : " is").replace(" are", past ? " were" : " are") + " late.</span>";
+    else if (r.nodate.length) b = plural(r.nodate.length, "package has", "packages have") + " no due date, so lateness is unknown.";
+    else b = past ? "Nothing was late." : "Nothing is late.";
+    return a + " " + b;
+  }
+
+  function summaryRows(r, u, open) {
+    var rows = [];
+    var outList = SUM_KINDS.out.list(r);
+    rows.push({ k: "came", g: "came", label: "Came", main: plural(r.cardsIn, "card", "cards") + ", " + money(r.moneyIn), extra: true });
+    rows.push({ k: "out", g: "out", label: "Still out", main: plural(sum(outList, "cards"), "card", "cards") + " in " + plural(outList.length, "package", "packages") + ", " + money(sum(outList, "cost")) });
+    rows.push({ k: "late", g: "late", label: "Late", main: r.late.length ? r.late.length + " of those packages, " + plural(r.lateCards, "card", "cards") + ", " + money(r.lateMoney) : "None" });
+    if (r.nodate.length) rows.push({ k: "nodate", g: "nodate", label: "No due date", main: plural(r.nodate.length, "package", "packages") + ", " + money(sum(r.nodate, "cost")) });
+    var max = Math.max(r.cardsIn, r.cardsPrev || 0, 1);
+    return '<ul class="group">' + rows.map(function (row) {
+      var cur = open && u.sel === row.k;
+      var extra = "";
+      if (row.extra) {
+        extra = r.cardsPrev === null
+          ? '<span class="t-foot muted">No earlier week to compare</span>'
+          : '<span class="cmp" aria-hidden="true"><span class="bar now" style="width:' + (100 * r.cardsIn / max) + '%"></span>' +
+            '<span class="bar prev" style="width:' + (100 * r.cardsPrev / max) + '%"></span></span>' +
+            '<span class="t-foot muted num">' + r.cardsPrev + ' the week before</span>';
+      }
+      if (row.k === "late" && !r.late.length) {
+        return '<li><div class="row static">' + glyph(row.g) + '<span class="row-body"><span class="row-text"><span class="t-head">' + row.label + '</span>' +
+          '<span class="t-sub muted">' + row.main + '</span></span></span></div></li>';
+      }
+      return '<li><button type="button" class="row" data-act="open" data-k="' + row.k + '"' + (cur ? ' aria-current="true"' : "") + '>' + glyph(row.g) +
+        '<span class="row-body"><span class="row-text"><span class="t-head' + (row.k === "late" && r.late.length ? " c-late" : "") + '">' + row.label + '</span>' +
+        '<span class="t-sub muted num">' + row.main + '</span>' + extra + '</span><span class="chev" aria-hidden="true">›</span></span></button></li>';
+    }).join("") + '</ul>';
+  }
+
+  function summaryDetail(r, k, withBack) {
+    var kind = SUM_KINDS[k];
+    var list = kind.list(r);
+    var head = withBack
+      ? '<div class="navbar-inline"><button type="button" class="back" data-act="back">‹ ' + weekName(r.wi) + '</button><p class="title t-head">' + kind.label + '</p><span class="trail"></span></div>'
+      : '<div class="navbar"><p class="t-title1">' + kind.label + '</p><p class="t-foot muted">' + range(r.start) + '</p></div>';
+    var body = list.length
+      ? '<div class="stack-lg"><div class="inset">' + pkRows(list, r) + '</div><p class="inset t-foot muted num">' +
+        plural(sum(list, "cards"), "card", "cards") + " in " + plural(list.length, "package", "packages") + ", " + money(sum(list, "cost")) + ' in all.</p></div>'
+      : '<div class="state-block"><p class="t-body">' + (k === "late" ? "Nothing is late." : k === "came" ? "No cards came in this week." : "Nothing is out.") + '</p></div>';
+    return head + '<div class="scroll">' + body + '</div>';
+  }
+
+  function summaryRoot(r, u, open, pick) {
+    return '<div class="scroll"><div class="navbar"><p class="t-large">' + weekName(r.wi) + '</p><p class="t-foot muted num">' + range(r.start) + ' 2026</p></div>' +
+      '<div class="stack-lg" data-pick="summary">' +
+      '<p class="verdict t-title2">' + verdict(r) + '</p>' +
+      '<div class="inset">' + summaryRows(r, u, open) + '</div></div></div>' +
+      weekToolbar(r, null, "");
+  }
+
+  function renderSummary(fr, data) {
+    var u = ui[fr.id];
+    var r = recap(data, u.week);
+    if (fr.pose === "open") {
+      if (!u.sel) u.sel = r.late.length ? "late" : "came";
+      return [summaryRoot(r, u, true), summaryDetail(r, u.sel, false)];
+    }
+    var top = u.stack[u.stack.length - 1];
+    if (top) return [summaryDetail(r, top, true)];
+    return [summaryRoot(r, u, false)];
+  }
+
+  /* ---------- Concept: Tide line ---------- */
+  function tideCols(r) {
+    var cols = [];
+    var before = r.out.filter(function (p) { return p.expected && p.expected < r.start; });
+    if (before.length) cols.push({ key: "before", top: "Before", sub: "", came: [], due: before, prev: 0, name: "Due before this week" });
+    for (var i = 0; i < 7; i++) {
+      var d = add(r.start, i);
+      var prevDay = add(d, -7);
+      cols.push({
+        key: d, top: DOW[dow(d)], sub: String(dnum(d)), today: d === TODAY, future: d > TODAY,
+        came: r.arrived.filter(function (p) { return p.arrived === d; }),
+        due: r.out.filter(function (p) { return p.expected === d; }),
+        prev: r.prev ? sum(r.prev.filter(function (p) { return p.arrived === prevDay; }), "cards") : 0,
+        name: DOWL[dow(d)] + " " + dnum(d) + " " + mon(d)
+      });
+    }
+    var later = r.out.filter(function (p) { return p.expected && p.expected > r.end; });
+    if (later.length) cols.push({ key: "later", top: "Later", sub: "", came: [], due: later, prev: 0, name: "Due after this week" });
+    if (r.nodate.length) cols.push({ key: "nodate", top: "No", sub: "date", came: [], due: r.nodate, prev: 0, name: "No due date" });
+    return cols;
+  }
+  function blkKind(p, r) { return !p.expected ? "nodate" : p.expected < r.asof ? "late" : "out"; }
+  function colLabel(c, r) {
+    var parts = [c.name + "."];
+    if (c.came.length) parts.push(plural(sum(c.came, "cards"), "card", "cards") + " came.");
+    var late = c.due.filter(function (p) { return blkKind(p, r) === "late"; });
+    var rest = c.due.length - late.length;
+    if (late.length) parts.push(plural(late.length, "package", "packages") + " late.");
+    if (rest) parts.push(plural(rest, "package", "packages") + " still out.");
+    if (!c.came.length && !c.due.length) parts.push("Nothing came or was due.");
+    return parts.join(" ");
+  }
+  function defaultCol(r, cols) {
+    if (r.current) return TODAY;
+    var late = cols.filter(function (c) { return c.due.some(function (p) { return blkKind(p, r) === "late"; }); })[0];
+    return late ? late.key : r.end;
+  }
+
+  function tidePager(r) {
+    var older = r.wi < WEEKS.length - 1, newer = r.wi > 0;
+    var dots = WEEKS.map(function (w, i) { return i; }).reverse().map(function (i) {
+      return '<span class="dot' + (i === r.wi ? " on" : "") + '"></span>';
+    }).join("");
+    return '<div class="pager" role="toolbar" aria-label="Week">' +
+      '<button type="button" class="plain-btn" data-act="week" data-dir="1"' + (older ? ' aria-label="Earlier week"' : ' disabled title="No earlier week has data" aria-label="Earlier week. None: no earlier week has data"') + '>‹</button>' +
+      '<span class="pager-mid"><span class="t-head num" aria-live="polite">' + range(r.start) + '</span><span class="dots" aria-hidden="true">' + dots + '</span></span>' +
+      '<button type="button" class="plain-btn" data-act="week" data-dir="-1"' + (newer ? ' aria-label="Later week"' : ' disabled title="This is the newest week" aria-label="Later week. None: this is the newest week"') + '>›</button>' +
+      '</div>';
+  }
+
+  function tideChart(r, cols, u, pose) {
+    var A = pose === "open" ? 184 : 176, B = pose === "open" ? 136 : 132;
+    var maxA = 1, maxB = 1;
+    cols.forEach(function (c) { maxA = Math.max(maxA, sum(c.came, "cards"), c.prev); maxB = Math.max(maxB, sum(c.due, "cards")); });
+    var unit = Math.min(A / maxA, B / maxB, 16);
+    function blk(p, kind) { return '<span class="blk ' + kind + '" style="height:' + Math.max(4, p.cards * unit - 2) + 'px"></span>'; }
+    return '<div class="tide-chart" data-swipe="1" style="--cols:' + cols.length + '">' + cols.map(function (c) {
+      var cur = u.sel === c.key;
+      return '<button type="button" class="tcol' + (c.today ? " today" : "") + (c.future ? " future" : "") + '" data-act="day" data-k="' + c.key + '"' +
+        (cur && pose === "open" ? ' aria-current="true"' : "") + ' aria-label="' + esc(colLabel(c, r)) + '">' +
+        '<span class="t-above" style="height:' + A + 'px">' +
+          (c.prev ? '<span class="t-ghost" style="height:' + (c.prev * unit) + 'px"></span>' : "") +
+          c.came.map(function (p) { return blk(p, "came"); }).join("") + '</span>' +
+        '<span class="t-axis"><span class="t-cap1">' + c.top + '</span><span class="t-foot num">' + c.sub + '</span>' +
+          (c.today ? '<span class="t-cap2 today-tag">Today</span>' : '<span class="t-cap2" aria-hidden="true">&nbsp;</span>') + '</span>' +
+        '<span class="t-below" style="height:' + B + 'px">' + c.due.map(function (p) { return blk(p, blkKind(p, r)); }).join("") + '</span>' +
+        '</button>';
+    }).join("") + '</div>';
+  }
+
+  function tideRows(r, cols) {
+    var maxC = 1;
+    cols.forEach(function (c) { maxC = Math.max(maxC, sum(c.came, "cards"), sum(c.due, "cards")); });
+    return '<ul class="tide-rows">' + cols.map(function (c) {
+      var lateN = c.due.filter(function (p) { return blkKind(p, r) === "late"; }).length;
+      function bar(list, kindFn) { return list.map(function (p) { return '<span class="hblk ' + kindFn(p) + '" style="width:' + (100 * p.cards / maxC) + '%"></span>'; }).join(""); }
+      var words = [];
+      if (c.came.length) words.push(sum(c.came, "cards") + " came");
+      if (lateN) words.push(lateN + " late");
+      if (c.due.length - lateN) words.push((c.due.length - lateN) + " due");
+      return '<li><button type="button" class="trow" data-act="day" data-k="' + c.key + '" aria-label="' + esc(colLabel(c, r)) + '">' +
+        '<span class="t-head">' + (c.sub && c.top !== "No" ? c.top + " " + c.sub : c.name) + '</span>' +
+        (c.came.length ? '<span class="hbar">' + bar(c.came, function () { return "came"; }) + '</span>' : "") +
+        (c.due.length ? '<span class="hbar">' + bar(c.due, function (p) { return blkKind(p, r); }) + '</span>' : "") +
+        '<span class="t-body muted">' + (words.length ? words.join(", ") : "Nothing") + '</span></button></li>';
+    }).join("") + '</ul>';
+  }
+
+  function tideDay(r, cols, key, asSheet) {
+    var c = cols.filter(function (x) { return x.key === key; })[0] || cols[0];
+    var head = asSheet
+      ? '<div class="grabber" aria-hidden="true"></div><div class="navbar-inline"><span></span><p class="title t-head" id="sheet-title">' + c.name + '</p><button type="button" class="plain-btn trail" data-act="close" data-focus="1"><b>Done</b></button></div>'
+      : '<div class="navbar"><p class="t-title1">' + c.name + '</p><p class="t-foot muted">' + weekName(r.wi) + ', ' + range(r.start) + '</p></div>';
+    var parts = [];
+    if (c.came.length) parts.push('<div class="stack"><p class="section-head t-foot muted">Came that day</p><div class="inset">' + pkRows(c.came, r) + '</div></div>');
+    if (c.due.length) parts.push('<div class="stack"><p class="section-head t-foot muted">' + (c.key === "nodate" ? "Not here, with no due date" : "Due, not here yet") + '</p><div class="inset">' + pkRows(c.due, r) + '</div></div>');
+    if (!parts.length) parts.push('<div class="state-block"><p class="t-body">' + (c.future ? "This day has not come yet, and nothing is due on it." : "Nothing came and nothing was due that day.") + '</p></div>');
+    return head + '<div class="scroll"><div class="stack-lg">' + parts.join("") + '</div></div>';
+  }
+
+  function tideMain(r, cols, u, pose, ax5) {
+    var top = '<div class="tide-total"><span class="tt-k">' + glyph("came") + ' <span class="t-head">Came</span></span><span class="t-head num c-came">' + plural(r.cardsIn, "card", "cards") + ', ' + money(r.moneyIn) + '</span></div>';
+    var bottom = '<div class="tide-total"><span class="tt-k">' + glyph("out") + ' <span class="t-head">Still out</span></span><span class="t-head num c-out">' + plural(r.cardsOut, "card", "cards") + ', ' + money(r.moneyOut) + '</span></div>' +
+      (r.late.length ? '<div class="tide-total"><span class="tt-k">' + glyph("late") + ' <span class="t-sub">of which late</span></span><span class="t-sub num c-late">' + plural(r.late.length, "package", "packages") + ', ' + money(r.lateMoney) + '</span></div>' : "") +
+      (r.nodate.length ? '<div class="tide-total"><span class="tt-k">' + glyph("nodate") + ' <span class="t-sub">no due date</span></span><span class="t-sub num muted">' + plural(r.nodate.length, "package", "packages") + '</span></div>' : "");
+    var key = r.prev === null ? "No earlier week to compare." : (r.cardsPrev ? "Dashed outline: what came the week before, " + r.cardsPrev + " cards." : "Nothing came the week before.");
+    var body = ax5 ? tideRows(r, cols) : tideChart(r, cols, u, pose);
+    return '<div class="scroll"><div class="tide" data-pick="tide">' +
+      '<p class="t-foot muted tide-week">' + weekName(r.wi) + '</p>' + top + body + bottom +
+      '<p class="t-foot muted">' + key + ' Tap a day to see its packages.</p></div></div>' + tidePager(r);
+  }
+
+  function renderTide(fr, data) {
+    var u = ui[fr.id];
+    var r = recap(data, u.week);
+    var cols = tideCols(r);
+    if (fr.pose === "open") {
+      if (!u.sel) u.sel = defaultCol(r, cols);
+      return [tideMain(r, cols, u, "open", false), tideDay(r, cols, u.sel, false)];
+    }
+    var html = tideMain(r, cols, u, fr.pose, fr.ax5);
+    if (u.sheet) html += '<div class="sheet-scrim" data-act="close"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">' + tideDay(r, cols, u.sheet, true) + '</div>';
+    return [html];
+  }
+
+  /* ---------- Concept: Exceptions first ---------- */
+  function exceptions(r) {
+    var past = !r.current, items = [];
+    if (r.late.length) {
+      var worst = r.late.slice().sort(function (a, b) { return a.expected < b.expected ? -1 : 1; })[0];
+      items.push({ g: "late", k: "late",
+        text: plural(r.late.length, "package", "packages") + (past ? (r.late.length === 1 ? " was" : " were") + " late at week’s end" : (r.late.length === 1 ? " is" : " are") + " late"),
+        sub: plural(r.lateCards, "card", "cards") + ", " + money(r.lateMoney) + ". " + esc(worst.seller) + " is the oldest, " + plural(lateDays(worst, r.asof), "day", "days") + " late." });
+    }
+    if (r.nodate.length) items.push({ g: "nodate", k: "nodate",
+      text: plural(r.nodate.length, "package has", "packages have") + " no due date",
+      sub: "So no one can tell if " + (r.nodate.length === 1 ? "it is" : "they are") + " late." });
+    return items;
+  }
+  function shortStatus(r) {
+    var items = exceptions(r);
+    if (!items.length) return { g: "came", text: past(r) ? "All was well" : "All is well" };
+    var bits = [];
+    if (r.late.length) bits.push(r.late.length + " late");
+    if (r.nodate.length) bits.push(r.nodate.length + " with no due date");
+    return { g: items[0].g, text: bits.join(", ") };
+  }
+  function past(r) { return !r.current; }
+
+  function excStatus(r, interactive) {
+    var items = exceptions(r);
+    if (!items.length) return '<p class="t-title1 allwell">' + (past(r) ? "All was well." : "All is well.") + '</p>';
+    return '<ul class="group">' + items.map(function (it) {
+      var inner = glyph(it.g) + '<span class="row-body"><span class="row-text"><span class="t-head' + (it.g === "late" ? " c-late" : "") + '">' + it.text + '</span>' +
+        '<span class="t-sub muted">' + it.sub + '</span></span>' + (interactive ? '<span class="chev" aria-hidden="true">›</span>' : "") + '</span>';
+      return '<li>' + (interactive
+        ? '<button type="button" class="row" data-act="open" data-k="' + it.k + '">' + inner + '</button>'
+        : '<div class="row static">' + inner + '</div>') + '</li>';
+    }).join("") + '</ul>';
+  }
+  function excNumbers(r, interactive) {
+    function tile(k, label, main, sub, cls) {
+      var tap = k && interactive;
+      var inner = '<span class="tile-head"><span class="t-foot muted">' + label + '</span>' + (tap ? '<span class="chev" aria-hidden="true">›</span>' : "") + '</span><span class="t-title3 num' + (cls ? " " + cls : "") + '">' + main + '</span>' + (sub ? '<span class="t-sub muted num">' + sub + '</span>' : "");
+      return k && interactive ? '<button type="button" class="tile" data-act="open" data-k="' + k + '">' + inner + '</button>' : '<div class="tile">' + inner + '</div>';
+    }
+    return '<div class="tiles">' +
+      tile("came", "Came", plural(r.cardsIn, "card", "cards"), money(r.moneyIn), "c-came") +
+      tile(null, "The week before", r.cardsPrev === null ? "No data" : plural(r.cardsPrev, "card", "cards"), r.cardsPrev === null ? "No earlier week to compare" : "") +
+      tile("out", "Still out", plural(r.cardsOut, "card", "cards"), money(r.moneyOut), "c-out") +
+      tile(r.late.length ? "late" : null, "Late", plural(r.late.length, "package", "packages"), r.late.length ? money(r.lateMoney) : "", r.late.length ? "c-late" : "") +
+      '</div>';
+  }
+  function weekRow(r, u, open, data) {
+    var st = shortStatus(r);
+    var cur = open && u.open === r.wi;
+    return '<button type="button" class="week-row" data-act="expand" data-w="' + r.wi + '" aria-expanded="false"' + (cur ? ' aria-current="true"' : "") + '>' +
+      '<span class="row-text"><span class="t-head">' + weekName(r.wi) + '</span><span class="t-sub muted num">' + range(r.start) + '</span></span>' +
+      '<span class="wk-status">' + glyph(st.g) + '<span class="t-sub' + (st.g === "late" ? " c-late" : "") + '">' + st.text + '</span></span></button>';
+  }
+  function excWeekBody(r, interactive) {
+    return '<div class="stack-lg"><div class="inset stack" data-pick="exceptions">' + excStatus(r, interactive) + '</div>' +
+      '<div class="inset stack"><p class="t-foot muted">The week in numbers</p>' + excNumbers(r, interactive) + '</div></div>';
+  }
+  function renderExceptions(fr, data) {
+    var u = ui[fr.id];
+    var weeks = WEEKS.map(function (w, i) { return recap(data, i); });
+    if (fr.pose === "open") {
+      var r = weeks[u.open];
+      var left = '<div class="scroll"><div class="navbar"><p class="t-large">Weeks</p></div><div class="inset"><ul class="week-list">' +
+        weeks.map(function (w) { return '<li>' + weekRow(w, u, true) + '</li>'; }).join("") + '</ul></div></div>';
+      var lists = [];
+      if (r.late.length) lists.push('<div class="stack"><p class="section-head t-foot muted">Late packages</p><div class="inset">' + pkRows(r.late, r) + '</div></div>');
+      if (r.nodate.length) lists.push('<div class="stack"><p class="section-head t-foot muted">Packages with no due date</p><div class="inset">' + pkRows(r.nodate, r) + '</div></div>');
+      var right = '<div class="scroll"><div class="navbar"><p class="t-title1">' + weekName(r.wi) + '</p><p class="t-foot muted num">' + range(r.start) + ' 2026</p></div>' +
+        excWeekBody(r, false) + (lists.length ? '<div class="stack-lg">' + lists.join("") + '</div>' : "") + '</div>';
+      return [left, right];
+    }
+    var top = u.stack[u.stack.length - 1];
+    if (top) return [summaryDetail(weeks[u.open], top, true)];
+    return ['<div class="scroll"><div class="navbar"><p class="t-large">Weeks</p></div><ul class="week-list">' + weeks.map(function (w) {
+      if (w.wi !== u.open) return '<li class="inset">' + weekRow(w, u, false) + '</li>';
+      return '<li class="week-open"><div class="week-open-head inset"><p class="t-title2">' + weekName(w.wi) + '</p><p class="t-sub muted num">' + range(w.start) + '</p></div>' + excWeekBody(w, true) + '</li>';
+    }).join("") + '</ul></div>'];
+  }
+
+  /* ---------- Concept registry ---------- */
+  var RENDER = { summary: renderSummary, tide: renderTide, exceptions: renderExceptions };
+
+  /* ---------- Frame rendering ---------- */
+  function renderFrame(fr) {
+    var wrap = document.getElementById("w-" + fr.id);
+    var el = document.getElementById(fr.id);
+    var st = stateOf(fr.id);
+    var pages;
+    var block = stateBlock(st, fr.id);
+    var fn = RENDER[view.c];
+    if (block) {
+      pages = fr.pose === "open" ? [block, ""] : [block];
+    } else if (!fn) {
+      pages = ['<div class="state-block"><p class="t-body">This concept is not drawn yet.</p></div>'];
+      if (fr.pose === "open") pages.push(pages[0]);
+    } else {
+      pages = fn(fr, packages(st));
+    }
+    var html;
+    if (fr.pose === "open") {
+      html = '<div class="screen" data-page="left">' + pages[0] + '</div><div class="hinge" aria-hidden="true">hinge</div><div class="screen" data-page="right">' + pages[1] + '</div>';
+    } else {
+      html = '<div class="screen' + (fr.ax5 ? " ax5" : "") + '">' + pages[0] + '</div>';
+    }
+    el.innerHTML = html;
+    wrap.hidden = !(view.d === "all" || view.d === fr.filter);
+  }
+
+  function assignPick() {
+    document.querySelectorAll("[data-pick]").forEach(function (n) { n.removeAttribute("id"); });
+    var first = null;
+    FRAMES.some(function (f) {
+      var w = document.getElementById("w-" + f.id);
+      if (w.hidden) return false;
+      first = document.getElementById(f.id).querySelector("[data-pick]");
+      return !!first;
+    });
+    if (first) first.id = "pick-" + view.c;
+  }
+
+  function renderAll() {
+    FRAMES.forEach(renderFrame);
+    assignPick();
+    renderControls();
+  }
+
+  function renderControls() {
+    var box = document.getElementById("concepts");
+    box.innerHTML = CONCEPTS.filter(function (c) { return view.hidden.indexOf(c.key) < 0; }).map(function (c) {
+      return '<span class="concept-chip"><button type="button" data-concept="' + c.key + '" aria-pressed="' + (view.c === c.key) + '">' + c.name + '</button>' +
+        '<button type="button" class="hide" data-hide="' + c.key + '" aria-label="Hide ' + c.name + '">Hide</button></span>';
+    }).join("");
+    document.getElementById("show-all").hidden = view.hidden.length === 0;
+    var c = CONCEPTS.filter(function (x) { return x.key === view.c; })[0];
+    document.getElementById("concept-desc").textContent = c.desc;
+    document.getElementById("sel-state").value = view.s;
+    document.getElementById("sel-dev").value = view.d;
+    document.querySelectorAll("[data-theme-btn]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-theme-btn") === view.t)); });
+    if (view.t === "auto") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", view.t);
+  }
+
+  /* ---------- Events ---------- */
+  var ACTS = {
+    open: function (fr, u, b) { if (fr.pose === "open") u.sel = b.getAttribute("data-k"); else u.stack.push(b.getAttribute("data-k")); },
+    back: function (fr, u) { u.stack.pop(); },
+    week: function (fr, u, b) {
+      var n = u.week + Number(b.getAttribute("data-dir"));
+      if (n >= 0 && n < WEEKS.length) { u.week = n; u.sel = null; u.stack = []; u.sheet = null; }
+    },
+    retry: function (fr, u) {
+      u.busy = true;
+      setTimeout(function () { u.busy = false; u.local = "loaded"; renderFrame(fr); assignPick(); }, 900);
+    },
+    import: function (fr, u) { u.importNote = true; },
+    day: function (fr, u, b) { var k = b.getAttribute("data-k"); if (fr.pose === "open") u.sel = k; else u.sheet = k; },
+    close: function (fr, u) { u.sheet = null; },
+    expand: function (fr, u, b) { u.open = Number(b.getAttribute("data-w")); u.stack = []; }
+  };
+  /* Swipe on the Tide line picture changes week. A swipe swallows the click that follows it. */
+  var swipe = null;
+  document.addEventListener("pointerdown", function (e) {
+    var area = e.target.closest("[data-swipe]"); if (!area) return;
+    swipe = { x: e.clientX, y: e.clientY, fr: frameOf(area) };
+  });
+  document.addEventListener("pointerup", function (e) {
+    if (!swipe || !swipe.fr) { swipe = null; return; }
+    var dx = e.clientX - swipe.x, dy = e.clientY - swipe.y, fr = swipe.fr, u = ui[fr.id];
+    swipe = null;
+    if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy)) return;
+    var n = u.week + (dx > 0 ? 1 : -1);
+    u.swiped = true;
+    setTimeout(function () { u.swiped = false; }, 0);
+    if (n >= 0 && n < WEEKS.length) { u.week = n; u.sel = null; u.sheet = null; renderFrame(fr); assignPick(); }
+  });
+  function frameOf(node) {
+    var el = node.closest(".frame"); if (!el) return null;
+    return FRAMES.filter(function (f) { return f.id === el.id; })[0];
+  }
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-act]");
+    if (b && !b.disabled) {
+      var fr = frameOf(b); if (!fr) return;
+      if (ui[fr.id].swiped) { ui[fr.id].swiped = false; return; }
+      var act = b.getAttribute("data-act");
+      if (ACTS[act]) { ACTS[act](fr, ui[fr.id], b); renderFrame(fr); assignPick();
+        var again = document.getElementById(fr.id).querySelector('[data-focus="1"]'); if (again) again.focus(); }
+      return;
+    }
+    var c = e.target.closest("[data-concept]");
+    if (c) { view.c = c.getAttribute("data-concept"); resetUi(); writeHash(); renderAll(); return; }
+    var h = e.target.closest("[data-hide]");
+    if (h) {
+      var k = h.getAttribute("data-hide");
+      view.hidden.push(k);
+      var left = CONCEPTS.filter(function (x) { return view.hidden.indexOf(x.key) < 0; });
+      if (!left.length) { view.hidden = []; left = CONCEPTS; }
+      if (view.hidden.indexOf(view.c) >= 0) { view.c = left[0].key; resetUi(); }
+      writeHash(); renderAll(); return;
+    }
+    if (e.target.closest("#show-all")) { view.hidden = []; writeHash(); renderAll(); return; }
+    var t = e.target.closest("[data-theme-btn]");
+    if (t) { view.t = t.getAttribute("data-theme-btn"); writeHash(); renderControls(); }
+  });
+  document.getElementById("sel-state").addEventListener("change", function (e) { view.s = e.target.value; resetUi(); writeHash(); renderAll(); });
+  document.getElementById("sel-dev").addEventListener("change", function (e) { view.d = e.target.value; writeHash(); renderAll(); });
+  window.addEventListener("hashchange", function () { readHash(); resetUi(); renderAll(); });
+
+  window.__recap = { ACTS: ACTS, RENDER: RENDER, ui: function () { return ui; }, renderFrame: renderFrame, assignPick: assignPick,
+    recap: recap, packages: packages, esc: esc, glyph: glyph, weekToolbar: weekToolbar, pkRows: pkRows, range: range, money: money,
+    plural: plural, shortDate: shortDate, add: add, diff: diff, dow: dow, dnum: dnum, DOW: DOW, DOWL: DOWL, WEEKS: WEEKS, TODAY: TODAY,
+    weekName: weekName, sum: sum, pkLine: pkLine, view: view, FRAMES: FRAMES };
+
+  readHash(); resetUi(); renderAll();
+})();
+</script>
+</body>
+</html>

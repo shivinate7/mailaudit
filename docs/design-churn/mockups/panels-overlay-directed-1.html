@@ -1,0 +1,1027 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Panels as Sheets</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light, so this page draws one theme.
+   Cochin sets words and Menlo sets numbers inside the app (typography-cochin-and-mono); the page chrome and the
+   iOS chrome (status bar, tab bar labels, sheet buttons) use the system font. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832;
+  --shadow:rgba(28,43,36,0.06);
+  --cochin: Cochin, "Hoefler Text", Palatino, Georgia, serif;
+  --mono: Menlo, ui-monospace, SFMono-Regular, monospace;
+  /* Status bar foot and home-indicator band: unmeasured on these devices. Drawn at the 20 pt floor the Duo UI tests use
+     (DuoHandUITests.statusBarFloor), for both ends, on every frame. */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: max(env(safe-area-inset-bottom), 20px);
+  --new:#2E7A5E; --today:#A8443C;
+}
+* { box-sizing:border-box; }
+html { color-scheme: light; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.4; }
+main { max-width:1460px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-weight:600; }
+.intro { display:flex; flex-direction:column; gap:8px; max-width:78ch; }
+.intro h1 { font-family:-apple-system, system-ui, sans-serif; font-size:26px; line-height:1.2; margin:0; }
+.intro p { margin:0; }
+.kind { font-family:var(--mono); font-size:13px; color:var(--inkSoft); }
+.kind b { color:var(--ink); font-weight:600; }
+.ctl { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.ctl .lab { font-size:13px; color:var(--inkSoft); min-width:72px; }
+.ctl a, .ctl button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+.ctl a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.ctl a:focus-visible, .ctl button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.legend { display:flex; flex-wrap:wrap; gap:16px; font-size:13px; color:var(--inkSoft); }
+.legend span { display:inline-flex; align-items:center; gap:8px; }
+.legend i { width:28px; height:14px; border:2px dashed; border-radius:3px; display:inline-block; }
+.legend .ln i { border-color:var(--new); } .legend .lt i { border-color:var(--today); }
+
+section.opt { display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--line); padding-top:16px; }
+section.opt[hidden] { display:none; }
+.opthead { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+.opthead h2 { font-size:22px; margin:0; line-height:1.2; }
+.hideopt { font:inherit; font-size:14px; min-height:44px; padding:0 12px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); cursor:pointer; }
+.hideopt:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.opthead p { margin:0; color:var(--inkSoft); max-width:80ch; flex:1 1 320px; }
+.frames { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+.frames > figure { margin:0; display:flex; flex-direction:column; gap:8px; max-width:100%; }
+.frames > figure[hidden] { display:none; }
+figcaption { font-size:13px; color:var(--inkSoft); max-width:60ch; display:flex; flex-direction:column; gap:4px; }
+figcaption b { color:var(--ink); font-size:14px; }
+.readout { font-family:var(--mono); font-size:12px; color:var(--green); }
+.readout.bad { color:var(--red); }
+.fit { position:relative; overflow:hidden; max-width:100%; }
+.fit > .dev { transform-origin:0 0; }
+
+/* ---------------- device frame: 1 CSS px = 1 pt ---------------- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:16px; overflow:hidden; color:var(--ink);
+  --b:1; --c:1; --c2:1; touch-action:none; }
+/* Dynamic Type: Font.custom(_:size:relativeTo:) scales by its text style. Apple's table gives Body 17 to 53,
+   Caption 1 12 to 43 and Caption 2 11 to 40 from Large to AX5 (typography page, read 2026-11-21). */
+.dev.ax5 { --b:3.118; --c:3.583; --c2:3.636; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 16px; font-size:12px; font-weight:600; z-index:30; font-family:-apple-system, system-ui, sans-serif; pointer-events:none; }
+.pg { position:absolute; top:0; bottom:0; overflow:hidden; }
+.hinge { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 55%, var(--paper)); z-index:40; }
+.hinge span { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; white-space:nowrap; }
+.scroll { position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; padding:calc(var(--sat) + 8px) 16px 120px; display:flex; flex-direction:column; gap:12px;
+  scrollbar-width:none; }
+.scroll::-webkit-scrollbar { display:none; }
+
+/* masthead: one letterhead (masthead-is-one-letterhead), Cochin caps over ruled tallies */
+.mast { display:flex; flex-direction:column; gap:6px; align-items:stretch; }
+.mast .mh { font-family:var(--cochin); font-size:calc(22px * min(var(--b), 1.353)); letter-spacing:0.32em; text-align:center; line-height:1.1; }
+.mast .tl { display:grid; grid-template-columns:1.2fr 1fr 0.8fr; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+.mast .tl > div { padding:4px 8px; display:flex; flex-direction:column; gap:0; border-right:1px solid var(--line); min-width:0; }
+.mast .tl > div:last-child { border-right:0; }
+.micro { font-family:var(--mono); font-size:calc(10px * var(--c2)); letter-spacing:0.16em; text-transform:uppercase; color:var(--inkSoft); line-height:1.3; overflow-wrap:anywhere; }
+.fig { font-family:var(--mono); font-size:calc(13px * var(--c)); line-height:1.3; }
+.dev.ax5 .mast .tl { grid-template-columns:1fr; }
+.dev.ax5 .mast .tl > div { border-right:0; border-top:1px solid var(--line); }
+
+/* Ledger tab (LedgerTab.body): title, group label, a card of ruled rows */
+.ltitle { font-family:var(--mono); font-size:calc(12px * var(--c)); letter-spacing:0.3em; text-transform:uppercase; text-align:center; color:var(--ink); }
+.glabel { font-family:var(--mono); font-size:calc(11px * var(--c)); letter-spacing:0.2em; text-transform:uppercase; color:var(--inkSoft); padding-left:4px; }
+.lcard { background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 2px var(--shadow); }
+.lrow { display:flex; align-items:center; gap:12px; min-height:52px; padding:8px 12px; border-top:1px solid var(--line); width:100%; background:transparent;
+  border-left:0; border-right:0; border-bottom:0; font:inherit; color:inherit; text-align:left; cursor:pointer; }
+.lrow:first-child { border-top:0; }
+.lrow:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+.lrow .lt { display:flex; flex-direction:column; gap:2px; margin-right:auto; min-width:0; }
+.lrow .name { font-family:var(--cochin); font-size:calc(15px * var(--b)); line-height:1.2; }
+.lrow .sub { font-family:var(--mono); font-size:calc(10.5px * var(--c)); color:var(--inkSoft); }
+.lrow .val { font-family:var(--cochin); font-size:calc(15px * var(--b)); display:inline-flex; align-items:baseline; gap:6px; flex:none; max-width:60%; }
+.lrow .val u { text-decoration:none; border-bottom:1px solid var(--line); }
+.lrow[aria-expanded="true"] .val u { border-bottom-color:var(--accent); }
+.lrow .car { font-size:calc(10px * var(--c)); color:var(--inkSoft); display:inline-block; }
+.lrow[aria-expanded="true"] .car { transform:rotate(180deg); color:var(--accent); }
+.lrow.plain .val { color:var(--inkSoft); }
+.dev.ax5 .lrow { flex-direction:column; align-items:flex-start; gap:4px; }
+.dev.ax5 .lrow .val { max-width:100%; }
+.reset { border:1px solid var(--red); border-radius:8px; background:var(--redSoft); color:var(--red); min-height:52px; display:flex; align-items:center; padding:8px 12px;
+  font-family:var(--cochin); font-size:calc(15px * var(--b)); }
+
+/* Packages (PackagesView): a card per order and seller */
+.pkg { background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 2px var(--shadow); overflow:hidden; }
+.pkg .ph { display:flex; align-items:baseline; gap:8px; padding:10px 12px 6px; flex-wrap:wrap; }
+.pkg .who { font-family:var(--cochin); font-size:calc(16px * var(--b)); font-weight:700; margin-right:auto; }
+.pkg .meta { font-family:var(--mono); font-size:calc(10.5px * var(--c)); color:var(--inkSoft); }
+.pkg .left { font-family:var(--mono); font-size:calc(10.5px * var(--c)); color:var(--red); }
+.pkg .left.done { color:var(--green); }
+.ln { display:flex; align-items:center; gap:8px; min-height:45px; border-top:1px solid var(--line); padding:0 12px 0 4px; }
+.ln .box { flex:0 0 44px; height:44px; display:grid; place-items:center; }
+.ln .box i { width:26px; height:26px; border:1.5px solid var(--inkSoft); border-radius:6px; display:grid; place-items:center; font-style:normal; color:var(--card); font-size:15px; }
+.ln.got .box i { background:var(--green); border-color:var(--green); }
+.ln .nm { font-family:var(--cochin); font-size:calc(14px * var(--b)); line-height:1.25; }
+.ln.got .nm { color:var(--inkSoft); }
+.ln .pr { margin-left:auto; font-family:var(--mono); font-size:calc(11px * var(--c)); color:var(--inkSoft); }
+
+/* tab bar: the system bar on one page, the custom bar under the right page on two (DuoSpine). Its labels stop growing
+   at the default size (duo-card-in-hand, tab bar text). */
+.bar { position:absolute; left:16px; right:16px; bottom:var(--sab); height:64px; border-radius:32px; z-index:20;
+  background:color-mix(in srgb, var(--paper) 78%, transparent); backdrop-filter:blur(14px) saturate(1.4); -webkit-backdrop-filter:blur(14px) saturate(1.4);
+  border:1px solid var(--line); box-shadow:0 4px 16px var(--shadow); display:grid; grid-template-columns:repeat(4,1fr); padding:4px; gap:2px; }
+.bar span { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; border-radius:28px; font-size:10px; font-weight:500;
+  font-family:-apple-system, system-ui, sans-serif; color:var(--inkSoft); }
+.bar span svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+.bar span.on { background:color-mix(in srgb, var(--card) 90%, transparent); color:var(--accent); }
+
+/* ---------------- the sheet ---------------- */
+/* Paper fill, a ruled top edge and the shadow token: an opaque sheet, so nothing under it shows
+   (head-panels-carry-paper-fill). The 8 pt corner is the house radius; the built system sheet draws its own corner. */
+.sheet { position:absolute; left:0; right:0; bottom:0; z-index:25; background:var(--paper); border-top:1px solid var(--line);
+  border-radius:8px 8px 0 0; box-shadow:0 -6px 18px rgba(28,43,36,0.10), 0 -1px 0 var(--line); display:flex; flex-direction:column; overflow:hidden;
+  transition:transform 260ms cubic-bezier(.2,.8,.2,1), height 260ms cubic-bezier(.2,.8,.2,1), bottom 260ms cubic-bezier(.2,.8,.2,1); will-change:transform; }
+.sheet.drag { transition:none; }
+.sheet.off { transform:translateY(105%); }
+.sh-top { flex:none; touch-action:none; cursor:grab; user-select:none; -webkit-user-select:none; }
+.sheet.drag .sh-top { cursor:grabbing; }
+.grab { display:block; width:100%; height:20px; border:0; background:transparent; padding:0; cursor:inherit; position:relative; }
+.grab::after { content:""; position:absolute; left:50%; top:7px; width:40px; height:5px; margin-left:-20px; border-radius:3px; background:var(--inkSoft); }
+.grab:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+.sh-head { display:grid; grid-template-columns:44px 1fr auto; align-items:center; gap:8px; padding:0 12px 4px; min-height:48px; }
+.sh-head h3 { margin:0; font-family:var(--cochin); font-size:calc(17px * var(--b)); line-height:1.15; text-align:center; font-weight:700; }
+.sh-head .tail { font-family:var(--mono); font-size:calc(10.5px * var(--c)); color:var(--inkSoft); min-width:44px; text-align:right; }
+.xbtn { width:44px; height:44px; border:0; border-radius:22px; background:transparent; display:grid; place-items:center; cursor:pointer; color:var(--ink); padding:0; }
+.xbtn i { width:30px; height:30px; border-radius:15px; background:color-mix(in srgb, var(--line) 70%, var(--paper)); display:grid; place-items:center; font-style:normal; font-size:14px; font-family:-apple-system, system-ui, sans-serif; }
+.xbtn:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+.sh-body { flex:1 1 auto; overflow-y:auto; overflow-x:hidden; padding:0 16px calc(var(--sab) + 12px); display:flex; flex-direction:column; gap:12px; overscroll-behavior:contain;
+  border-top:1px solid var(--line); padding-top:12px; }
+.sh-body > *, .scroll > *, .sect > * { flex:none; }
+.dev.ax5 .sh-head { grid-template-columns:44px 1fr; }
+.dev.ax5 .sh-head .tail { display:none; }
+
+/* option rows: a list with a check, as SwiftUI's List draws a picker (lists-and-tables page) */
+.olist { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.orow { display:flex; align-items:center; gap:12px; width:100%; min-height:48px; padding:8px 12px; border:0; border-top:1px solid var(--line); background:transparent;
+  font-family:var(--cochin); font-size:calc(15px * var(--b)); color:var(--ink); text-align:left; cursor:pointer; line-height:1.2; }
+.orow:first-child { border-top:0; }
+.orow .ck { margin-left:auto; min-width:20px; flex:none; color:var(--accent); font-family:-apple-system, system-ui, sans-serif; font-size:calc(15px * var(--b)); font-weight:600; text-align:right; }
+.orow[aria-pressed="true"] { color:var(--accent); }
+.orow:focus-visible, .cell:focus-visible, .chip:focus-visible, .step:focus-visible, .mini:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+.osub { font-family:var(--mono); font-size:calc(10px * var(--c2)); letter-spacing:0.16em; text-transform:uppercase; color:var(--inkSoft); padding:4px 4px 0; }
+
+/* option grid: the web's optGrid, a 1 pt rule drawn by the gap, cells paint card */
+.grid { display:grid; gap:1px; background:var(--line); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.grid.g2 { grid-template-columns:repeat(2, minmax(0,1fr)); } .grid.g4 { grid-template-columns:repeat(4, minmax(0,1fr)); }
+.cell { min-height:44px; border:0; background:var(--card); color:var(--ink); font-family:var(--mono); font-size:calc(11.5px * var(--c)); display:flex; align-items:center; justify-content:center;
+  padding:4px 6px; cursor:pointer; text-align:center; line-height:1.2; }
+.cell[aria-pressed="true"] { background:var(--accent); color:var(--card); }
+.cell.span2 { grid-column:span 2; } .cell.spanall { grid-column:1 / -1; }
+.dev.ax5 .grid.g2, .dev.ax5 .grid.g4 { grid-template-columns:1fr; }
+.dev.ax5 .cell.span2 { grid-column:auto; }
+/* the reserved slot under the presets: a fixed height, so a pick never moves a row under the finger */
+.slot { height:116px; border:1px dashed var(--line); border-radius:8px; padding:8px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
+.dev.ax5 .slot { height:auto; min-height:116px; border-style:solid; }
+.slot p { margin:0; font-family:var(--cochin); font-size:calc(14px * var(--b)); color:var(--inkSoft); line-height:1.3; }
+.slot .well { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.step { width:44px; height:44px; border:1px solid var(--line); border-radius:8px; background:var(--card); font-family:var(--mono); font-size:18px; cursor:pointer; color:var(--ink); }
+.num { min-width:56px; height:44px; border:1px solid var(--line); border-radius:8px; background:var(--card); display:grid; place-items:center; font-family:var(--mono); font-size:calc(16px * var(--c)); }
+.chips { display:flex; flex-wrap:wrap; gap:4px; }
+.chip { min-height:44px; padding:0 10px; border:1px solid var(--line); border-radius:6px; background:var(--card); font-family:var(--mono); font-size:calc(11.5px * var(--c)); cursor:pointer; color:var(--ink); }
+.chip[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:var(--card); }
+.mini { min-height:44px; padding:0 12px; border:1px solid var(--line); border-radius:6px; background:var(--card); font-family:var(--mono); font-size:calc(11.5px * var(--c)); cursor:pointer; color:var(--ink); }
+.mini.arm { background:var(--red); border-color:var(--red); color:var(--card); }
+.mini.wide { flex:1; }
+
+/* History rows (verRow): when, label, figure */
+.ver { border-top:1px solid var(--line); }
+.ver:first-child { border-top:0; }
+.ver > button { display:flex; align-items:baseline; gap:8px; width:100%; min-height:48px; padding:8px 12px; border:0; background:transparent; cursor:pointer; text-align:left; color:var(--ink); }
+.ver .when { font-family:var(--mono); font-size:calc(11px * var(--c)); color:var(--inkSoft); flex:none; }
+.ver .vl { font-family:var(--cochin); font-size:calc(14px * var(--b)); margin-right:auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ver .vl.soft { color:var(--inkSoft); }
+.ver .vf { font-family:var(--mono); font-size:calc(11px * var(--c)); color:var(--inkSoft); flex:none; }
+.ver .vd { padding:0 12px 12px; display:flex; flex-direction:column; gap:8px; }
+.ver .vd p { margin:0; font-family:var(--mono); font-size:calc(11px * var(--c)); color:var(--inkSoft); line-height:1.5; }
+.ver .vd .row2 { display:flex; gap:8px; }
+.dev.ax5 .ver > button { flex-direction:column; align-items:flex-start; gap:4px; }
+.dev.ax5 .ver .vl { white-space:normal; }
+.errbox { background:var(--redSoft); color:var(--red); border:1px solid var(--red); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px;
+  font-family:var(--cochin); font-size:calc(14px * var(--b)); }
+.errbox .mini { align-self:flex-start; color:var(--red); border-color:var(--red); }
+.note { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-family:var(--cochin); font-size:calc(14px * var(--b)); }
+.empty { font-family:var(--mono); font-size:calc(11px * var(--c)); color:var(--inkSoft); padding:12px; }
+
+/* docked: the peek strip, the ruled head continued (ruled-head-masthead-vocabulary). Capped at xxxLarge:
+   Body 23 and Caption 1 18 (typography page), as the Duo post bar is capped (duo-card-in-hand, item 104 a). */
+.peek { display:grid; grid-template-columns:1fr 1fr 1fr; align-content:center; width:100%; height:52px; border:0; background:transparent; padding:0 12px 4px; cursor:pointer; text-align:left; color:var(--ink); }
+.dev.ax5 .peek { height:64px; }
+/* resting shows the strip; off the rest the same 52 pt holds the title, so nothing below it moves */
+.dhead { height:52px; padding-bottom:4px; }
+.dev.ax5 .dhead { height:auto; min-height:64px; }
+.sheet.rest .dhead { display:none; }
+.sheet:not(.rest) .peek { display:none; }
+.peek > span { display:flex; flex-direction:column; gap:2px; padding:2px 8px; border-right:1px solid var(--line); min-width:0; }
+.peek > span:last-child { border-right:0; }
+.peek .pl { font-family:var(--mono); font-size:calc(10px * min(var(--c2), 1.545)); letter-spacing:0.14em; text-transform:uppercase; color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.peek .pv { font-family:var(--cochin); font-size:calc(15px * min(var(--b), 1.353)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.dev.ax5 .peek { grid-template-columns:1fr; }
+.dev.ax5 .peek > span { border-right:0; }
+.dev.ax5 .peek > span + span { display:none; }
+.peek:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+.sect { display:flex; flex-direction:column; gap:6px; }
+.standing .sh-top { cursor:default; }
+
+/* tags: dashed outline on what exists today, and on what an option adds */
+[data-tag]:not(.sheet) { position:relative; }
+.tagson [data-tag]::before { content:attr(data-tag); position:absolute; right:6px; top:-8px; font:600 11px/14px -apple-system, system-ui, sans-serif; padding:0 4px;
+  background:var(--paper); z-index:6; white-space:nowrap; letter-spacing:0; text-transform:none; pointer-events:none; }
+.tagson .tag-new { outline:2px dashed var(--new); outline-offset:2px; } .tagson .tag-new::before { color:var(--new); }
+.tagson .tag-today { outline:2px dashed var(--today); outline-offset:2px; } .tagson .tag-today::before { color:var(--today); }
+.tagson .sheet.tag-new { outline-offset:-3px; } .tagson .sheet.tag-new::before { top:4px; right:12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet { transition:none; }
+  .lrow .car { transition:none; }
+}
+@media (max-width: 560px) {
+  .ctl .lab { width:100%; }
+}
+</style>
+</head>
+<body>
+<main>
+  <div class="banner" role="note">Sample: no figure, seller, card, order or version on this page is real.</div>
+
+  <div class="intro">
+    <h1>Panels as sheets</h1>
+    <p class="kind"><b>Designer kind:</b> directed &nbsp; <b>Direction:</b> sheet: bottom sheet with a grab handle and snap points</p>
+    <p>Every option panel rises from the bottom edge as a sheet on solid paper. The list under the finger never moves. Drag the grab handle between its snap points, tap the handle to step through them, swipe it down to close. Two options follow, each drawn on the folded Duo, the open Duo, a large phone, and the folded Duo at the largest text size.</p>
+  </div>
+
+  <nav class="ctl" aria-label="Device">
+    <span class="lab">Device</span>
+    <a href="#d=all" data-k="d" data-v="all">All</a>
+    <a href="#d=folded" data-k="d" data-v="folded">Duo folded</a>
+    <a href="#d=open" data-k="d" data-v="open">Duo open</a>
+    <a href="#d=phone" data-k="d" data-v="phone">Large phone</a>
+    <a href="#d=ax5" data-k="d" data-v="ax5">Duo folded, AX5 text</a>
+  </nav>
+  <nav class="ctl" aria-label="Ledger sheet panel">
+    <span class="lab">Ledger sheet</span>
+    <a href="#p=none" data-k="p" data-v="none">Closed</a>
+    <a href="#p=sort" data-k="p" data-v="sort">Sorted by</a>
+    <a href="#p=range" data-k="p" data-v="range">Orders from</a>
+    <a href="#p=history" data-k="p" data-v="history">History</a>
+    <a href="#p=history&amp;s=empty" data-k="s" data-v="empty">History, empty</a>
+    <a href="#p=history&amp;s=error" data-k="s" data-v="error">History, failed</a>
+  </nav>
+  <nav class="ctl" aria-label="Docked sheet height">
+    <span class="lab">Docked sheet</span>
+    <a href="#k=peek" data-k="k" data-v="peek">Resting</a>
+    <a href="#k=medium" data-k="k" data-v="medium">Half</a>
+    <a href="#k=large" data-k="k" data-v="large">Full</a>
+  </nav>
+  <div class="ctl">
+    <span class="lab">Page</span>
+    <button type="button" id="tagsBtn" aria-pressed="true">Hide tags</button>
+    <button type="button" id="showAll" hidden>Show hidden options</button>
+  </div>
+  <div class="legend" aria-hidden="true">
+    <span class="lt"><i></i>Today: a part that exists now</span>
+    <span class="ln"><i></i>New: a part this option adds</span>
+  </div>
+
+  <!-- ============ Ledger sheet ============ -->
+  <section class="opt" id="opt-ledger" data-option="ledger">
+    <div class="opthead">
+      <h2>Ledger sheet</h2>
+      <p>The Ledger tab keeps its rows. A row that opens something now raises its own sheet, sized to what it holds, instead of opening in the card and pushing the rows below.</p>
+      <button type="button" class="hideopt" data-hide="ledger">Hide this option</button>
+    </div>
+    <div class="frames">
+      <figure data-d="folded" id="focus-ledger-sheet"><div class="fit"><div class="dev tagson" data-device="iphone-duo-folded" data-c="ledger" data-w="466" data-h="678"></div></div>
+        <figcaption><b>Duo folded, 466 x 678 pt</b><span>One page. The sheet covers the tab bar while it is up, as an iOS sheet does.</span><span class="readout"></span></figcaption></figure>
+      <figure data-d="open"><div class="fit"><div class="dev tagson" data-device="iphone-duo-unfolded" data-c="ledger" data-w="951" data-h="669"></div></div>
+        <figcaption><b>Duo open, 951 x 669 pt</b><span>View on the left page, Data on the right. A sheet rises on the page across the hinge from the row you pressed, so it never covers that row. Nothing sits in the hinge.</span><span class="readout"></span></figcaption></figure>
+      <figure data-d="phone"><div class="fit"><div class="dev tagson" data-device="iphone-large" data-c="ledger" data-w="402" data-h="874"></div></div>
+        <figcaption><b>Large phone, 402 x 874 pt (assumed)</b><span>No record gives this phone's size; see the notes.</span><span class="readout"></span></figcaption></figure>
+      <figure data-d="ax5"><div class="fit"><div class="dev tagson ax5" data-device="iphone-duo-folded" data-text="AX5" data-c="ledger" data-w="466" data-h="678"></div></div>
+        <figcaption><b>Duo folded, AX5 text</b><span>Text at Apple's AX5 sizes. The sheets keep their snap points; what passes the full height scrolls inside the sheet.</span><span class="readout"></span></figcaption></figure>
+    </div>
+  </section>
+
+  <!-- ============ Docked sheet ============ -->
+  <section class="opt" id="opt-docked" data-option="docked">
+    <div class="opthead">
+      <h2>Docked sheet</h2>
+      <p>The view options leave the Ledger tab and rest as a docked sheet above the tab bar on Packages and Tally. Pull it to half and the list re-sorts behind it while you watch. Swipe it down and it rests again.</p>
+      <button type="button" class="hideopt" data-hide="docked">Hide this option</button>
+    </div>
+    <div class="frames">
+      <figure data-d="folded" id="focus-docked-sheet"><div class="fit"><div class="dev tagson" data-device="iphone-duo-folded" data-c="docked" data-w="466" data-h="678"></div></div>
+        <figcaption><b>Duo folded, 466 x 678 pt</b><span>Three snap points: resting, half, full. Up to half, the list behind stays live.</span><span class="readout"></span></figcaption></figure>
+      <figure data-d="open"><div class="fit"><div class="dev tagson" data-device="iphone-duo-unfolded" data-c="docked" data-w="951" data-h="669"></div></div>
+        <figcaption><b>Duo open, 951 x 669 pt</b><span>With a free page, the sheet stands open on the right page and covers nothing; it has no snap points here.</span><span class="readout"></span></figcaption></figure>
+      <figure data-d="phone"><div class="fit"><div class="dev tagson" data-device="iphone-large" data-c="docked" data-w="402" data-h="874"></div></div>
+        <figcaption><b>Large phone, 402 x 874 pt (assumed)</b><span>The half snap point shows Showing and Sorted by; full adds Orders from.</span><span class="readout"></span></figcaption></figure>
+      <figure data-d="ax5"><div class="fit"><div class="dev tagson ax5" data-device="iphone-duo-folded" data-text="AX5" data-c="docked" data-w="466" data-h="678"></div></div>
+        <figcaption><b>Duo folded, AX5 text</b><span>The resting strip stops growing at xxxLarge and shows one value; the sheet itself grows to AX5.</span><span class="readout"></span></figcaption></figure>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+"use strict";
+/* ---------- sample data (not real) ---------- */
+var TODAY = Date.parse("2026-11-20T12:00:00");
+var PKG_SORTS = [["newest","Newest"],["oldest","Oldest"],["value","$ remaining"],["rate","Unit rate"],["seller","Seller A–Z"]];
+var ITEM_SORTS = [["missing","Most missing"],["basis","Cost basis"],["ordered","Most ordered"],["value","$ remaining"],["rate","Unit rate"],["name","Name A–Z"]];
+var RANGES = [["all","All time"],["30","30 days"],["45","45 days"],["60","60 days"],["90","90 days"],["days","Last…"],["custom","By month"]];
+var MONTHS = ["2026-11","2026-10","2026-09","2026-08","2026-07","2026-06","2026-05","2026-04","2026-03","2026-02"];
+var MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function monthLabel(k) { return MON[+k.slice(5) - 1] + " " + k.slice(2, 4); }
+function L(n, q, p, g) { return { name:n, qty:q, price:p, got:g }; }
+var PKGS = [
+  { seller:"Kestrel Cards", order:"S-1041", date:"2026-11-14", lines:[L("Arcane Signet",1,0.89,0), L("Command Tower",2,0.35,1), L("Cultivate",1,0.49,0)] },
+  { seller:"Pine Hollow Games", order:"S-1037", date:"2026-11-09", lines:[L("Llanowar Elves",4,0.25,0), L("Thought Vessel",1,1.75,0)] },
+  { seller:"Mossback TCG", order:"S-1029", date:"2026-11-02", lines:[L("Counterspell",1,1.10,1), L("Brainstorm",2,0.80,2)] },
+  { seller:"Lantern Row", order:"S-1022", date:"2026-10-27", lines:[L("Swords to Plowshares",1,2.40,0), L("Ponder",3,0.30,1)] },
+  { seller:"Blue Heron Collectibles", order:"S-1013", date:"2026-10-18", lines:[L("Dark Ritual",2,0.45,0)] },
+  { seller:"Quarry Street Cards", order:"S-1008", date:"2026-10-06", lines:[L("Sol Talisman",1,3.20,0), L("Mind Stone",1,0.60,0)] },
+  { seller:"Gilded Owl", order:"S-0996", date:"2026-09-22", lines:[L("Rampant Growth",2,0.40,2)] },
+  { seller:"Tin Roof Games", order:"S-0981", date:"2026-09-03", lines:[L("Fellwar Stone",1,0.95,0), L("Lightning Greaves",1,2.10,0)] },
+  { seller:"North Fork Hobby", order:"S-0960", date:"2026-08-11", lines:[L("Path of Ancestry",1,0.55,0)] }
+];
+var VERSIONS = [
+  { id:"v1", when:"11-20 08:14", label:"Before CSV import", lines:412, checked:236, mile:true },
+  { id:"v2", when:"11-20 07:50", label:"Autosave", lines:398, checked:231, mile:false },
+  { id:"v3", when:"11-19 21:02", label:"Before restore", lines:398, checked:229, mile:true },
+  { id:"v4", when:"11-19 18:40", label:"Autosave", lines:398, checked:224, mile:false },
+  { id:"v5", when:"11-18 09:12", label:"Before reset", lines:371, checked:201, mile:true },
+  { id:"v6", when:"11-17 20:31", label:"Autosave", lines:371, checked:199, mile:false },
+  { id:"v7", when:"11-15 12:05", label:"Autosave", lines:356, checked:180, mile:false }
+];
+var NOW_LINES = 412, NOW_CHECKED = 236;
+
+var ICON = {
+  ledger:'<circle cx="12" cy="12" r="3"/><path d="M10.7 5.1L10.8 2.6L13.2 2.6L13.3 5.1L15.9 6.2L17.8 4.5L19.5 6.2L17.8 8.1L18.9 10.7L21.4 10.8L21.4 13.2L18.9 13.3L17.8 15.9L19.5 17.8L17.8 19.5L15.9 17.8L13.3 18.9L13.2 21.4L10.8 21.4L10.7 18.9L8.1 17.8L6.2 19.5L4.5 17.8L6.2 15.9L5.1 13.3L2.6 13.2L2.6 10.8L5.1 10.7L6.2 8.1L4.5 6.2L6.2 4.5L8.1 6.2Z"/>',
+  orphaned:'<rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M3 7l9 6 9-6"/>',
+  tally:'<path d="M5 5v14M9.5 5v14M14 5v14M18.5 5v14M3 17L21 7"/>',
+  packages:'<path d="M3 8l9-4 9 4v8l-9 4-9-4z"/><path d="M3 8l9 4 9-4M12 12v8"/>'
+};
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]; }); }
+function money(n) { return "$" + n.toFixed(2); }
+function pkgLeft(p) { var n = 0, v = 0; p.lines.forEach(function (l) { n += l.qty - l.got; v += (l.qty - l.got) * l.price; }); return { n:n, v:v }; }
+function rate(p) { var q = 0, c = 0; p.lines.forEach(function (l) { q += l.qty; c += l.qty * l.price; }); return q ? c / q : 0; }
+
+/* ---------- hash state ---------- */
+var H = { d:"all", p:"none", s:"", k:"peek" };
+function readHash() {
+  var h = { d:"all", p:"none", s:"", k:"peek" };
+  location.hash.replace(/^#/, "").split("&").forEach(function (kv) { var a = kv.split("="); if (a[0] && a[1] != null) h[a[0]] = decodeURIComponent(a[1]); });
+  if (h.s === "empty" || h.s === "error") h.p = "history";
+  return h;
+}
+function writeHash() {
+  var parts = [];
+  if (H.d !== "all") parts.push("d=" + H.d);
+  if (H.p !== "none") parts.push("p=" + H.p);
+  if (H.s) parts.push("s=" + H.s);
+  if (H.k !== "peek") parts.push("k=" + H.k);
+  history.replaceState(null, "", parts.length ? "#" + parts.join("&") : location.pathname + location.search);
+}
+
+/* ---------- one frame ---------- */
+function Frame(el) {
+  this.el = el;
+  this.c = el.getAttribute("data-c");
+  this.w = +el.getAttribute("data-w");
+  this.h = +el.getAttribute("data-h");
+  this.two = el.getAttribute("data-device") === "iphone-duo-unfolded";
+  this.ax5 = el.classList.contains("ax5");
+  this.cap = el.closest("figure").querySelector(".readout");
+  this.st = { hide:true, sortBy:"newest", itemSort:"missing", preset:"all", days:21, month:"", exact:false,
+              panel:null, page:0, detent:null, verOpen:null, armed:null, restored:null, histState:"ok", k:"peek" };
+  el.style.width = this.w + "px"; el.style.height = this.h + "px";
+}
+Frame.prototype.sat = function () { return 20; };
+Frame.prototype.sab = function () { return 20; };
+Frame.prototype.barTop = function () { return this.h - this.sab() - 64; };
+Frame.prototype.pageRect = function (i) {
+  if (!this.two) return { left:0, width:this.w };
+  return i === 0 ? { left:0, width:455.5 } : { left:495.5, width:455.5 };
+};
+Frame.prototype.status = function () {
+  return '<div class="status" aria-hidden="true"><span>9:41</span><span>' + (this.ax5 ? "AX5" : "") + '</span></div>';
+};
+Frame.prototype.bar = function (on) {
+  var tabs = [["ledger","Ledger"],["orphaned","Orphaned"],["tally","Tally"],["packages","Packages"]];
+  return '<div class="bar" aria-hidden="true">' + tabs.map(function (t) {
+    return '<span class="' + (t[0] === on ? "on" : "") + '"><svg viewBox="0 0 24 24">' + ICON[t[0]] + '</svg>' + t[1] + '</span>';
+  }).join("") + '</div>';
+};
+Frame.prototype.mast = function () {
+  return '<div class="mast"><div class="mh">MANIFEST</div><div class="tl">' +
+    '<div><span class="micro">Outstanding</span><span class="fig">176 cards</span></div>' +
+    '<div><span class="micro">Value</span><span class="fig">$214.80</span></div>' +
+    '<div><span class="micro">Late</span><span class="fig">3</span></div></div></div>';
+};
+Frame.prototype.labelOf = function (list, v) { for (var i = 0; i < list.length; i++) if (list[i][0] === v) return list[i][1]; return list[0][1]; };
+Frame.prototype.rangeLabel = function () {
+  var s = this.st;
+  if (s.preset === "days") return "Last " + s.days + " days";
+  if (s.preset === "custom") return s.month ? monthLabel(s.month) : "By month";
+  return this.labelOf(RANGES, s.preset);
+};
+Frame.prototype.inRange = function (p) {
+  var s = this.st, t = Date.parse(p.date + "T12:00:00");
+  if (s.preset === "all") return true;
+  if (s.preset === "custom") return !s.month || p.date.slice(0, 7) === s.month;
+  var days = s.preset === "days" ? s.days : +s.preset;
+  return TODAY - t <= days * 864e5;
+};
+
+/* ----- Ledger tab rows ----- */
+Frame.prototype.ledgerRow = function (id, name, value, sub, page, tag) {
+  var s = this.st, open = s.panel === id;
+  var disc = id === "sort" || id === "range" || id === "history" || id === "sync";
+  return '<button type="button" class="lrow' + (disc ? "" : " plain") + (tag ? " " + tag[0] : "") + '"' + (tag ? ' data-tag="' + esc(tag[1]) + '"' : "") +
+    ' data-row="' + id + '" data-page="' + page + '"' + (disc ? ' aria-expanded="' + open + '"' : "") + (id === "show" ? ' aria-pressed="' + s.hide + '"' : "") + '>' +
+    '<span class="lt"><span class="name">' + esc(name) + '</span>' + (sub ? '<span class="sub">' + esc(sub) + '</span>' : "") + '</span>' +
+    '<span class="val">' + (value ? '<u>' + esc(value) + '</u>' : "") + (disc ? '<span class="car" aria-hidden="true">▾</span>' : "") + '</span></button>';
+};
+Frame.prototype.viewGroup = function (page) {
+  var s = this.st, shown = PKGS.filter(this.inRange.bind(this)), lines = 0;
+  shown.forEach(function (p) { lines += p.lines.length; });
+  return '<div class="glabel">View</div><div class="lcard tag-new" data-tag="New on iPhone: View group (web today)">' +
+    this.ledgerRow("show", "Showing", (s.hide ? "● Unreceived" : "○ Everything"), "", page) +
+    this.ledgerRow("sort", "Sorted by", this.labelOf(PKG_SORTS, s.sortBy), "for Packages", page) +
+    this.ledgerRow("range", "Orders from", this.rangeLabel(), lines + " lines" + (lines < 18 ? " · " + (18 - lines) + " outside" : ""), page) +
+    '</div>';
+};
+Frame.prototype.dataGroup = function (page) {
+  return '<div class="glabel">Data</div><div class="lcard tag-today" data-tag="Today: Data group">' +
+    this.ledgerRow("sync", "Sync", "Up to date", "Last sync 08:14", page) +
+    this.ledgerRow("history", "History", "Saved versions", "", page) +
+    this.ledgerRow("reimport", "Re-import CSV", "", "", page) +
+    this.ledgerRow("backup", "Backup", "", "", page) +
+    '</div><div class="reset" role="button" tabindex="0">Reset</div>';
+};
+
+/* ----- Packages list ----- */
+Frame.prototype.sorted = function () {
+  var s = this.st, list = PKGS.filter(this.inRange.bind(this));
+  if (s.hide) list = list.filter(function (p) { return pkgLeft(p).n > 0; });
+  var byDate = function (a, b) { return Date.parse(b.date) - Date.parse(a.date); };
+  list = list.slice();
+  if (s.sortBy === "oldest") list.sort(function (a, b) { return -byDate(a, b); });
+  else if (s.sortBy === "value") list.sort(function (a, b) { return pkgLeft(b).v - pkgLeft(a).v || byDate(a, b); });
+  else if (s.sortBy === "rate") list.sort(function (a, b) { return rate(b) - rate(a) || byDate(a, b); });
+  else if (s.sortBy === "seller") list.sort(function (a, b) { return a.seller.localeCompare(b.seller); });
+  else list.sort(byDate);
+  return list;
+};
+Frame.prototype.pkgCard = function (p) {
+  var left = pkgLeft(p), d = p.date.slice(5).replace("-", "/");
+  return '<div class="pkg" data-row="' + p.order + '"><div class="ph"><span class="who">' + esc(p.seller) + '</span>' +
+    '<span class="' + (left.n ? "left" : "left done") + '">' + (left.n ? left.n + " left · " + money(left.v) : "All here") + '</span>' +
+    '<span class="meta" style="width:100%">Order ' + p.order + ' · ' + d + '</span></div>' +
+    p.lines.map(function (l) {
+      var got = l.got >= l.qty;
+      return '<div class="ln' + (got ? " got" : "") + '"><span class="box"><i>' + (got ? "✓" : "") + '</i></span><span class="nm">' + esc(l.name) +
+        (l.qty > 1 ? ' <span class="pr">' + l.got + '/' + l.qty + '</span>' : "") + '</span><span class="pr">' + money(l.price) + '</span></div>';
+    }).join("") + '</div>';
+};
+Frame.prototype.pkgList = function () {
+  var list = this.sorted();
+  if (!list.length) return '<div class="empty">No package in this range. <button type="button" class="mini" data-act="clear-range">Show all time</button></div>';
+  return list.map(this.pkgCard.bind(this)).join("");
+};
+
+/* ----- sheet bodies ----- */
+Frame.prototype.sortBody = function () {
+  var s = this.st;
+  var rows = function (list, cur, kind) {
+    return '<div class="olist" role="radiogroup">' + list.map(function (o) {
+      var on = o[0] === cur;
+      return '<button type="button" class="orow" data-pick="' + kind + '" data-v="' + o[0] + '" aria-pressed="' + on + '">' + esc(o[1]) +
+        '<span class="ck" aria-hidden="true">' + (on ? "✓" : "") + '</span></button>';
+    }).join("") + '</div>';
+  };
+  return '<div class="osub">Packages</div>' + rows(PKG_SORTS, s.sortBy, "sort") + '<i class="fitend"></i>' +
+    '<div class="osub tag-new" data-tag="New: full shows Tally\'s keys too">Tally</div>' + rows(ITEM_SORTS, s.itemSort, "isort");
+};
+Frame.prototype.rangeGrid = function () {
+  var s = this.st;
+  return '<div class="grid g4">' + RANGES.map(function (r, i) {
+    return '<button type="button" class="cell' + (i === RANGES.length - 1 ? " span2" : "") + '" data-pick="range" data-v="' + r[0] + '" aria-pressed="' + (s.preset === r[0]) + '">' + esc(r[1]) + '</button>';
+  }).join("") + '</div>';
+};
+Frame.prototype.rangeSlot = function () {
+  var s = this.st, inner;
+  if (s.preset === "days") {
+    inner = '<div class="well"><span class="micro">Last</span><button type="button" class="step" data-act="days-" aria-label="Fewer days">−</button>' +
+      '<span class="num" aria-live="polite">' + s.days + '</span><button type="button" class="step" data-act="days+" aria-label="More days">+</button><span class="micro">days</span></div>';
+  } else if (s.preset === "custom") {
+    inner = '<div class="chips">' + MONTHS.map(function (k) {
+      return '<button type="button" class="chip" data-pick="month" data-v="' + k + '" aria-pressed="' + (s.month === k) + '">' + monthLabel(k) + '</button>';
+    }).join("") + '</div>';
+  } else {
+    var n = PKGS.filter(this.inRange.bind(this)).length;
+    inner = '<p>' + n + ' of ' + PKGS.length + ' packages fall in ' + esc(this.rangeLabel().toLowerCase()) + '. Pick Last… or By month to choose your own range here.</p>';
+  }
+  return '<div class="slot tag-new" data-tag="New: reserved slot">' + inner + '</div>';
+};
+Frame.prototype.rangeBody = function () {
+  var s = this.st;
+  return this.rangeGrid() + this.rangeSlot() + '<i class="fitend"></i>' +
+    '<button type="button" class="mini" data-act="exact" aria-expanded="' + s.exact + '">' + (s.exact ? "– " : "+ ") + 'Exact dates</button>' +
+    (s.exact ? '<div class="well" style="display:flex;gap:8px;flex-wrap:wrap"><span class="num" style="padding:0 8px">2026-10-01</span><span class="num" style="padding:0 8px">2026-11-20</span></div>' : "");
+};
+Frame.prototype.historyBody = function () {
+  var s = this.st, self = this;
+  if (s.histState === "error") {
+    return '<div class="errbox">Could not read the saved versions. The server did not answer.' +
+      '<button type="button" class="mini tag-new" data-tag="New: Try again" data-act="retry">Try again</button></div><i class="fitend"></i>';
+  }
+  if (s.histState === "empty") return '<div class="olist"><div class="empty">No versions saved on this device yet.</div></div><i class="fitend"></i>';
+  var note = s.restored ? '<div class="note" role="status">Restored the version of ' + esc(s.restored) + '. Sample: nothing changed.</div>' : "";
+  return note + '<div class="olist">' + VERSIONS.map(function (v) {
+    var open = s.verOpen === v.id, armed = s.armed === v.id;
+    var dl = v.lines - NOW_LINES, dc = v.checked - NOW_CHECKED;
+    var diff = [dl ? (dl > 0 ? "+" : "−") + Math.abs(dl) + " lines" : "", dc ? (dc > 0 ? "+" : "−") + Math.abs(dc) + " checked" : ""].filter(Boolean).join(", ");
+    return '<div class="ver"><button type="button" data-ver="' + v.id + '" aria-expanded="' + open + '"><span class="when">' + v.when + '</span>' +
+      '<span class="vl' + (v.mile ? "" : " soft") + '">' + esc(v.label) + '</span><span class="vf">' + v.lines + '/' + v.checked + '</span></button>' +
+      (open ? '<div class="vd"><p>' + v.lines + ' lines, ' + v.checked + ' checked in, ' + (diff ? diff + " against now" : "same as now") + '.</p><div class="row2">' +
+        (armed ? '<button type="button" class="mini" data-act="disarm">Cancel</button>' : "") +
+        '<button type="button" class="mini wide' + (armed ? " arm" : "") + '" data-act="restore" data-v="' + v.id + '">' + (armed ? "Tap again to restore" : "Restore") + '</button></div></div>' : "") +
+      '</div>';
+  }).join("") + '</div><i class="fitend"></i>';
+};
+Frame.prototype.panelTitle = function (p) { return { sort:"Sorted by", range:"Orders from", history:"History" }[p]; };
+Frame.prototype.panelTail = function (p) {
+  if (p === "sort") return "Packages";
+  if (p === "range") return this.rangeLabel();
+  return this.st.histState === "error" ? "not read" : this.st.histState === "empty" ? "none saved" : VERSIONS.length + " saved";
+};
+Frame.prototype.panelBody = function (p) { return p === "sort" ? this.sortBody() : p === "range" ? this.rangeBody() : this.historyBody(); };
+/* Detents per panel. Sorted by and Orders from open at a height that fits what they hold; History opens at half. */
+Frame.prototype.panelDetents = function (p) { return p === "history" ? ["medium", "large"] : ["fit", "large"]; };
+
+/* ---------- render ---------- */
+Frame.prototype.render = function () {
+  var el = this.el;
+  if (this.c === "ledger") this.renderLedger(); else this.renderDocked();
+  el.classList.toggle("tagson", document.body.dataset.tags !== "off");
+};
+Frame.prototype.renderLedger = function () {
+  var h = this.status();
+  if (this.two) {
+    h += '<div class="pg" data-pg="0" style="left:0;width:455.5px"><div class="scroll">' + this.mast() + '<div class="ltitle">Ledger</div>' + this.viewGroup(0) + '</div></div>' +
+         '<div class="hinge" aria-hidden="true"><span>HINGE · NOTHING HERE</span></div>' +
+         '<div class="pg" data-pg="1" style="left:495.5px;width:455.5px"><div class="scroll" style="padding-top:calc(var(--sat) + 8px)">' +
+         '<div class="mast" aria-hidden="true" style="visibility:hidden"><div class="mh">MANIFEST</div><div class="tl"><div><span class="micro">x</span><span class="fig">x</span></div></div></div>' +
+         '<div class="ltitle" style="visibility:hidden" aria-hidden="true">Ledger</div>' + this.dataGroup(1) + '</div>' + this.bar("ledger") + '</div>';
+  } else {
+    h += '<div class="pg" data-pg="0" style="left:0;width:' + this.w + 'px"><div class="scroll">' + this.mast() + '<div class="ltitle">Ledger</div>' +
+         this.viewGroup(0) + this.dataGroup(0) + '</div>' + this.bar("ledger") + '</div>';
+  }
+  this.el.innerHTML = h;
+  if (this.st.panel) this.mountSheet(false);
+};
+Frame.prototype.renderDocked = function () {
+  var h = this.status();
+  if (this.two) {
+    h += '<div class="pg" data-pg="0" style="left:0;width:455.5px"><div class="scroll">' + this.mast() + '<div class="plist">' + this.pkgList() + '</div></div></div>' +
+         '<div class="hinge" aria-hidden="true"><span>HINGE · NOTHING HERE</span></div>' +
+         '<div class="pg" data-pg="1" style="left:495.5px;width:455.5px">' + this.bar("packages") + '</div>';
+  } else {
+    h += '<div class="pg" data-pg="0" style="left:0;width:' + this.w + 'px"><div class="scroll"><div class="mast">' + this.mast().replace(/^<div class="mast">|<\/div>$/g, "") +
+         '</div><div class="plist">' + this.pkgList() + '</div></div>' + this.bar("packages") + '</div>';
+  }
+  this.el.innerHTML = h;
+  /* the list scrolls clear of the resting sheet and the bar */
+  var sc = this.el.querySelector('.pg[data-pg="0"] .scroll');
+  if (sc && !this.two) sc.style.paddingBottom = (this.sab() + 64 + 8 + this.peekH() + 16) + "px";
+  this.mountDocked();
+};
+Frame.prototype.refreshList = function () {
+  var pl = this.el.querySelector(".plist");
+  if (pl) pl.innerHTML = this.pkgList();
+};
+
+/* ---------- ledger sheet ---------- */
+Frame.prototype.sheetPage = function () { return this.two ? (this.st.page === 0 ? 1 : 0) : 0; };
+Frame.prototype.pageHeight = function (pg) {
+  /* on two pages, a sheet on the right page stops above the custom bar so the tabs stay in reach */
+  return this.two && pg === 1 ? this.barTop() - 8 : this.h;
+};
+Frame.prototype.heights = function (pg, sheet) {
+  var ph = this.pageHeight(pg), large = ph - this.sat() - 12, medium = Math.round(ph * 0.5);
+  var fit = large;
+  if (sheet) {
+    var top = sheet.querySelector(".sh-top"), body = sheet.querySelector(".sh-body"), end = sheet.querySelector(".fitend");
+    if (top && body && end) fit = Math.ceil(top.offsetHeight + end.offsetTop - body.offsetTop + 1 + (this.two && pg === 1 ? 12 : this.sab() + 12));
+  }
+  return { fit:Math.min(fit, large), medium:Math.min(medium, large), large:large };
+};
+Frame.prototype.detentList = function (pg, sheet, names) {
+  var hs = this.heights(pg, sheet), out = [];
+  names.forEach(function (n) { var v = hs[n]; if (!out.some(function (o) { return Math.abs(o.h - v) < 24; })) out.push({ name:n, h:v }); });
+  if (out.length > 1 && out[0].h >= hs.large - 24) out = [{ name:"large", h:hs.large }];
+  return out;
+};
+Frame.prototype.sheetHTML = function (p) {
+  return '<div class="sh-top"><button type="button" class="grab" aria-label="Resize sheet"></button>' +
+    '<div class="sh-head"><button type="button" class="xbtn" data-act="close" aria-label="Close ' + this.panelTitle(p) + '"><i aria-hidden="true">✕</i></button>' +
+    '<h3 id="' + this.uid + '-sh">' + this.panelTitle(p) + '</h3><span class="tail">' + esc(this.panelTail(p)) + '</span></div></div>' +
+    '<div class="sh-body">' + this.panelBody(p) + '</div>';
+};
+Frame.prototype.mountSheet = function (animate) {
+  var s = this.st, pg = this.sheetPage();
+  var host = this.el.querySelector('.pg[data-pg="' + pg + '"]');
+  var old = this.el.querySelector(".sheet");
+  if (old) old.remove();
+  var sh = document.createElement("div");
+  sh.className = "sheet tag-new" + (animate ? " off" : "");
+  sh.setAttribute("data-tag", "New: sheet on paper");
+  sh.setAttribute("role", "dialog");
+  sh.setAttribute("aria-modal", "false");
+  sh.setAttribute("aria-labelledby", this.uid + "-sh");
+  sh.innerHTML = this.sheetHTML(s.panel);
+  if (this.two && pg === 1) sh.style.bottom = (this.h - this.barTop() + 8) + "px";
+  if (this.two && pg === 1) sh.style.borderRadius = "8px";
+  host.appendChild(sh);
+  sh.style.height = this.pageHeight(pg) + "px";
+  var ds = this.detentList(pg, sh, this.panelDetents(s.panel));
+  /* On one page, the first snap point stops just under the row that was pressed, so that row stays in view,
+     unless that leaves less than 220 pt for the sheet. */
+  if (!this.two) {
+    var row = this.el.querySelector('.lrow[data-row="' + s.panel + '"]');
+    if (row) {
+      var sc = this.scale(), room = Math.floor((host.getBoundingClientRect().bottom - row.getBoundingClientRect().bottom) / sc) - 4;
+      if (room >= 220 && room < ds[0].h) { ds[0] = { name:ds[0].name, h:room }; }
+    }
+  }
+  this.detents = ds;
+  if (!s.detent || !ds.some(function (d) { return d.name === s.detent; })) s.detent = ds[0].name;
+  this.applyDetent(sh, false);
+  this.sheet = sh;
+  this.wireSheet(sh);
+  if (animate) { sh.getBoundingClientRect(); sh.classList.remove("off"); }
+};
+Frame.prototype.applyDetent = function (sh, anim) {
+  var s = this.st, d = this.detents.filter(function (x) { return x.name === s.detent; })[0] || this.detents[0];
+  if (!anim) sh.classList.add("drag");
+  sh.style.height = d.h + "px";
+  var g = sh.querySelector(".grab");
+  if (g) {
+    var names = { fit:"fitted", medium:"half", large:"full", peek:"resting" };
+    g.setAttribute("aria-label", "Sheet height: " + names[d.name] + ". " + (this.detents.length > 1 ? "Activate to change, swipe down to close." : "Swipe down to close."));
+  }
+  if (!anim) { sh.getBoundingClientRect(); sh.classList.remove("drag"); }
+};
+Frame.prototype.openPanel = function (p, page) {
+  var s = this.st, self = this;
+  var before = this.rowTops();
+  if (s.panel === p) { this.closeSheet(); return; }
+  var had = !!s.panel;
+  s.panel = p; s.page = page; s.detent = null; s.verOpen = null; s.armed = null; s.restored = null;
+  if (p === "history" && H.s && (H.s === "empty" || H.s === "error")) s.histState = H.s;
+  this.syncRows();
+  if (had) {
+    var old = this.el.querySelector(".sheet");
+    if (old) { old.classList.add("off"); setTimeout(function () { if (old.parentNode) old.remove(); self.mountSheet(true); self.measure(before); }, reduced() ? 0 : 200); return; }
+  }
+  this.mountSheet(true);
+  this.measure(before);
+};
+Frame.prototype.closeSheet = function () {
+  var s = this.st, sh = this.el.querySelector(".sheet"), before = this.rowTops(), self = this;
+  var page = s.page, p = s.panel;
+  s.panel = null; s.detent = null;
+  this.syncRows();
+  if (sh) { sh.classList.add("off"); setTimeout(function () { if (sh.parentNode) sh.remove(); }, reduced() ? 0 : 280); }
+  this.measure(before);
+  var row = this.el.querySelector('.lrow[data-row="' + p + '"]');
+  if (row && this.el.contains(document.activeElement)) row.focus({ preventScroll:true });
+};
+Frame.prototype.syncRows = function () {
+  var s = this.st;
+  this.el.querySelectorAll(".lrow[aria-expanded]").forEach(function (r) { r.setAttribute("aria-expanded", String(r.getAttribute("data-row") === s.panel)); });
+};
+/* A re-drawn body keeps keyboard focus on the same control, so Escape and Tab still work after a pick. */
+function focusKey(el) {
+  if (!el || !el.getAttribute) return null;
+  var k = ["data-act", "data-ver", "data-pick", "data-v"].map(function (a) { var v = el.getAttribute(a); return v == null ? "" : a + '="' + v + '"'; }).filter(Boolean);
+  return k.length ? "[" + k.join("][") + "]" : null;
+}
+function refocus(root, key) {
+  if (!key) return;
+  var t = root.querySelector(key) || root.querySelector(key.split("]")[0] + "]");
+  if (t) t.focus({ preventScroll:true });
+}
+Frame.prototype.updateSheetBody = function () {
+  var sh = this.el.querySelector(".sheet");
+  if (!sh) return;
+  var body = sh.querySelector(".sh-body"), top = body.scrollTop;
+  var key = body.contains(document.activeElement) ? focusKey(document.activeElement) : null;
+  body.innerHTML = this.panelBody(this.st.panel);
+  body.scrollTop = top;
+  refocus(body, key);
+  var tail = sh.querySelector(".tail"); if (tail) tail.textContent = this.panelTail(this.st.panel);
+};
+Frame.prototype.updateRowValues = function () {
+  var scrolls = [].map.call(this.el.querySelectorAll(".scroll"), function (x) { return x.scrollTop; });
+  var keep = this.el.querySelector(".sheet");
+  if (keep) keep.remove();
+  var focusRow = document.activeElement && document.activeElement.getAttribute && document.activeElement.getAttribute("data-row");
+  this.renderLedgerKeep(keep);
+  [].forEach.call(this.el.querySelectorAll(".scroll"), function (x, i) { x.scrollTop = scrolls[i] || 0; });
+  if (focusRow) { var f = this.el.querySelector('.lrow[data-row="' + focusRow + '"]'); if (f) f.focus({ preventScroll:true }); }
+};
+Frame.prototype.renderLedgerKeep = function (keep) {
+  var s = this.st, panel = s.panel;
+  s.panel = null;
+  this.renderLedger();
+  s.panel = panel;
+  this.syncRows();
+  if (keep) { this.el.querySelector('.pg[data-pg="' + this.sheetPage() + '"]').appendChild(keep); this.sheet = keep; }
+};
+
+/* ---------- docked sheet ---------- */
+Frame.prototype.peekH = function () { return this.ax5 ? 84 : 72; };
+Frame.prototype.dockedBody = function () {
+  var s = this.st;
+  return '<div class="sect"><div class="osub">Showing</div><div class="grid g2">' +
+      '<button type="button" class="cell" data-pick="hide" data-v="1" aria-pressed="' + s.hide + '">● Unreceived</button>' +
+      '<button type="button" class="cell" data-pick="hide" data-v="0" aria-pressed="' + !s.hide + '">○ Everything</button></div></div>' +
+    '<div class="sect"><div class="osub">Sorted by</div><div class="grid g2">' + PKG_SORTS.map(function (o, i) {
+      return '<button type="button" class="cell' + (i === PKG_SORTS.length - 1 ? " spanall" : "") + '" data-pick="sort" data-v="' + o[0] + '" aria-pressed="' + (s.sortBy === o[0]) + '">' + esc(o[1]) + '</button>';
+    }).join("") + '</div></div><i class="fitend"></i>' +
+    '<div class="sect"><div class="osub">Orders from</div>' + this.rangeGrid() + this.rangeSlot() + '</div>';
+};
+Frame.prototype.peekHTML = function () {
+  var s = this.st;
+  return '<button type="button" class="peek tag-new" data-tag="New: resting strip" data-act="peek" aria-label="View options: showing ' +
+    (s.hide ? "unreceived" : "everything") + ', sorted by ' + this.labelOf(PKG_SORTS, s.sortBy) + ', orders from ' + this.rangeLabel() + '. Open.">' +
+    '<span><span class="pl">Showing</span><span class="pv">' + (s.hide ? "Unreceived" : "Everything") + '</span></span>' +
+    '<span><span class="pl">Sorted by</span><span class="pv">' + esc(this.labelOf(PKG_SORTS, s.sortBy)) + '</span></span>' +
+    '<span><span class="pl">Orders from</span><span class="pv">' + esc(this.rangeLabel()) + '</span></span></button>';
+};
+Frame.prototype.mountDocked = function () {
+  var s = this.st;
+  var pg = this.two ? 1 : 0, host = this.el.querySelector('.pg[data-pg="' + pg + '"]');
+  var sh = document.createElement("div");
+  sh.className = "sheet" + (this.two ? " standing" : "");
+  sh.setAttribute("role", "region");
+  sh.setAttribute("aria-label", "View options");
+  if (this.two) {
+    sh.innerHTML = '<div class="sh-top"><div class="sh-head" style="grid-template-columns:1fr;padding-top:12px"><h3>View options</h3></div></div><div class="sh-body">' + this.dockedBody() + '</div>';
+    sh.classList.add("tag-new"); sh.setAttribute("data-tag", "New: options stand on the free page");
+    sh.style.top = "calc(var(--sat) + 8px)"; sh.style.bottom = (this.h - this.barTop() + 8) + "px"; sh.style.borderRadius = "8px"; sh.style.height = "auto";
+    host.appendChild(sh);
+    this.sheet = sh;
+    this.wireSheet(sh);
+    return;
+  }
+  sh.innerHTML = '<div class="sh-top"><button type="button" class="grab" aria-label="Resize sheet"></button>' + this.peekHTML() +
+    '<div class="sh-head dhead"><button type="button" class="xbtn" data-act="rest" aria-label="Lower view options"><i aria-hidden="true">⌄</i></button><h3>View options</h3><span class="tail"></span></div>' +
+    '</div><div class="sh-body">' + this.dockedBody() + '</div>';
+  host.appendChild(sh);
+  this.sheet = sh;
+  var hs = this.heights(0, sh);
+  this.detents = [{ name:"peek", h:this.peekH() }, { name:"medium", h:Math.max(hs.medium, Math.min(hs.fit, hs.large)) }, { name:"large", h:hs.large }];
+  if (this.ax5) this.detents = [this.detents[0], this.detents[2]];
+  if (!this.detents.some(function (d) { return d.name === s.k; })) s.k = "peek";
+  this.applyDocked(false);
+  this.wireSheet(sh);
+};
+Frame.prototype.applyDocked = function (anim) {
+  var s = this.st, sh = this.sheet, d = this.detents.filter(function (x) { return x.name === s.k; })[0];
+  if (!anim) sh.classList.add("drag");
+  var resting = s.k === "peek";
+  sh.classList.toggle("rest", resting);
+  sh.style.bottom = resting ? (this.sab() + 64 + 8) + "px" : "0px";
+  sh.style.height = d.h + "px";
+  sh.style.borderRadius = resting ? "8px" : "8px 8px 0 0";
+  sh.classList.toggle("tag-new", resting);
+  sh.style.borderLeft = sh.style.borderRight = "";
+  sh.style.left = resting ? "8px" : "0"; sh.style.right = resting ? "8px" : "0";
+  if (resting) { sh.setAttribute("data-tag", "New: docked sheet"); } else sh.removeAttribute("data-tag");
+  var body = sh.querySelector(".sh-body"); if (body) { body.style.visibility = resting ? "hidden" : "visible"; body.setAttribute("aria-hidden", String(resting)); }
+  var g = sh.querySelector(".grab");
+  if (g) g.setAttribute("aria-label", "Sheet height: " + { peek:"resting", medium:"half", large:"full" }[s.k] + ". Activate to change." + (resting ? "" : " Swipe down to rest."));
+  if (!anim) { sh.getBoundingClientRect(); sh.classList.remove("drag"); }
+};
+Frame.prototype.setDocked = function (k) {
+  var before = this.rowTops();
+  this.st.k = k;
+  this.applyDocked(true);
+  this.measure(before);
+};
+Frame.prototype.updateDocked = function (listToo) {
+  var sh = this.sheet; if (!sh) return;
+  var body = sh.querySelector(".sh-body"), top = body.scrollTop;
+  var key = body.contains(document.activeElement) ? focusKey(document.activeElement) : null;
+  body.innerHTML = this.dockedBody(); body.scrollTop = top;
+  refocus(body, key);
+  var pk = sh.querySelector(".peek");
+  if (pk) { var n = document.createElement("div"); n.innerHTML = this.two ? this.peekHTML().replace('data-act="peek"', 'data-act="none" tabindex="-1" aria-hidden="true"') : this.peekHTML(); pk.replaceWith(n.firstChild); }
+  if (listToo) this.refreshList();
+};
+
+/* ---------- drag, tap and keys ---------- */
+Frame.prototype.scale = function () { var t = this.el.style.transform.match(/scale\(([\d.]+)\)/); return t ? +t[1] : 1; };
+Frame.prototype.wireSheet = function (sh) {
+  var self = this, top = sh.querySelector(".sh-top");
+  if (!top || sh.classList.contains("standing")) return;
+  var y0 = 0, h0 = 0, moved = false, samples = [], id = null, target = null;
+  top.addEventListener("pointerdown", function (e) {
+    if (e.button !== 0) return;
+    target = e.target.closest("button");
+    if (target && !target.classList.contains("grab") && !target.classList.contains("peek")) { target = null; return; }
+    id = e.pointerId; top.setPointerCapture(id);
+    y0 = e.clientY; h0 = sh.getBoundingClientRect().height / self.scale(); moved = false; samples = [{ y:e.clientY, t:e.timeStamp }];
+    self.dragBefore = self.rowTops();
+    self.dragBottom = parseFloat(sh.style.bottom) || 0;
+  });
+  top.addEventListener("pointermove", function (e) {
+    if (e.pointerId !== id) return;
+    var dy = (e.clientY - y0) / self.scale();
+    if (!moved && Math.abs(dy) < 4) return;
+    moved = true; sh.classList.add("drag");
+    samples.push({ y:e.clientY, t:e.timeStamp }); if (samples.length > 6) samples.shift();
+    var max = self.detents[self.detents.length - 1].h + 24;
+    var nh = Math.max(24, Math.min(max, h0 - dy));
+    if (self.c === "docked") {
+      /* off the resting strip, the sheet takes the screen's foot as an iOS sheet does */
+      if (self.st.k === "peek" && dy < -8) { sh.style.bottom = "0px"; sh.style.left = sh.style.right = "0"; nh = Math.max(self.peekH(), h0 + self.dragBottom - dy); sh.querySelector(".sh-body").style.visibility = "visible"; }
+    }
+    sh.style.height = nh + "px";
+  });
+  var end = function (e) {
+    if (e.pointerId !== id) return;
+    id = null;
+    sh.classList.remove("drag");
+    if (!moved) { if (target) self.tapTop(target); return; }
+    var a = samples[0], b = samples[samples.length - 1];
+    var v = b.t > a.t ? (b.y - a.y) / (b.t - a.t) / self.scale() : 0; /* pt per ms, down is positive */
+    var hNow = sh.getBoundingClientRect().height / self.scale();
+    var proj = hNow - v * 160;
+    var ds = self.detents, best = ds[0], i;
+    for (i = 1; i < ds.length; i++) if (Math.abs(ds[i].h - proj) < Math.abs(best.h - proj)) best = ds[i];
+    if (self.c === "ledger") {
+      if (proj < ds[0].h * 0.55 || (v > 0.9 && hNow < ds[0].h + 8)) { self.closeSheet(); return; }
+      self.st.detent = best.name; self.applyDetent(sh, true); self.measure(self.dragBefore);
+    } else {
+      self.st.k = best.name; self.applyDocked(true); self.measure(self.dragBefore);
+    }
+  };
+  top.addEventListener("pointerup", end);
+  top.addEventListener("pointercancel", end);
+};
+Frame.prototype.tapTop = function (btn) {
+  if (btn.classList.contains("peek")) { this.setDocked("medium"); return; }
+  this.cycle();
+};
+/* A tap on the grab handle steps to the next snap point and wraps round, as the sheets page says. It never closes. */
+Frame.prototype.cycle = function () {
+  var ds = this.detents, cur = this.c === "ledger" ? this.st.detent : this.st.k, i;
+  for (i = 0; i < ds.length; i++) if (ds[i].name === cur) break;
+  var next = ds[(i + 1) % ds.length].name;
+  if (this.c === "ledger") { var before = this.rowTops(); this.st.detent = next; this.applyDetent(this.sheet, true); this.measure(before); }
+  else this.setDocked(next);
+};
+
+/* ---------- the proof: nothing under the sheet moved ---------- */
+Frame.prototype.rowTops = function () {
+  var out = [];
+  this.el.querySelectorAll(".scroll .lrow, .scroll .pkg, .scroll .reset").forEach(function (r) { out.push(r.getBoundingClientRect().top); });
+  return out;
+};
+Frame.prototype.measure = function (before) {
+  var self = this;
+  setTimeout(function () {
+    var after = self.rowTops(), max = 0, n = Math.min(before.length, after.length);
+    for (var i = 0; i < n; i++) max = Math.max(max, Math.abs(after[i] - before[i]) / self.scale());
+    if (!self.cap) return;
+    self.cap.textContent = "Rows under the sheet moved " + (Math.round(max * 10) / 10) + " pt on the last sheet move (" + n + " rows read).";
+    self.cap.classList.toggle("bad", max > 0.5 || before.length !== after.length);
+  }, reduced() ? 30 : 320);
+};
+
+/* ---------- events ---------- */
+Frame.prototype.wire = function () {
+  var self = this, el = this.el;
+  el.addEventListener("click", function (e) {
+    var b = e.target.closest("button, [role=button]"); if (!b || !el.contains(b)) return;
+    var s = self.st, row = b.getAttribute("data-row"), act = b.getAttribute("data-act"), pick = b.getAttribute("data-pick"), v = b.getAttribute("data-v");
+    if (row && self.c === "ledger") {
+      if (row === "show") { s.hide = !s.hide; self.updateRowValues(); return; }
+      if (row === "sort" || row === "range" || row === "history") { self.openPanel(row, +b.getAttribute("data-page")); return; }
+      return;
+    }
+    if (act === "close") { self.closeSheet(); return; }
+    if (act === "rest") { self.setDocked("peek"); var pk = self.sheet.querySelector(".peek"); if (pk) pk.focus({ preventScroll:true }); return; }
+    if (act === "exact") { s.exact = !s.exact; self.c === "ledger" ? self.updateSheetBody() : self.updateDocked(false); return; }
+    if (act === "days-" || act === "days+") { s.days = Math.max(1, s.days + (act === "days+" ? 1 : -1)); self.after(); return; }
+    if (act === "retry") { s.histState = "ok"; self.updateSheetBody(); return; }
+    if (act === "disarm") { s.armed = null; self.updateSheetBody(); return; }
+    if (act === "restore") {
+      if (s.armed === v) { var ver = VERSIONS.filter(function (x) { return x.id === v; })[0]; s.armed = null; s.restored = ver.when; }
+      else s.armed = v;
+      self.updateSheetBody(); return;
+    }
+    if (act === "clear-range") { s.preset = "all"; self.after(); return; }
+    if (b.hasAttribute("data-ver")) { var id = b.getAttribute("data-ver"); s.verOpen = s.verOpen === id ? null : id; s.armed = null; self.updateSheetBody(); return; }
+    if (pick === "sort") { s.sortBy = v; if (self.c === "ledger") { self.updateSheetBody(); self.updateRowValues(); self.closeSheet(); } else self.after(); return; }
+    if (pick === "isort") { s.itemSort = v; self.updateSheetBody(); return; }
+    if (pick === "range") { s.preset = v; if (v !== "custom") s.month = ""; self.after(); return; }
+    if (pick === "month") { s.month = v; self.after(); return; }
+    if (pick === "hide") { s.hide = v === "1"; self.after(); return; }
+  });
+  el.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && self.sheet && self.sheet.contains(document.activeElement)) {
+      e.preventDefault();
+      if (self.c === "ledger") self.closeSheet(); else if (!self.two) { self.setDocked("peek"); var pk = self.sheet.querySelector(".peek"); if (pk) pk.focus(); }
+    }
+  });
+};
+Frame.prototype.after = function () {
+  if (this.c === "ledger") { this.updateSheetBody(); this.updateRowValues(); }
+  else this.updateDocked(true);
+};
+
+function reduced() { return window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches; }
+
+/* ---------- page ---------- */
+var frames = [];
+document.querySelectorAll(".dev").forEach(function (el, i) { var f = new Frame(el); f.uid = "f" + i; frames.push(f); f.wire(); });
+
+function fitAll() {
+  frames.forEach(function (f) {
+    var box = f.el.parentNode, fig = box.parentNode;
+    if (fig.hidden) return;
+    var avail = Math.min(fig.parentNode.clientWidth, document.documentElement.clientWidth - 32);
+    var s = Math.min(1, avail / (f.w + 2));
+    f.el.style.transform = s < 1 ? "scale(" + s.toFixed(4) + ")" : "";
+    box.style.width = Math.ceil((f.w + 2) * s) + "px";
+    box.style.height = Math.ceil((f.h + 2) * s) + "px";
+  });
+}
+
+function apply() {
+  H = readHash();
+  document.querySelectorAll(".ctl a[data-k]").forEach(function (a) {
+    var k = a.getAttribute("data-k"), v = a.getAttribute("data-v");
+    var on = k === "s" ? H.s === v : (H[k] === v && !(k === "p" && H.s));
+    a.setAttribute("aria-current", String(on));
+  });
+  document.querySelectorAll(".frames > figure").forEach(function (fig) { fig.hidden = !(H.d === "all" || fig.getAttribute("data-d") === H.d); });
+  frames.forEach(function (f) {
+    var s = f.st;
+    if (f.c === "ledger") {
+      s.panel = H.p === "none" ? null : H.p;
+      s.histState = H.s === "empty" || H.s === "error" ? H.s : "ok";
+      s.page = s.panel === "history" ? 1 : 0;
+      s.detent = null; s.verOpen = null; s.armed = null; s.restored = null;
+    } else s.k = H.k;
+  });
+  fitAll();
+  frames.forEach(function (f) { if (!f.el.closest("figure").hidden) { f.render(); } });
+  frames.forEach(function (f) { if (f.cap && !f.cap.textContent) f.cap.textContent = "Open, drag or close a sheet: this line reads the rows under it."; });
+}
+
+document.querySelectorAll(".ctl a[data-k]").forEach(function (a) {
+  a.addEventListener("click", function (e) {
+    e.preventDefault();
+    var k = a.getAttribute("data-k"), v = a.getAttribute("data-v");
+    if (k === "s") { H.p = "history"; H.s = v; }
+    else { H[k] = v; if (k === "p") H.s = ""; }
+    writeHash(); apply();
+  });
+});
+window.addEventListener("hashchange", apply);
+window.addEventListener("resize", fitAll);
+
+/* one press hides one option */
+var hidden = {};
+document.querySelectorAll(".hideopt").forEach(function (b) {
+  b.addEventListener("click", function () { var k = b.getAttribute("data-hide"); hidden[k] = true; document.getElementById("opt-" + k).hidden = true; document.getElementById("showAll").hidden = false; });
+});
+document.getElementById("showAll").addEventListener("click", function () {
+  Object.keys(hidden).forEach(function (k) { document.getElementById("opt-" + k).hidden = false; });
+  hidden = {}; this.hidden = true; fitAll();
+});
+document.getElementById("tagsBtn").addEventListener("click", function () {
+  var off = document.body.dataset.tags !== "off";
+  document.body.dataset.tags = off ? "off" : "on";
+  this.textContent = off ? "Show tags" : "Hide tags";
+  this.setAttribute("aria-pressed", String(!off));
+  frames.forEach(function (f) { f.el.classList.toggle("tagson", !off); });
+});
+
+apply();
+})();
+</script>
+</body>
+</html>

@@ -61,6 +61,7 @@ One stamp per package, set by hand. A refund takes the package out of every coun
 House UX rules that govern the screens. Read these before changing a screen.
 
 - `ux-house-rules-govern` — MANIFEST screens follow the house UX rules.
+- `ux-control-earns-place` — A control earns its place; the End of mail day view opens from the empty query.
 - `spacing-on-4px-grid` — Spacing moves to a 4px grid with an 8px card radius.
 - `phone-nav-is-bottom-bar` — Phone navigation is a bottom glass bar, built in L11a.
 - `ledger-tab-holds-options` — The Ledger tab holds the options, built in L11b.
@@ -72,7 +73,7 @@ The control region is the masthead's own vocabulary continued. Read these before
 - `ruled-head-resume-is-reopening` — A resume counts as reopening.
 - `ruled-head-masthead-vocabulary` — The ruled head continues the masthead.
 - `ruled-head-one-advisory-entrance` — One advisory line leads to the Sync group.
-- `ruled-head-panels-carry-no-fill` — Default, not built: overlay panels take the paper fill (debt `panel-paper-fill-unbuilt`).
+- `head-panels-carry-paper-fill` — Owner confirmed the paper fill for Sorted by and History (page item 63 a, 2026-11-18 21:56 CST). Other overlay panels carry it as the default, not owner-confirmed. Built: `panelWrap` sets `background: C.paper`.
 - `ruled-head-showing-unreceived` — Showing starts on unreceived every load.
 - `ruled-head-hand-elapsed-forward` — Retired 2026-10-14: the peek check it fed left the app. The lesson stands.
 - `ruled-head-range-picked` — The custom date range is picked, not typed.

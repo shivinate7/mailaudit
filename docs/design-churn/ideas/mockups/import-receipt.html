@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Import Receipt</title>
+<style>
+:root{
+  --page:#ECEAE5; --page-ink:#1B1B1F; --page-ink2:#55555C; --page-card:#F8F7F4; --page-line:#D3D0C8;
+  --bg:#F2F2F7; --card:#FFFFFF; --label:#111114; --label2:#5A5A62; --label3:#7A7A82; --sep:#D6D6DC;
+  --tint:#2350C8; --tint-ink:#FFFFFF; --tint-soft:#E4EBFB;
+  --new:#17794A; --here:#62626A; --dbl:#9A5F00; --diff:#6E40C4; --danger:#C8352A;
+  --scrim:rgba(0,0,0,.32); --frame:#1C1C1E; --toast:#1F1F23; --toast-ink:#FFFFFF; --toast-act:#9DB6FF;
+  --mark-today:#5A5A62; --mark-new:#2350C8; --ok:#17794A; --bad:#C8352A;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --page:#121214; --page-ink:#ECECF0; --page-ink2:#A2A2AA; --page-card:#1B1B1E; --page-line:#34343A;
+    --bg:#000000; --card:#1C1C1E; --label:#F4F4F6; --label2:#A6A6AE; --label3:#86868E; --sep:#38383C;
+    --tint:#86A4FF; --tint-ink:#0B1230; --tint-soft:#1D2742;
+    --new:#4DC383; --here:#A0A0A8; --dbl:#EBAA45; --diff:#B796F7; --danger:#FF6E61;
+    --scrim:rgba(0,0,0,.55); --frame:#3A3A3C; --toast:#EEEEF2; --toast-ink:#111114; --toast-act:#2350C8;
+    --mark-today:#A6A6AE; --mark-new:#86A4FF; --ok:#4DC383; --bad:#FF6E61;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+    --page:#121214; --page-ink:#ECECF0; --page-ink2:#A2A2AA; --page-card:#1B1B1E; --page-line:#34343A;
+    --bg:#000000; --card:#1C1C1E; --label:#F4F4F6; --label2:#A6A6AE; --label3:#86868E; --sep:#38383C;
+    --tint:#86A4FF; --tint-ink:#0B1230; --tint-soft:#1D2742;
+    --new:#4DC383; --here:#A0A0A8; --dbl:#EBAA45; --diff:#B796F7; --danger:#FF6E61;
+    --scrim:rgba(0,0,0,.55); --frame:#3A3A3C; --toast:#EEEEF2; --toast-ink:#111114; --toast-act:#2350C8;
+    --mark-today:#A6A6AE; --mark-new:#86A4FF; --ok:#4DC383; --bad:#FF6E61;
+    color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--page-ink);
+  font-family:-apple-system,system-ui,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  font-size:15px;line-height:1.45;
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+button{font:inherit;color:inherit}
+.wrap{max-width:1240px;margin:0 auto}
+
+/* ---------- page header and controls (outside the phone) ---------- */
+.sample{border:1.5px solid var(--bad);color:var(--bad);border-radius:10px;padding:8px 12px;font-weight:600;font-size:13px;margin-bottom:14px}
+header.top h1{font-size:28px;line-height:1.15;margin:0 0 4px;letter-spacing:-.01em}
+header.top .tag{display:inline-block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--page-ink2);margin-left:6px;vertical-align:middle}
+header.top p{margin:0 0 14px;color:var(--page-ink2);max-width:62ch}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.bar .lbl{font-size:12px;font-weight:600;color:var(--page-ink2);text-transform:uppercase;letter-spacing:.06em;margin-right:4px}
+.chip{min-height:36px;padding:6px 12px;border-radius:999px;border:1px solid var(--page-line);background:var(--page-card);cursor:pointer;font-size:13px}
+.chip[aria-pressed="true"]{background:var(--page-ink);color:var(--page);border-color:var(--page-ink)}
+.chip .n{opacity:.6;margin-right:4px;font-variant-numeric:tabular-nums}
+.chip .beyond{font-size:10px;opacity:.7;margin-left:4px}
+.sum{font-size:13px;padding:6px 10px;border-radius:8px;border:1px solid var(--page-line);font-variant-numeric:tabular-nums}
+.sum.ok{color:var(--ok);border-color:var(--ok)}
+.sum.bad{color:var(--bad);border-color:var(--bad);font-weight:700}
+.caption{font-size:13px;color:var(--page-ink2);margin:4px 0 14px;min-height:1.4em}
+
+.stage{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.fit{flex:0 0 auto}
+.fit h2{font-size:13px;font-weight:600;color:var(--page-ink2);margin:0 0 8px;text-transform:uppercase;letter-spacing:.06em}
+.scaler{transform-origin:top left}
+
+details.panel{background:var(--page-card);border:1px solid var(--page-line);border-radius:12px;padding:10px 14px;margin-top:22px}
+details.panel summary{cursor:pointer;font-weight:600;min-height:32px;display:flex;align-items:center}
+details.panel li{margin:4px 0}
+.dec{display:flex;gap:10px;align-items:flex-start;border-top:1px solid var(--page-line);padding:8px 0}
+.dec:first-of-type{border-top:0}
+.dec .t{flex:1}
+.dec .t b{display:block}
+.dec .hide{min-height:32px}
+.dec a{color:inherit}
+
+/* ---------- device frames ---------- */
+.device{background:var(--frame);border-radius:58px;padding:12px;display:inline-flex;gap:0;box-shadow:0 20px 50px rgba(0,0,0,.18)}
+.hinge{width:14px;background:linear-gradient(90deg,#0d0d0f,#2a2a2d 50%,#0d0d0f);margin:0 6px;border-radius:4px}
+.screen{position:relative;width:390px;height:844px;border-radius:46px;overflow:hidden;background:var(--bg);color:var(--label);
+  font-family:-apple-system,system-ui,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  font-size:17px;line-height:22px;
+  --sa-top:max(54px, env(safe-area-inset-top)); --sa-bottom:max(34px, env(safe-area-inset-bottom));
+  --sa-left:env(safe-area-inset-left, 0px); --sa-right:env(safe-area-inset-right, 0px)}
+.status{position:absolute;top:0;left:0;right:0;height:var(--sa-top);display:flex;align-items:center;justify-content:space-between;padding:0 32px 0 40px;font-size:15px;font-weight:600;z-index:5;pointer-events:none;
+  background:color-mix(in srgb,var(--bg) 84%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:35px;background:#000;border-radius:20px;z-index:6}
+.homeind{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--label);opacity:.85;z-index:30}
+.scroll{position:absolute;inset:0;overflow:auto;padding:var(--sa-top) calc(16px + var(--sa-right)) calc(var(--sa-bottom) + 96px) calc(16px + var(--sa-left))}
+.navrow{display:flex;justify-content:flex-end;align-items:center;height:44px;gap:4px;margin:0 -8px}
+.large{font-size:34px;line-height:41px;font-weight:700;margin:2px 0 10px;letter-spacing:.01em}
+
+/* Dynamic Type, default size (typography page, Large): */
+.t-title3{font-size:20px;line-height:25px;font-weight:600}
+.t-head{font-size:17px;line-height:22px;font-weight:600}
+.t-body{font-size:17px;line-height:22px}
+.t-callout{font-size:16px;line-height:21px}
+.t-sub{font-size:15px;line-height:20px}
+.t-foot{font-size:13px;line-height:18px}
+.t-cap{font-size:12px;line-height:16px}
+.t-cap2{font-size:11px;line-height:13px}
+.muted{color:var(--label2)}
+.faint{color:var(--label3)}
+.num{font-variant-numeric:tabular-nums}
+
+.icon-btn{min-width:44px;min-height:44px;border:0;background:transparent;color:var(--tint);display:inline-flex;align-items:center;justify-content:center;border-radius:22px;cursor:pointer;gap:6px;padding:0 10px;font-size:17px}
+.icon-btn svg{width:22px;height:22px}
+
+.group{background:var(--card);border-radius:12px;overflow:hidden;margin:0 0 8px}
+.ghead{font-size:13px;line-height:18px;color:var(--label2);text-transform:uppercase;margin:18px 16px 6px}
+.gfoot{font-size:13px;line-height:18px;color:var(--label2);margin:0 16px 18px}
+.row{display:flex;align-items:center;gap:12px;min-height:44px;padding:10px 16px;position:relative;width:100%;text-align:left;background:transparent;border:0;color:inherit}
+button.row{cursor:pointer}
+.row + .row::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:var(--sep)}
+.row .main{flex:1;min-width:0}
+.row .main .l1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .trail{color:var(--label2);display:flex;align-items:center;gap:6px}
+.chev{width:9px;height:15px;color:var(--label3);flex:0 0 auto}
+.row.sel{background:var(--tint-soft)}
+.row[aria-disabled="true"]{cursor:default}
+.row[aria-disabled="true"] .main,.row[aria-disabled="true"] .trail,.row[aria-disabled="true"] .dot{opacity:.55}
+.dot{width:12px;height:12px;border-radius:6px;flex:0 0 auto}
+.count{font-size:20px;line-height:25px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--label)}
+
+/* tab bar, floating */
+.tabbar{position:absolute;left:calc(20px + var(--sa-left));right:calc(20px + var(--sa-right));bottom:calc(var(--sa-bottom) - 6px);height:62px;border-radius:31px;
+  background:color-mix(in srgb,var(--card) 88%,transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  box-shadow:0 6px 24px rgba(0,0,0,.14);display:flex;align-items:center;justify-content:space-around;padding:0 8px;z-index:10}
+.tab{min-width:72px;min-height:50px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;line-height:13px;color:var(--label2);border:0;background:transparent;border-radius:24px}
+.tab svg{width:24px;height:24px}
+.tab.on{color:var(--tint);background:var(--tint-soft)}
+
+/* toast banner: floats, never pushes content (invariant no-layout-shift-under-pointer) */
+.toast{position:absolute;left:calc(16px + var(--sa-left));right:calc(16px + var(--sa-right));bottom:calc(var(--sa-bottom) + 66px);
+  background:var(--toast);color:var(--toast-ink);border-radius:16px;padding:6px 6px 6px 16px;display:flex;align-items:center;gap:8px;z-index:12;
+  box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.toast .msg{flex:1;font-size:15px;line-height:20px}
+.toast .act{min-height:44px;min-width:44px;padding:0 12px;border:0;background:transparent;color:var(--toast-act);font-weight:600;font-size:15px;border-radius:12px;cursor:pointer}
+
+/* sheet */
+.scrim{position:absolute;inset:0;background:var(--scrim);z-index:20}
+.under{position:absolute;inset:0;transform:scale(.94) translateY(10px);transform-origin:top center;border-radius:20px;overflow:hidden;filter:saturate(.9)}
+.sheet{position:absolute;left:0;right:0;bottom:0;top:calc(var(--sa-top) + 6px);background:var(--bg);border-radius:22px 22px 0 0;z-index:21;display:flex;flex-direction:column;overflow:hidden}
+.sheet.medium{top:38%}
+.grab{width:36px;height:5px;border-radius:3px;background:var(--label3);opacity:.5;margin:6px auto 0}
+.sbar{display:flex;align-items:center;justify-content:space-between;min-height:52px;padding:0 6px}
+.sbar .ttl{font-size:17px;font-weight:600;text-align:center;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sbar .icon-btn{min-width:84px}
+.sbar .lead{justify-content:flex-start}
+.sbar .trail-btn{justify-content:flex-end;font-weight:600}
+.sbody{flex:1;overflow:auto;padding:0 16px calc(var(--sa-bottom) + 16px)}
+.src{display:flex;gap:10px;align-items:flex-start;padding:4px 4px 2px}
+.srcbadge{font-size:12px;line-height:16px;font-weight:600;padding:3px 8px;border-radius:6px;background:var(--tint-soft);color:var(--tint);white-space:nowrap;margin-top:2px}
+.bigbtn{display:flex;align-items:center;justify-content:center;width:100%;min-height:50px;border-radius:14px;border:0;font-size:17px;font-weight:600;cursor:pointer;margin-top:10px}
+.bigbtn.danger{background:var(--danger);color:#fff}
+.bigbtn.plain{background:var(--card);color:var(--tint)}
+
+/* toggle switch */
+.sw{width:51px;height:31px;border-radius:16px;background:var(--sep);position:relative;border:0;flex:0 0 auto;cursor:pointer;padding:0}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:14px;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.2);transition:left .15s}
+.sw[aria-checked="true"]{background:var(--new)}
+.sw[aria-checked="true"]::after{left:22px}
+.swhit{min-width:51px;min-height:44px;display:flex;align-items:center}
+
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:12px;line-height:16px;padding:2px 8px;border-radius:999px;background:var(--bg);color:var(--label2)}
+.link{border:0;background:transparent;color:var(--tint);font:inherit;font-weight:600;cursor:pointer;padding:0 4px;min-height:44px;min-width:44px}
+p .link{margin:-11px 0;vertical-align:baseline;padding:11px 4px;min-height:0;line-height:22px}
+.badgecard{display:flex;gap:12px;align-items:center;background:var(--tint-soft);border-radius:14px;padding:12px 14px;margin:0 0 14px;width:100%;border:0;text-align:left;cursor:pointer;color:var(--label);min-height:60px}
+.badgecard .ic{width:34px;height:34px;border-radius:10px;background:var(--tint);color:var(--tint-ink);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.badgecard .ic svg{width:20px;height:20px}
+.prog{font-variant-numeric:tabular-nums;color:var(--label2);font-size:15px}
+.logic{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;background:var(--bg);color:var(--label2)}
+.logic svg{width:16px;height:16px}
+.logic.imp{background:var(--tint);color:var(--tint-ink)}
+.hl{animation:hl 1.2s ease-out 1}
+@keyframes hl{from{background:var(--tint-soft)}to{background:transparent}}
+.sumline{font-size:13px;line-height:18px;color:var(--label2);text-align:center;margin:6px 0 0;font-variant-numeric:tabular-nums}
+
+/* Today / New markers */
+.mk{position:relative;outline:1.5px dashed transparent;outline-offset:3px}
+body.marks .mk.today{outline-color:var(--mark-today)}
+body.marks .mk.new{outline-color:var(--mark-new)}
+.mk > .mtag{display:none}
+body.marks .mk > .mtag{display:block;position:absolute;top:-11px;right:8px;font-size:10px;line-height:14px;font-weight:700;padding:1px 6px;border-radius:4px;z-index:3;pointer-events:none;letter-spacing:.02em}
+body.marks .mk.today > .mtag{background:var(--mark-today);color:var(--bg)}
+body.marks .mk.new > .mtag{background:var(--mark-new);color:var(--tint-ink)}
+.sheet.mk,.toast.mk{position:absolute}
+body.marks .sheet.mk > .mtag{top:10px;right:14px}
+body.marks .sheet.mk{outline-offset:-3px}
+
+@media (max-width:520px){ header.top h1{font-size:24px} }
+</style>
+</head>
+<body class="marks">
+<div class="wrap">
+  <div class="sample" role="note">Sample: every order, seller, card, file name and figure on this page is invented. No figure is real.</div>
+  <header class="top">
+    <h1>Import receipt <span class="tag">idea mockup, not built</span></h1>
+    <p>Before an import writes anything, MANIFEST shows what it will add, skip and doubt, and the whole import undoes as one step.</p>
+  </header>
+
+  <div class="bar" role="toolbar" aria-label="Screen states" id="rail"></div>
+  <div class="bar">
+    <span class="lbl">View</span>
+    <button class="chip" id="themeBtn" type="button">Theme: auto</button>
+    <button class="chip" id="marksBtn" type="button" aria-pressed="true">Today / New labels</button>
+    <span class="sum" id="sumCheck" aria-live="polite"></span>
+  </div>
+  <div class="caption" id="caption"></div>
+
+  <div class="stage" id="stage">
+    <div class="fit" id="fitFolded">
+      <h2>Phone, one screen (folded Duo)</h2>
+      <div class="scaler">
+        <div class="device" data-device="iphone-duo-folded"><div class="screen" id="folded"></div></div>
+      </div>
+    </div>
+    <div class="fit" id="fitOpen">
+      <h2>Two-screen phone (unfolded Duo)</h2>
+      <div class="scaler">
+        <div class="device" data-device="iphone-duo-unfolded"><div class="screen" id="paneL"></div><div class="hinge" aria-hidden="true"></div><div class="screen" id="paneR"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <details class="panel" id="decPanel" open>
+    <summary>Owner decisions this mockup draws (recommendations from the plan)</summary>
+    <div id="decs"></div>
+    <button class="chip" type="button" id="decReset">Show all again</button>
+  </details>
+
+  <details class="panel">
+    <summary>Notes</summary>
+    <ol>
+      <li>Source: docs/ideas/plans/trust.md, section "Phase 2: import-receipt, fleshed out". Nothing else in the repo was read for this page, so colours, type and layout are this mockup's own and not the app's tokens.</li>
+      <li>Frame size: each screen is drawn at 390 x 844 CSS px. The device list gave no size for any device (all sizes null) and the brief gave none, so the size is this mockup's choice. The status bar (54 px) and home indicator (34 px) heights are approximate frame chrome, not figures from an Apple page.</li>
+      <li>Apple pages read 2026-11-21 (each answered 200): Sheets (Cancel on the leading edge, Done on the trailing edge, grabber, detents), Typography (Large default: Large Title 34/41, Title 3 20/25, Headline 17/22, Body 17/22, Callout 16/21, Subhead 15/20, Footnote 13/18, Caption 1 12/16, Caption 2 11/13), Accessibility (iOS default control 44x44 pt), Buttons (hit region at least 44x44 pt), Layout (respect safe areas; lay out by size class).</li>
+      <li>Counts: New + Already here + Looks doubled + Differs always equals the lines in the file. "Add anyway" does not move a line out of Looks doubled; it adds it to the Add total. So the Add button reads New + flipped doubles, and Done and Undo read that same total.</li>
+      <li>Beyond the plan's listed states: the New and Already here lists, the extension receipt with Differs 2 (shows the source label and the "keep held data" rule), and the after-undo screen.</li>
+      <li>Where the recent-checks log sits in the app was not read. It is drawn here as a "Recent checks" section on Packages (folded) and as the right screen (unfolded).</li>
+      <li>Not shown, because they are data rules rather than screens: the line fingerprint, the import tag and its sync, and the open status of invariant saved-state-shape. The undo time limit shows only as a caption on the log entry.</li>
+      <li>The undo confirmation is an in-app sheet. The page uses no native dialog (invariant no-native-dialogs). The undo banner floats above the tab bar and never pushes rows down (invariant no-layout-shift-under-pointer).</li>
+    </ol>
+  </details>
+</div>
+
+<script>
+(function(){
+"use strict";
+/* ---------- invented sample data ---------- */
+var IMPORTS = {
+  csv:  {key:"csv", badge:"CSV file", from:"orders-nov.csv", orders:41, lines:128, n:{new:112, here:12, dbl:4, diff:0}, date:"Nov 18"},
+  ext:  {key:"ext", badge:"Extension", from:"the browser extension", orders:3, lines:9, n:{new:6, here:1, dbl:0, diff:2}, date:"Nov 18"},
+  clean:{key:"clean", badge:"CSV file", from:"orders-nov-b.csv", orders:41, lines:112, n:{new:112, here:0, dbl:0, diff:0}, date:"Nov 18"}
+};
+var CATS = [
+  {k:"new",  name:"New",          color:"var(--new)",  note:"Not held yet. These get added."},
+  {k:"here", name:"Already here", color:"var(--here)", note:"The same line is held already. Skipped."},
+  {k:"dbl",  name:"Looks doubled",color:"var(--dbl)",  note:"Matches a held line. Skipped unless you add it anyway."},
+  {k:"diff", name:"Differs",      color:"var(--diff)", note:"Same line, different details. Held data is kept."}
+];
+var NEW_ROWS = [
+  ["A-48902","Saltmarsh Singles","Moss Golem","NM","0.18"],
+  ["A-48902","Saltmarsh Singles","Tide Oracle","NM","0.22"],
+  ["A-48911","Old Mill Cards","Ember Lark","LP","0.15"],
+  ["A-48911","Old Mill Cards","Glass Heron","NM","0.30"],
+  ["A-48937","Bluefinch Games","Dune Scribe","NM","0.12"],
+  ["A-48937","Bluefinch Games","Gilded Moth","NM","0.25"],
+  ["A-48950","Lantern Hobby","Pale Archivist","NM","0.40"],
+  ["A-48950","Lantern Hobby","Rook of Cinders","MP","0.10"]
+];
+var HERE_ROWS = [
+  ["A-47710","North Pier Games","Thornback Hound","NM","0.20","Nov 3"],
+  ["A-47710","North Pier Games","Quiet Lantern","NM","0.15","Nov 3"],
+  ["A-47722","Copperleaf TCG","Coral Sentinel","LP","0.35","Nov 3"],
+  ["A-47722","Copperleaf TCG","Ash Familiar","NM","0.12","Nov 3"],
+  ["A-47801","Riverbend Cards","Frostvine Druid","NM","0.28","Nov 10"],
+  ["A-47801","Riverbend Cards","Hollow Bellwether","NM","0.10","Nov 10"]
+];
+var DBL_ROWS = [
+  ["A-48213","Riverbend Cards","Storm Wyvern","NM","0.25","Nov 3 import, line 2"],
+  ["A-48213","Riverbend Cards","Ash Familiar","NM","0.12","Nov 3 import, line 5"],
+  ["A-48240","Lantern Hobby","Quiet Lantern","LP","0.15","Nov 10 import, line 14"],
+  ["A-48266","North Pier Games","Coral Sentinel","NM","0.35","Nov 10 import, line 31"]
+];
+var EXT_NEW = [
+  ["T-90114","Old Mill Cards","Brass Courier","NM","0.20"],
+  ["T-90114","Old Mill Cards","Lichen Warden","NM","0.14"],
+  ["T-90122","Bluefinch Games","Cinder Pup","LP","0.11"],
+  ["T-90122","Bluefinch Games","Mire Herald","NM","0.26"],
+  ["T-90131","Saltmarsh Singles","Velvet Owl","NM","0.18"],
+  ["T-90131","Saltmarsh Singles","Gale Tinker","NM","0.32"]
+];
+var EXT_HERE = [["T-90131","Saltmarsh Singles","Thornback Hound","NM","0.20","Nov 10"]];
+var EXT_DIFF = [
+  {o:"T-90122", s:"Bluefinch Games", c:"Frostvine Druid", what:"Price", held:"$0.28", inc:"$0.24"},
+  {o:"T-90131", s:"Saltmarsh Singles", c:"Hollow Bellwether", what:"Condition", held:"Near Mint", inc:"Lightly Played"}
+];
+var TOUCHED = [
+  ["Moss Golem","ticked"],["Tide Oracle","photographed"],["Ember Lark","ticked"],["Glass Heron","stamped"],
+  ["Dune Scribe","ticked"],["Gilded Moth","photographed"],["Pale Archivist","ticked"],["Rook of Cinders","stamped"]
+];
+var PACKAGES = [
+  ["Riverbend Cards","A-48213","5 cards",3,5],
+  ["Lantern Hobby","A-48240","3 cards",3,3],
+  ["North Pier Games","A-48266","8 cards",2,8],
+  ["Copperleaf TCG","A-47722","4 cards",0,4],
+  ["Old Mill Cards","A-47790","2 cards",1,2],
+  ["Bluefinch Games","A-47812","6 cards",6,6]
+];
+var LOG = [
+  ["tick","Ticked Storm Wyvern","Riverbend Cards · 9:12 AM"],
+  ["photo","Photographed a package","Lantern Hobby · 8:50 AM"],
+  ["tick","Ticked Coral Sentinel","North Pier Games · Yesterday"],
+  ["stamp","Stamped a postmark","Old Mill Cards · Yesterday"]
+];
+
+/* ---------- states ---------- */
+var STATES = [
+  {k:"home",    t:"Extension badge",          cap:"Flow step 1. The extension delivered 3 orders. Nothing is added yet; a badge waits. Import (top right) picks a CSV."},
+  {k:"receipt", t:"Receipt sheet",            cap:"Flow steps 2 and 3. The app compared every line and opened the receipt. Nothing is written yet. Tap a count to open its lines."},
+  {k:"new",     t:"New lines", beyond:1,      cap:"The New count opened into its lines."},
+  {k:"here",    t:"Already here", beyond:1,   cap:"The Already here count opened into its lines. Each names the import that brought it."},
+  {k:"doubled", t:"Looks doubled",            cap:"Flow step 4. Flip \"Add anyway\" for a genuine second copy. The Add total follows."},
+  {k:"ext",     t:"Extension receipt", beyond:1, cap:"The same receipt for an extension import, labelled with its source. This one has lines that differ."},
+  {k:"differs", t:"Differs", beyond:1,        cap:"A line that differs keeps the held data. Nothing is overwritten."},
+  {k:"done",    t:"Done, with undo",          cap:"Flow step 5 and 6. The merge committed. The log has one import entry on top, and a banner offers Undo import."},
+  {k:"undo",    t:"Undo, touched cards",      cap:"Flow step 6. Undo removes only untouched cards. Cards ticked, photographed or stamped since stay, and are named."},
+  {k:"undone",  t:"After undo", beyond:1,     cap:"The import is undone. The log says what went and what stayed."},
+  {k:"clean",   t:"Clean import",             cap:"Flow step 7. All lines new, nothing doubled or different: no sheet, only a banner with Undo."}
+];
+var st = {s:"home", t:"auto", flips:{}, more:false, src:"csv"};
+/* which import a state shows; done, undo and undone keep the import that led there */
+var SRC_FOR = {home:"csv", receipt:"csv", new:"csv", here:"csv", doubled:"csv", ext:"ext", differs:"ext", clean:"clean"};
+
+function el(id){return document.getElementById(id)}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]})}
+
+/* ---------- icons ---------- */
+var I = {
+  chev:'<svg class="chev" viewBox="0 0 9 15" aria-hidden="true"><path d="M1.5 1.5 7.5 7.5 1.5 13.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  back:'<svg viewBox="0 0 12 20" aria-hidden="true" style="width:12px;height:20px"><path d="M10 2 2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  imp:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0-4.5-4.5M12 14l4.5-4.5M4 15v3.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  pkg:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5zM3.5 7.5 12 12l8.5-4.5M12 12v9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+  tally:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5v14M9.5 5v14M14 5v14M18.5 5v14M3 15 21 9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  orph:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v12H4zM4 7l8 6 8-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="18.5" cy="6" r="3" fill="currentColor"/></svg>',
+  tick:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  photo:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+  stamp:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 2.2"/><path d="M8 12h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  ext:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6v3a2 2 0 1 0 0 4v3h-3a2 2 0 1 0-4 0H5V8h4V4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>'
+};
+var REASON_ICON = {ticked:I.tick, photographed:I.photo, stamped:I.stamp};
+
+/* ---------- derived figures (one source for every count on the page) ---------- */
+function flipCount(){var n=0;for(var k in st.flips){if(st.flips[k])n++}return n}
+function srcOf(){ return IMPORTS[st.src] || IMPORTS.csv; }
+function addTotal(src){ return src.n.new + (src.key==="csv"?flipCount():0); }
+function touchedCount(src){ return src.key==="csv" ? TOUCHED.length : 0; }
+function sumOK(src){ return src.n.new+src.n.here+src.n.dbl+src.n.diff===src.lines; }
+
+/* ---------- pieces ---------- */
+function mtag(kind,label){ return '<span class="mtag">'+(kind==="today"?"Today: ":"New: ")+esc(label)+'</span>'; }
+function mk(kind,label,inner){ return '<div class="mk '+kind+'">'+mtag(kind,label)+inner+'</div>'; }
+function chrome(){ return '<div class="island" aria-hidden="true"></div><div class="status" aria-hidden="true"><span>9:41</span><span>100%</span></div><div class="homeind" aria-hidden="true"></div>'; }
+function tabbar(){
+  return '<nav class="tabbar" aria-label="Sections"><button class="tab on" type="button">'+I.pkg+'Packages</button><button class="tab" type="button">'+I.tally+'Tally</button><button class="tab" type="button">'+I.orph+'Orphaned</button></nav>';
+}
+function money(p){return "$"+p}
+function lineRow(r, sub){
+  return '<div class="row"><div class="main"><div class="l1 t-body">'+esc(r[2])+' <span class="muted">('+esc(r[3])+')</span></div><div class="t-foot muted">'+esc(r[0])+' · '+esc(r[1])+(sub?' · '+esc(sub):'')+'</div></div><div class="trail num t-sub">'+money(r[4])+'</div></div>';
+}
+function packagesList(withBadge){
+  var h='';
+  if(withBadge){
+    h+=mk("new","extension badge",'<button class="badgecard" type="button" data-go="ext"><span class="ic">'+I.ext+'</span><span class="main" style="flex:1"><span class="t-head" style="display:block">3 new orders ready to add</span><span class="t-foot muted">From the browser extension · Review before adding</span></span>'+I.chev+'</button>');
+  }
+  h+=mk("today","Packages list",'<div class="group">'+PACKAGES.map(function(p){
+    return '<div class="row"><div class="main"><div class="l1 t-body">'+esc(p[0])+'</div><div class="t-foot muted">'+esc(p[1])+' · '+esc(p[2])+'</div></div><div class="trail prog">'+p[3]+'/'+p[4]+'</div>'+I.chev+'</div>';
+  }).join('')+'</div>');
+  return h;
+}
+function logEntryImport(src){
+  var n=addTotal(src);
+  if(st.s==="undone"){
+    var t=touchedCount(src);
+    return '<div class="row hl"><span class="logic imp">'+I.imp+'</span><div class="main"><div class="l1 t-body">Undid import '+src.date+'</div><div class="t-foot muted num">'+(n-t)+' removed · '+t+' kept · just now</div></div></div>';
+  }
+  return '<div class="row hl"><span class="logic imp">'+I.imp+'</span><div class="main"><div class="l1 t-body num">Import '+src.date+', '+n+' cards</div><div class="t-foot muted">'+esc(src.badge)+' · '+esc(src.from)+' · just now</div><div class="t-cap faint">Undo until the next import or Nov 25</div></div><button class="link t-sub" type="button" data-go="undo">Undo</button></div>';
+}
+function logList(src, withEntry){
+  var rows=LOG.map(function(e){return '<div class="row"><span class="logic">'+I[e[0]]+'</span><div class="main"><div class="l1 t-body">'+esc(e[1])+'</div><div class="t-foot muted">'+esc(e[2])+'</div></div></div>';}).join('');
+  var top = withEntry ? mk("new","import entry in the log",'<div class="group" style="margin-bottom:0">'+logEntryImport(src)+'</div>') : '';
+  return top + mk("today","recent-checks log",'<div class="group">'+rows+'</div>');
+}
+function toast(){
+  var src=srcOf(), n=addTotal(src);
+  if(st.s==="done") return '<div class="toast mk new" role="status">'+mtag("new","undo banner")+'<span class="msg num">Added '+n+' cards from '+src.orders+' orders</span><button class="act" type="button" data-go="undo">Undo import</button></div>';
+  if(st.s==="clean") return '<div class="toast mk new" role="status">'+mtag("new","clean-import banner")+'<span class="msg num">Added '+src.n.new+', nothing doubled.</span><button class="act" type="button" data-go="undo">Undo</button></div>';
+  if(st.s==="undone"){var t=touchedCount(srcOf()); return '<div class="toast" role="status"><span class="msg num">Removed '+(n-t)+' cards. '+t+' kept.</span><button class="act" type="button" data-go="home">OK</button></div>';}
+  return '';
+}
+
+/* receipt: the four counts */
+function counts(src, selected){
+  var h='<div class="src"><span class="srcbadge">'+esc(src.badge)+'</span><div class="t-sub">From '+esc(src.from)+' · <span class="num">'+src.orders+' orders · '+src.lines+' lines</span></div></div>';
+  h+='<div class="gfoot" style="margin:6px 4px 12px">Nothing is written until you tap Add.</div>';
+  h+='<div class="group">'+CATS.map(function(c){
+    var n=src.n[c.k], dis=n===0, sel=selected===c.k;
+    var extra = (c.k==="dbl" && src.key==="csv" && flipCount()) ? ' <span class="pill num">'+flipCount()+' added anyway</span>' : '';
+    var tag = dis?'div':'button';
+    return '<'+tag+' class="row'+(sel?' sel':'')+'" '+(dis?'aria-disabled="true"':'type="button" data-open="'+c.k+'"')+'><span class="dot" style="background:'+c.color+'"></span><div class="main"><div class="t-body">'+c.name+extra+'</div><div class="t-foot muted">'+(dis?(c.k==="diff"?"Nothing differs.":c.k==="dbl"?"Nothing looks doubled.":"None."):c.note)+'</div></div><div class="trail"><span class="count">'+n+'</span>'+(dis?'':I.chev)+'</div></'+tag+'>';
+  }).join('')+'</div>';
+  var add=addTotal(src), skip=src.lines-add;
+  h+='<p class="t-sub" style="margin:14px 4px 0"><b class="num">Add '+add+'</b> <span class="muted num">writes '+add+' lines and skips '+skip+'. Held data is never changed.</span></p>';
+  h+='<p class="sumline">'+src.n.new+' + '+src.n.here+' + '+src.n.dbl+' + '+src.n.diff+' = '+src.lines+' lines</p>';
+  return h;
+}
+/* receipt: one category's lines */
+function catList(src, k){
+  var c=CATS.filter(function(x){return x.k===k})[0];
+  var h='<div class="ghead">'+c.name+' · <span class="num">'+src.n[k]+'</span></div>';
+  if(k==="new"){
+    var rows = src.key==="ext"?EXT_NEW:NEW_ROWS;
+    h+='<div class="group">'+rows.map(function(r){return lineRow(r)}).join('');
+    var more=src.n.new-rows.length;
+    if(more>0) h+='<div class="row"><div class="main t-sub muted num">'+more+' more lines</div>'+I.chev+'</div>';
+    h+='</div><div class="gfoot">Not held yet. Each gets added when you tap Add.</div>';
+  } else if(k==="here"){
+    var hr = src.key==="ext"?EXT_HERE:HERE_ROWS;
+    h+='<div class="group">'+hr.map(function(r){return lineRow(r,"held since "+r[5])}).join('');
+    var m2=src.n.here-hr.length;
+    if(m2>0) h+='<div class="row"><div class="main t-sub muted num">'+m2+' more lines</div>'+I.chev+'</div>';
+    h+='</div><div class="gfoot">Same order, product, condition, price and quantity as a held line. Skipped.</div>';
+  } else if(k==="dbl"){
+    h+='<div class="group">'+DBL_ROWS.map(function(r,i){
+      var on=!!st.flips[i];
+      return '<div class="row" style="align-items:flex-start"><div class="main"><div class="t-foot muted">'+esc(r[0])+' · '+esc(r[1])+'</div><div class="t-body">'+esc(r[2])+' <span class="muted">('+esc(r[3])+')</span> · <span class="num">'+money(r[4])+'</span></div><div class="t-foot muted">Already here from the '+esc(r[5])+'</div></div><label class="swhit" style="flex-direction:column;align-items:flex-end;gap:2px"><button class="sw" type="button" role="switch" aria-checked="'+on+'" aria-label="Add anyway: '+esc(r[2])+'" data-flip="'+i+'"></button><span class="t-cap2 muted">Add anyway</span></label></div>';
+    }).join('')+'</div><div class="gfoot">Turn on "Add anyway" only for a genuine second copy. The line still counts as Looks doubled; the Add total goes up by one.</div>';
+  } else if(k==="diff"){
+    h+='<div class="group">'+EXT_DIFF.map(function(d){
+      return '<div class="row" style="align-items:flex-start"><div class="main"><div class="t-foot muted">'+esc(d.o)+' · '+esc(d.s)+'</div><div class="t-body">'+esc(d.c)+'</div><div class="kv t-foot" style="margin-top:4px"><span class="muted">'+esc(d.what)+' held</span><span><b>'+esc(d.held)+'</b> · kept</span><span class="muted">In this import</span><span>'+esc(d.inc)+' · not written</span></div></div></div>';
+    }).join('')+'</div><div class="gfoot">Held data stays. Nothing here is overwritten. Change a line by hand if the import is right.</div>';
+  }
+  return h;
+}
+function sheetBar(lead, title, trail){
+  return '<div class="grab" aria-hidden="true"></div><div class="sbar">'+lead+'<div class="ttl">'+title+'</div>'+trail+'</div>';
+}
+function btn(label, go, cls){ return '<button class="icon-btn '+(cls||'')+'" type="button" data-go="'+go+'">'+label+'</button>'; }
+function blank(){ return '<span class="icon-btn" aria-hidden="true" style="min-width:84px"></span>'; }
+
+function homeScreen(withBadge, withEntry, noToast){
+  var src=srcOf();
+  return '<div class="scroll"><div class="navrow"><button class="icon-btn" type="button" data-go="receipt" aria-label="Import a CSV">'+I.imp+'Import</button></div><div class="large">Packages</div>'+
+    packagesList(withBadge)+'<div class="ghead">Recent checks</div>'+logList(src, withEntry)+'</div>'+(noToast?'':toast())+tabbar();
+}
+function packagesOnly(withBadge){
+  return '<div class="scroll"><div class="navrow"><button class="icon-btn" type="button" data-go="receipt" aria-label="Import a CSV">'+I.imp+'Import</button></div><div class="large">Packages</div>'+packagesList(withBadge)+'</div>'+tabbar();
+}
+function logOnly(withEntry, noToast){
+  return '<div class="scroll"><div class="navrow"></div><div class="large">Recent checks</div>'+logList(srcOf(), withEntry)+'</div>'+(noToast?'':toast());
+}
+function underlay(){ return '<div class="under" aria-hidden="true">'+packagesOnly(false)+'</div><div class="scrim"></div>'; }
+
+function openCat(){ return {receipt:null, new:"new", here:"here", doubled:"dbl", ext:null, differs:"diff"}[st.s]; }
+
+function receiptFolded(){
+  var src=srcOf(), open=openCat(), n=addTotal(src);
+  var add = btn('Add '+n, "done", "trail-btn");
+  var cancel = btn('Cancel', "home", "lead");
+  var inner;
+  if(open){
+    var backTo = src.key==="ext" ? "ext" : "receipt";
+    inner = sheetBar('<button class="icon-btn lead" type="button" data-go="'+backTo+'">'+I.back+' Receipt</button>', CATS.filter(function(c){return c.k===open})[0].name, add)+'<div class="sbody">'+catList(src, open)+'</div>';
+  } else {
+    inner = sheetBar(cancel, 'Import receipt', add)+'<div class="sbody">'+counts(src,null)+'</div>';
+  }
+  return underlay()+'<div class="sheet mk new" role="dialog" aria-label="Import receipt">'+mtag("new","import receipt sheet")+inner+'</div>';
+}
+function receiptOpenL(){
+  var src=srcOf(), open=openCat()||"new";
+  return underlay()+'<div class="sheet" role="dialog" aria-label="Import receipt counts">'+sheetBar(btn('Cancel',"home","lead"),'Import receipt',blank())+'<div class="sbody">'+counts(src,open)+'</div></div>';
+}
+function receiptOpenR(){
+  var src=srcOf(), open=openCat()||"new";
+  return '<div class="under" aria-hidden="true">'+logOnly(false)+'</div><div class="scrim"></div><div class="sheet" role="dialog" aria-label="Lines">'+sheetBar(blank(), CATS.filter(function(c){return c.k===open})[0].name, btn('Add '+addTotal(src),"done","trail-btn"))+'<div class="sbody">'+catList(src, open)+'</div></div>';
+}
+
+function undoSummary(full){
+  var src=srcOf(), n=addTotal(src), t=touchedCount(src);
+  var names = TOUCHED.slice(0,2).map(function(x){return x[0]}).join(", ");
+  var h='<div class="t-title3" style="margin:6px 4px 8px">Undo import '+src.date+'?</div>';
+  if(t===0){
+    h+='<p class="t-body num" style="margin:0 4px 12px">Undo removes all '+n+' cards from this import. You have not ticked, photographed or stamped any of them since.</p>';
+  } else {
+    h+='<p class="t-body" style="margin:0 4px 12px"><span class="num">Undo removes '+(n-t)+' cards. '+t+' stay because you ticked, photographed or stamped them since: </span>'+esc(names)+', '+
+       (full?'<span class="muted">listed on the right</span>':'<button class="link" type="button" data-more="1" aria-expanded="'+st.more+'">+'+(t-2)+'</button>')+'</p>';
+    if(!full && st.more) h+=touchedList(2);
+  }
+  h+='<button class="bigbtn danger" type="button" data-go="undone">Remove '+(n-t)+' cards</button>';
+  h+='<button class="bigbtn plain" type="button" data-go="done">Keep the import</button>';
+  return h;
+}
+function touchedList(from){
+  return '<div class="group">'+TOUCHED.slice(from).map(function(x){
+    return '<div class="row"><span class="logic">'+REASON_ICON[x[1]]+'</span><div class="main"><div class="t-body">'+esc(x[0])+'</div><div class="t-foot muted">Stays · '+x[1]+' since the import</div></div></div>';
+  }).join('')+'</div>';
+}
+function undoFolded(){
+  return '<div class="under" aria-hidden="true">'+homeScreen(false,true,true)+'</div><div class="scrim"></div>'+
+    '<div class="sheet medium mk new" role="dialog" aria-label="Undo import">'+mtag("new","undo sheet")+sheetBar(btn('Cancel',"done","lead"),'',blank())+'<div class="sbody">'+undoSummary(false)+'</div></div>';
+}
+
+/* ---------- render ---------- */
+function render(){
+  var s=st.s, f, L, R;
+  if(s==="home"){ f=homeScreen(true,false); L=packagesOnly(true); R=logOnly(false); }
+  else if(s==="done"||s==="clean"||s==="undone"){ f=homeScreen(false,true); L=packagesOnly(false); R=logOnly(true); }
+  else if(s==="undo"){
+    f=undoFolded();
+    L='<div class="under" aria-hidden="true">'+packagesOnly(false)+'</div><div class="scrim"></div><div class="sheet" role="dialog" aria-label="Undo import">'+sheetBar(btn('Cancel',"done","lead"),'',blank())+'<div class="sbody">'+undoSummary(true)+'</div></div>';
+    var src=srcOf(), t=touchedCount(src);
+    R='<div class="under" aria-hidden="true">'+logOnly(true,true)+'</div><div class="scrim"></div><div class="sheet" role="dialog" aria-label="Cards that stay">'+sheetBar(blank(),'Cards that stay',blank())+'<div class="sbody"><div class="ghead num">'+t+' stay</div>'+(t?touchedList(0):'<div class="group"><div class="row"><div class="main muted">None. Nothing from this import was touched.</div></div></div>')+'<div class="gfoot num">'+(addTotal(src)-t)+' other cards from this import were not touched since, and go.</div></div></div>';
+  }
+  else { f=receiptFolded(); L=receiptOpenL(); R=receiptOpenR(); }
+  el("folded").innerHTML=chrome()+f;
+  el("paneL").innerHTML=chrome()+L;
+  el("paneR").innerHTML=chrome()+R;
+  /* after an import, open the folded screen at the log, so the new entry is in view */
+  if(s==="done"||s==="clean"||s==="undone"){
+    var sc=el("folded").querySelector(".scroll"), gh=sc.querySelector(".ghead");
+    if(gh) sc.scrollTop=gh.offsetTop-110;
+  }
+  var meta=STATES.filter(function(x){return x.k===s})[0];
+  el("caption").textContent=meta.cap;
+  Array.prototype.forEach.call(el("rail").querySelectorAll("button"),function(b){b.setAttribute("aria-pressed", b.dataset.s===s?"true":"false")});
+  var src=srcOf(), ok=sumOK(src);
+  el("sumCheck").className="sum "+(ok?"ok":"bad");
+  el("sumCheck").textContent=(ok?"Counts add up: ":"COUNTS DO NOT ADD UP: ")+src.n.new+" + "+src.n.here+" + "+src.n.dbl+" + "+src.n.diff+" = "+(src.n.new+src.n.here+src.n.dbl+src.n.diff)+" of "+src.lines+" lines";
+  fit();
+}
+
+function writeHash(){
+  var h="#s="+st.s; if(st.t!=="auto") h+="&t="+st.t;
+  if(location.hash!==h) history.replaceState(null,"",h);
+}
+function readHash(){
+  var p={}; location.hash.replace(/^#/,"").split("&").forEach(function(kv){var a=kv.split("=");if(a[0])p[a[0]]=decodeURIComponent(a[1]||"")});
+  if(p.s && STATES.some(function(x){return x.k===p.s})){ st.s=p.s; st.src=SRC_FOR[p.s]||"csv"; }
+  if(p.t==="dark"||p.t==="light"||p.t==="auto") st.t=p.t;
+  applyTheme();
+}
+function applyTheme(){
+  if(st.t==="auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme",st.t);
+  el("themeBtn").textContent="Theme: "+st.t;
+}
+function go(s){
+  if(s==="home"){ st.flips={}; }
+  if(s!=="undo") st.more=false;
+  if(SRC_FOR[s]) st.src=SRC_FOR[s];
+  st.s=s; writeHash(); render();
+}
+
+/* ---------- events ---------- */
+el("rail").innerHTML='<span class="lbl">States</span>'+STATES.map(function(x,i){
+  return '<button class="chip" type="button" data-s="'+x.k+'"><span class="n">'+(i+1)+'</span>'+esc(x.t)+(x.beyond?'<span class="beyond">beyond plan</span>':'')+'</button>';
+}).join('');
+/* the rail starts each state fresh, as its deep link does */
+el("rail").addEventListener("click",function(e){var b=e.target.closest("button[data-s]"); if(!b) return; st.flips={}; st.src=SRC_FOR[b.dataset.s]||"csv"; go(b.dataset.s);});
+el("stage").addEventListener("click",function(e){
+  var t=e.target.closest("[data-go],[data-open],[data-flip],[data-more]"); if(!t) return;
+  if(t.dataset.flip!==undefined){ var i=+t.dataset.flip; st.flips[i]=!st.flips[i]; render(); return; }
+  if(t.dataset.more){ st.more=!st.more; render(); return; }
+  if(t.dataset.open){
+    var src=srcOf(), map={new:"new",here:"here",dbl:"doubled",diff:"differs"};
+    go(map[t.dataset.open]); return;
+  }
+  var g=t.dataset.go;
+  if(g==="done" && st.src==="clean") g="clean";
+  go(g);
+});
+el("themeBtn").addEventListener("click",function(){ st.t = st.t==="auto"?"light":st.t==="light"?"dark":"auto"; applyTheme(); writeHash(); });
+el("marksBtn").addEventListener("click",function(){ var on=document.body.classList.toggle("marks"); this.setAttribute("aria-pressed",on?"true":"false"); });
+window.addEventListener("hashchange",function(){ readHash(); render(); });
+
+/* owner decisions, each hideable with one press */
+var DECS = [
+  ["What counts as a double?","Same order number, product, condition and price as a held line; only quantity above what is held counts as new.","doubled"],
+  ["Should extension imports add themselves?","No; they wait behind the badge.","home"],
+  ["Undo and cards touched since?","Keep them and name them.","undo"],
+  ["How long is undo offered?","Until the next import, or 7 days (caption on the log entry).","done"],
+  ["An incoming line differs from what is held?","Keep existing data, show it under Differs, overwrite nothing.","differs"],
+  ["A clean import skips the sheet?","Yes.","clean"],
+  ["Where does import undo live?","The recent-checks log.","done"]
+];
+el("decs").innerHTML=DECS.map(function(d,i){
+  return '<div class="dec" id="dec-'+i+'"><div class="t"><b>'+esc(d[0])+'</b>Recommend: '+esc(d[1])+' <a href="#s='+d[2]+'">See it</a></div><button class="chip hide" type="button" data-hide="'+i+'">Hide</button></div>';
+}).join('');
+el("decs").addEventListener("click",function(e){var b=e.target.closest("[data-hide]"); if(b) el("dec-"+b.dataset.hide).hidden=true;});
+el("decReset").addEventListener("click",function(){Array.prototype.forEach.call(document.querySelectorAll(".dec"),function(d){d.hidden=false})});
+
+/* scale frames to fit the page width, so no horizontal scroll */
+function fit(){
+  var avail = el("stage").clientWidth;
+  ["fitFolded","fitOpen"].forEach(function(id){
+    var box=el(id), sc=box.querySelector(".scaler"), dev=sc.firstElementChild;
+    sc.style.transform="none"; box.style.width=""; box.style.height="";
+    var w=dev.offsetWidth, h=dev.offsetHeight, k=Math.min(1, avail/w);
+    sc.style.transform="scale("+k+")";
+    box.style.width=(w*k)+"px"; box.style.height=(h*k+30)+"px";
+  });
+}
+window.addEventListener("resize",fit);
+readHash(); render();
+})();
+</script>
+</body>
+</html>

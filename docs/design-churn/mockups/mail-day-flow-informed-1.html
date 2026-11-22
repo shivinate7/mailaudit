@@ -1,0 +1,947 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mail day flow</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light (UIUserInterfaceStyle Light,
+   native-build-lanes), so the device frames draw one theme. Cochin sets words, Menlo sets numbers (typography-cochin-and-mono);
+   the system font sets iOS chrome only. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832; --amber:#846008;
+  --wax:#A8443C; --waxLit:#C86A5F; --waxDeep:#66231D; --waxCut:#5E1F1A; --waxRaised:#E09A90; --shadow:rgba(28,43,36,0.06);
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+  /* Status bar foot: unmeasured on both Duo screens; drawn at the UI tests' 20 pt floor. */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: max(env(safe-area-inset-bottom), 20px);
+  --new:#2E7A5E; --today:#A8443C;
+}
+* { box-sizing:border-box; }
+html { color-scheme: light; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+main.doc { max-width:1180px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:28px; line-height:1.15; margin:0; }
+h2 { font-family:var(--cochin); font-size:24px; margin:0; }
+.sub { color:var(--inkSoft); margin:0; max-width:78ch; }
+.kind { font-weight:600; }
+.row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.ctl { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+.ctl[aria-pressed="true"], .ctl.on { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.ctl.x { color:var(--inkSoft); }
+.ctl small { color:var(--inkSoft); font-size:12px; }
+.lbl { font-size:13px; color:var(--inkSoft); min-width:88px; }
+a:focus-visible, button:focus-visible, input:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+section.concept { display:flex; flex-direction:column; gap:12px; padding-top:24px; border-top:1px solid var(--line); }
+section.concept[hidden] { display:none; }
+.lede { margin:0; max-width:78ch; }
+.frames { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+.frames figure { margin:0; display:flex; flex-direction:column; gap:8px; max-width:100%; }
+.frames figcaption { font-size:13px; color:var(--inkSoft); max-width:466px; }
+.frames figcaption b { color:var(--ink); font-family:var(--cochin); font-size:16px; }
+.scroller { max-width:100%; overflow-x:auto; }
+.opts { display:flex; flex-direction:column; gap:8px; }
+.opt-hidden { display:none !important; }
+
+/* ---------------- device frames: 1 CSS px = 1 pt ---------------- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:16px; overflow:hidden; font-family:var(--sys); flex:none;
+  --kb:1; --kc:1; --kf:1; --kt:1; --kbx:1; --kcx:1; }
+.dev.folded { width:466px; height:678px; }
+.dev.open { width:951px; height:669px; }
+/* The large phone: no size is written for it (layout.json says null, the brief gives none, and the HIG layout page read
+   2026-11-21 no longer lists device sizes). Drawn at the folded size as a stand-in; drag the corner to try other sizes. */
+.dev.phone { width:466px; height:678px; resize:both; min-width:320px; min-height:560px; max-width:600px; max-height:960px; }
+/* AX5, the largest accessibility size (HIG typography tables, read 2026-11-21): Body 17 to 53, Caption 1 12 to 43,
+   Footnote 13 to 44, Title 2 22 to 56. --k*x is the xxxLarge cap (Body 23, Caption 1 18, Footnote 19, Title 2 28). */
+.dev.ax5 { --kb:3.118; --kc:3.583; --kf:3.385; --kt:2.545; --kbx:1.353; --kcx:1.5; }
+.scr { position:absolute; inset:0; display:flex; flex-direction:column; padding-top:var(--sat); }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center; padding:0 20px;
+  font:600 12px var(--sys); z-index:8; pointer-events:none; }
+.main { flex:1; min-height:0; display:flex; flex-direction:column; position:relative; }
+.page { position:absolute; top:0; width:455.5px; display:flex; flex-direction:column; padding-top:var(--sat); }
+.page.l { left:0; } .page.r { left:495.5px; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:7; pointer-events:none; }
+.fold span { position:absolute; top:220px; left:50%; transform:translateX(-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; white-space:nowrap; }
+.away { position:absolute; inset:0; background:var(--ink); color:var(--paper); display:grid; place-items:center; font:600 15px var(--sys); z-index:20; }
+
+/* System tab bar (folded and phone): starts at y 595 on the outer screen, 83 pt tall with the home indicator (duo-fold-and-keyboard). */
+.tabbar { flex:none; height:83px; border-top:1px solid var(--line); background:color-mix(in srgb, var(--paper) 80%, white); display:grid; grid-template-columns:repeat(4,1fr); padding:4px 8px 30px; }
+.tabbar button, .duobar button { all:unset; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font:500 10px var(--sys); color:var(--inkSoft); cursor:pointer; position:relative; min-height:44px; }
+.tabbar button.on, .duobar button.on { color:var(--accent); }
+.tabbar svg, .duobar svg { width:24px; height:24px; }
+.badge { position:absolute; top:0; left:calc(50% + 6px); min-width:18px; height:18px; border-radius:9px; background:var(--red); color:#fff; font:600 11px/18px var(--sys); text-align:center; padding:0 5px; }
+/* The Duo tab bar under the right page (DuoSpine.DuoBar): 64 pt pill, 24 pt in, 12 pt up. Hidden while the keys are up (ruled 15:34 CDT). */
+.duobar { position:absolute; left:519.5px; width:407.5px; top:593px; height:64px; border:1px solid var(--line); border-radius:32px; z-index:6;
+  background:color-mix(in srgb, var(--paper) 70%, transparent); box-shadow:0 4px 16px var(--shadow); display:grid; grid-template-columns:repeat(4,1fr); padding:4px; gap:4px; }
+.duobar button { border-radius:28px; font:12px var(--cochin); }
+.duobar button.on { background:color-mix(in srgb, var(--card) 90%, transparent); }
+
+/* System keys. iOS chrome, not an app colour, so these greys sit outside the tokens. Folded: the 289 pt reading (with the
+   suggestion bar), drawn from the frame top, since no drawn top was read on the outer screen. Open: drawn from y 405. */
+.kb { flex:none; height:289px; background:#D2D0D6; padding:6px 3px 30px; display:flex; flex-direction:column; gap:8px; z-index:6; }
+.dev.open .kb { position:absolute; left:0; right:0; top:405px; bottom:0; height:auto; padding:8px 6px 20px; }
+.kb .sugg { height:36px; display:flex; justify-content:space-around; align-items:center; font:15px var(--sys); color:#333; border-bottom:1px solid #BDBBC2; }
+.kb .krow { display:flex; gap:6px; justify-content:center; }
+.kb button { all:unset; height:42px; flex:0 0 40px; background:#fff; border-radius:6px; display:grid; place-items:center; font:18px var(--sys); color:#111; cursor:pointer; box-shadow:0 1px 0 #8E8C93; }
+.dev.open .kb button { flex-basis:42px; }
+.kb button.w { flex-basis:auto; flex-grow:1; max-width:300px; font-size:14px; }
+.kb button.f { flex-basis:auto; padding:0 10px; font-size:14px; background:#ADB3BC; }
+
+/* ---------------- app content ---------------- */
+.cz { font-family:var(--cochin); }
+.nav { flex:none; display:flex; align-items:center; gap:8px; padding:4px 16px 0; min-height:52px; }
+.nav h3 { margin:0; font:700 calc(22px * var(--kt)) / 1.15 var(--cochin); flex:1; min-width:0; }
+.nav .cnt { font:calc(12px * var(--kc)) var(--mono); color:var(--inkSoft); }
+.mini { all:unset; box-sizing:border-box; font:calc(13px * var(--kcx)) var(--mono); border:1px solid var(--line); background:var(--card); border-radius:5px; padding:8px 12px; color:var(--ink);
+  white-space:nowrap; cursor:pointer; min-height:44px; display:inline-flex; align-items:center; justify-content:center; text-align:center; }
+.mini.fill { background:var(--accent); border-color:var(--accent); color:var(--card); font-weight:700; }
+.mini.wide { flex:1; }
+.mini:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.today { flex:none; padding:0 16px 4px; font:calc(12px * var(--kc)) / 1.3 var(--mono); color:var(--inkSoft); }
+.today b { color:var(--ink); }
+.ans { flex:1; min-height:0; overflow-y:auto; padding:8px 16px 12px; display:flex; flex-direction:column; gap:8px; }
+.micro { font:calc(11px * var(--kc)) / 1.3 var(--mono); letter-spacing:1.2px; text-transform:uppercase; color:var(--inkSoft); }
+.hint { font:calc(14px * var(--kb)) / 1.35 var(--cochin); color:var(--inkSoft); margin:0; }
+.head { flex:none; padding:8px 16px; border-bottom:1px solid var(--line); background:var(--paper); display:flex; flex-direction:column; gap:4px; }
+.who { font:700 calc(22px * var(--kt)) / 1.2 var(--cochin); }
+.meta { font:calc(11px * var(--kc)) / 1.35 var(--mono); color:var(--inkSoft); display:flex; flex-wrap:wrap; justify-content:space-between; gap:4px 8px; }
+.meta .owe { color:var(--red); font-weight:700; }
+.meta .owe em { font:calc(12px * var(--kb)) var(--cochin); font-style:normal; color:var(--inkSoft); font-weight:400; margin-right:4px; }
+.meta .whole { color:var(--ink); font-weight:700; }
+.dev.ax5 .head .micro, .dev.ax5 .head .meta { display:none; } /* owner item 105 a: from AX3 up the head shows the seller only */
+.lines { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; flex:none; }
+.line { position:relative; display:flex; gap:8px; padding-left:4px; border-top:1px solid var(--line); background:var(--card); }
+.line:first-child { border-top:0; }
+.line .box { all:unset; flex:0 0 45px; height:45px; display:grid; place-items:center; cursor:pointer; }
+.line .box:focus-visible { outline:2px solid var(--accent); }
+.line .box i { width:30px; height:30px; border:2px solid var(--inkSoft); border-radius:8px; display:block; position:relative; }
+.line .t { flex:1; min-width:0; padding:12px 12px 12px 0; display:flex; flex-direction:column; gap:4px; }
+.line .t b { font:600 calc(14px * var(--kb)) / 1.25 var(--cochin); display:flex; justify-content:space-between; gap:8px; }
+.line .t b span { font:400 calc(12px * var(--kc)) var(--mono); color:var(--inkSoft); }
+.line .t small { font:calc(11.5px * var(--kf)) / 1.3 var(--cochin); color:var(--inkSoft); }
+.line .t small em { font-style:normal; color:var(--manilaInk); font-weight:700; }
+.line .ro { font:700 calc(12px * var(--kc)) var(--mono); color:var(--manilaInk); }
+.line.done { background:var(--greenSoft); }
+.line.done .t b { color:var(--inkSoft); }
+.line.done .box i { background:var(--green); border-color:var(--green); }
+.line.done .box i::after { content:""; position:absolute; left:8px; top:3px; width:8px; height:14px; border:solid var(--card); border-width:0 3px 3px 0; transform:rotate(45deg); }
+.line.now::after { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent); } /* owner item 77 a */
+.line.held { background:color-mix(in srgb, var(--manila) 55%, var(--card)); } /* part 5, carried over */
+.notice { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:2px; flex:none; }
+.notice .micro { color:var(--manilaInk); }
+.notice b { font:700 calc(15px * var(--kb)) var(--cochin); } .notice small { font:calc(12.5px * var(--kf)) var(--cochin); }
+.tie { display:flex; flex-direction:column; gap:8px; }
+.tcard { padding:12px; background:var(--card); border:1px solid var(--line); border-radius:8px; display:flex; flex-direction:column; gap:2px; }
+.tcard b { font:700 calc(15px * var(--kb)) var(--cochin); } .tcard small { font:calc(11px * var(--kc)) var(--mono); color:var(--inkSoft); }
+.note { font:calc(13px * var(--kf)) / 1.35 var(--cochin); color:var(--inkSoft); margin:0; }
+/* The Post bar (owner items 103 b, 104 a): hairline, 4, the 44 pt button, 4 = 53 pt. Capped at xxxLarge. */
+.postbar { flex:none; border-top:1px solid var(--line); background:color-mix(in srgb, var(--manila) 50%, var(--paper)); padding:4px 16px; min-height:53px; display:flex; align-items:center; }
+.postbar .rc { font:calc(12px * var(--kcx)) var(--mono); color:var(--manilaInk); display:flex; gap:12px; align-items:center; min-height:44px; }
+.postbar .rc span:first-child { font:calc(13px * var(--kcx)) var(--cochin); color:var(--ink); }
+.dock { flex:none; padding:8px 16px 8px; display:flex; flex-direction:column; gap:8px; border-top:1px solid var(--line); background:var(--paper); }
+.page .dock { border-top:0; padding-top:0; }
+.field { min-height:48px; border:1px solid var(--line); background:var(--card); border-radius:8px; padding:0 8px 0 12px; display:flex; align-items:center; gap:8px; flex:none; }
+.field input { all:unset; flex:1; min-width:0; font:calc(16px * var(--kb)) var(--cochin); color:var(--ink); min-height:46px; }
+.field input::placeholder { color:var(--inkSoft); }
+.chip { font:calc(12px * var(--kcx)) var(--mono); color:var(--manilaInk); background:var(--manila); border-radius:5px; padding:4px 8px; white-space:nowrap; }
+.envrow { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; min-height:44px; }
+.envrow .what { display:flex; flex-direction:column; min-width:0; padding-top:2px; }
+.envrow .what span:first-child { font:calc(14px * var(--kb)) / 1.25 var(--cochin); color:var(--inkSoft); }
+.envrow .what span:last-child { font:calc(14px * var(--kb)) / 1.3 var(--cochin); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.envrow .what span.none { color:var(--inkSoft); font-style:italic; }
+.matches { display:flex; flex-direction:column; flex:none; max-height:132px; overflow-y:auto; }
+.match { all:unset; min-height:44px; display:flex; align-items:center; font:calc(14px * var(--kb)) var(--cochin); padding-left:10px; position:relative; cursor:pointer; }
+.match.soft { color:var(--inkSoft); }
+.match.on { font-weight:700; color:var(--ink); } .match.on::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent); }
+.acts { display:flex; gap:8px; }
+.tbox { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px; background:var(--card); border:1px solid var(--line); border-radius:8px; flex:none; }
+.tbox span { font:calc(14px * var(--kb)) var(--cochin); } .tbox small { display:block; color:var(--red); font:calc(12.5px * var(--kf)) var(--cochin); }
+.aside-cta { display:flex; flex-direction:column; gap:8px; padding:12px; border:1px dashed var(--manilaInk); border-radius:8px; }
+
+/* ---------------- the pile (concept "The pile") ---------------- */
+.strip { flex:none; padding:4px 16px 8px; display:flex; align-items:flex-end; justify-content:space-between; gap:12px; }
+.envs { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; min-width:0; }
+.bundle { display:flex; gap:4px; align-items:flex-end; padding-bottom:2px; border-bottom:2px solid var(--line); }
+/* One envelope of the pile: a drawn envelope, by state. Shape and a mark carry the state too, not colour alone:
+   done has a tick, short a gap, set aside a band; the strip's label speaks the counts. */
+.env { --ef:var(--card); --es:var(--inkSoft); width:34px; height:24px; flex:none; display:block; transition:transform .2s ease; }
+.env svg { width:100%; height:100%; display:block; overflow:visible; }
+.env rect { fill:var(--ef); stroke:var(--es); stroke-width:1.5; }
+.env .flap { fill:none; stroke:var(--es); stroke-width:1.5; stroke-linejoin:round; }
+.env .mk { fill:none; stroke:var(--es); stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; display:none; }
+.env.done { --ef:var(--greenSoft); --es:var(--green); } .env.done .tick { display:block; }
+.env.short { --ef:var(--redSoft); --es:var(--red); } .env.short .gap { display:block; }
+.env.aside { --ef:var(--manila); --es:var(--manilaInk); } .env.aside .band { display:block; }
+.env.now { --es:var(--accent); transform:translateY(-6px); } .env.now rect { stroke-width:2.5; }
+.env.just { animation:file .32s ease-out; }
+@keyframes file { 0% { transform:translateY(-10px) rotate(-6deg); } 100% { transform:none; } }
+.leftfig { text-align:right; flex:none; display:flex; flex-direction:column; align-items:flex-end; }
+.leftfig b { font:700 calc(34px * var(--kbx)) / 1 var(--mono); color:var(--ink); }
+.leftfig span { font:calc(12px * var(--kcx)) var(--mono); color:var(--inkSoft); }
+.pilenote { flex:none; padding:0 16px 4px; font:calc(13px * var(--kf)) var(--cochin); color:var(--inkSoft); }
+.count { display:flex; flex-direction:column; gap:12px; }
+.prow { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:56px; padding:4px 4px 4px 12px; background:var(--card); border:1px solid var(--line); border-radius:8px; }
+.prow > span { font:calc(15px * var(--kb)) var(--cochin); }
+.step { display:flex; align-items:center; gap:4px; }
+.mini { min-width:44px; }
+.step b { font:700 calc(20px * var(--kbx)) var(--mono); min-width:44px; text-align:center; }
+.bigpile { display:flex; flex-wrap:wrap; gap:16px; align-content:flex-start; }
+.bigpile .bundle { gap:6px; }
+.bigpile .env { width:52px; height:36px; }
+.lrow .env { width:26px; height:18px; transform:none; }
+.ledger { display:flex; flex-direction:column; gap:8px; }
+.lrow { display:flex; align-items:center; gap:12px; min-height:44px; padding:0 12px; background:var(--card); border:1px solid var(--line); border-radius:8px; font:calc(14px * var(--kb)) var(--cochin); }
+.lrow.now { border-color:var(--accent); box-shadow:inset 3px 0 0 var(--accent); }
+.lrow.blank { background:transparent; color:var(--inkSoft); border-style:dashed; }
+.lrow .g { margin-left:auto; font:calc(12px * var(--kc)) var(--mono); color:var(--inkSoft); }
+.lrow .g.short { color:var(--red); font-weight:700; } .lrow .g.ok { color:var(--green); }
+
+/* ---------------- end of mail day ---------------- */
+.end { display:flex; flex-direction:column; gap:12px; }
+.seal { width:132px; height:132px; border-radius:50%; align-self:center; position:relative; display:grid; place-items:center; flex:none;
+  background:radial-gradient(circle at 38% 32%, var(--waxRaised) 0, var(--waxLit) 18%, var(--wax) 46%, var(--waxDeep) 100%);
+  box-shadow:0 2px 0 var(--waxCut), 0 6px 14px rgba(28,43,36,.18); transform:rotate(-4deg); }
+.seal::before { content:""; position:absolute; inset:14px; border-radius:50%; border:2px solid color-mix(in srgb, var(--waxDeep) 70%, transparent); box-shadow:inset 0 1px 0 color-mix(in srgb, var(--waxRaised) 60%, transparent); }
+.seal span { font:700 14px/1.1 var(--cochin); letter-spacing:.5px; color:var(--card); text-align:center; text-shadow:0 1px 0 var(--waxCut); }
+.seal span b { display:block; font:700 30px/1.1 var(--mono); letter-spacing:0; }
+.seal.lands { animation:land .42s cubic-bezier(.2,.8,.3,1.2); }
+@keyframes land { 0% { transform:scale(1.5) rotate(-12deg); opacity:0; } 60% { opacity:1; } 100% { transform:scale(1) rotate(-4deg); } }
+.endh { font:700 calc(26px * var(--kt)) / 1.15 var(--cochin); margin:0; text-align:center; }
+.ends { font:calc(13px * var(--kc)) var(--mono); color:var(--inkSoft); text-align:center; margin:0; }
+.list { background:var(--card); border:1px solid var(--line); border-radius:8px; flex:none; }
+.list .lr { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 12px; min-height:52px; border-top:1px solid var(--line); }
+.list .lr:first-child { border-top:0; }
+.list .lr b { font:700 calc(14px * var(--kb)) var(--cochin); display:block; }
+.list .lr small { font:calc(11px * var(--kc)) var(--mono); color:var(--inkSoft); display:block; }
+.list .lr small.r { color:var(--red); }
+.list .lr .g { font:calc(12px * var(--kc)) var(--mono); flex:none; }
+.list .lr .g.ok { color:var(--green); } .list .lr .g.short { color:var(--red); font-weight:700; }
+.well { font:700 calc(20px * var(--kt)) var(--cochin); color:var(--green); margin:0; }
+.still { font:700 calc(12px * var(--kc)) var(--mono); color:var(--red); }
+.still.ok { color:var(--green); }
+
+/* ---------------- other tabs, drawn simply ---------------- */
+.mast { flex:none; padding:8px 24px 8px; text-align:center; border-bottom:1px solid var(--line); display:flex; flex-direction:column; gap:2px; }
+.mast .lh { font:700 calc(22px * var(--kt)) var(--cochin); letter-spacing:6px; }
+.pkg { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; flex:none; }
+.pkg.focus { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent); }
+.pkg .ph { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 12px 8px; }
+.pkg .ph b { font:700 calc(15px * var(--kb)) var(--cochin); display:block; } .pkg .ph small { font:calc(11px * var(--kc)) var(--mono); color:var(--inkSoft); }
+.pill { font:700 calc(12.5px * var(--kf)) var(--cochin); color:var(--red); background:var(--redSoft); border-radius:999px; padding:4px 8px; white-space:nowrap; }
+.pill.rcv { color:var(--green); background:transparent; border:2px solid var(--green); border-radius:4px; font:700 calc(10.5px * var(--kc)) var(--mono); letter-spacing:1px; transform:rotate(-4deg); }
+.placeholder { padding:24px 16px; font:calc(15px * var(--kb)) var(--cochin); color:var(--inkSoft); }
+.orph { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:4px; flex:none; }
+.orph b { font:700 calc(15px * var(--kb)) var(--cochin); } .orph small { font:calc(11px * var(--kc)) var(--mono); color:var(--inkSoft); }
+.orph p { margin:0; font:calc(12.5px * var(--kf)) var(--cochin); color:var(--manilaInk); }
+.trow { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:4px; flex:none; }
+.trow .tt { display:flex; justify-content:space-between; font:700 calc(15px * var(--kb)) var(--cochin); }
+.trow .tt span { font:700 calc(12px * var(--kc)) var(--mono); }
+.trow small { font:calc(11px * var(--kc)) var(--mono); color:var(--inkSoft); } .trow small.r { color:var(--red); }
+
+/* Tags: a dashed outline on what exists today, and on what a concept adds. "Hide tags" removes them. */
+[data-tag] { position:relative; }
+.tags-on [data-tag] { outline:2px dashed var(--new); outline-offset:-2px; }
+.tags-on [data-tag^="Today"] { outline-color:var(--today); }
+.tags-on [data-tag]::after { content:attr(data-tag); position:absolute; right:4px; top:2px; font:600 11px/14px var(--sys); padding:0 4px; background:var(--paper); color:var(--new); z-index:9; white-space:nowrap; pointer-events:none; }
+.tags-on [data-tag^="Today"]::after { color:var(--today); }
+.tags-on .mini[data-tag]::after { content:none; }  /* a button's tag would cover its label: the outline stays, the name is in its tooltip */
+.tags-on [data-tagpos="tl"]::after { right:auto; left:16px; }
+/* AX5: the head and the answer scroll as one; the Post bar and the dock stay pinned over the foot. */
+.dev.ax5 .main { overflow-y:auto; }
+.dev.ax5 .main > .ans { flex:none; overflow:visible; }
+.dev.ax5 .main > .dock { position:sticky; bottom:0; z-index:3; margin-top:auto; }
+.dev.ax5 .main > .postbar { position:sticky; bottom:var(--dockh, 0px); z-index:3; }
+.dev.ax5 .envrow .what span, .dev.ax5 .pilenote { font-size:calc(14px * var(--kbx)); }
+
+@media (prefers-reduced-motion: reduce) { .seal.lands, .env.just { animation:none; } .env { transition:none; } }
+@media (max-width: 520px) { main.doc { padding:16px; } .frames { gap:16px; } }
+</style>
+</head>
+<body class="tags-on">
+<main class="doc">
+  <div class="banner" role="note">Sample. No seller, order, card, price or count on this page is real.</div>
+  <header style="display:flex;flex-direction:column;gap:8px">
+    <h1>Mail day, from the pile to done</h1>
+    <p class="sub"><span class="kind">Designer kind: informed.</span> Designer mail-day-flow-informed-1. Two concepts, each drawn on the folded Duo, the open Duo, a large phone and the folded Duo at AX5. In each concept the four frames share one state: a tap in any frame moves all four, so folding or unfolding keeps your place. Light theme only, as the native app ships. Notes: <code>mail-day-flow-informed-1-notes.md</code>.</p>
+    <p class="sub">Tags: a red dashed outline marks what exists today ("Today: ..."); a green one marks what the concept adds ("New: ..."). On a button the name is in its tooltip. Every tap works; type with your own keys, the drawn keys, or the "Type a card" buttons. "Leave the app and come back" and a page reload both keep your place.</p>
+    <div class="row">
+      <a class="ctl" href="#c=hand">Hand on every screen</a>
+      <a class="ctl" href="#c=pile">The pile</a>
+      <button class="ctl" id="tags-btn" aria-pressed="true">Tags shown</button>
+      <button class="ctl x" id="unhide">Show hidden options</button>
+    </div>
+  </header>
+
+  <section class="concept" id="concept-hand" data-c="hand">
+    <div class="row" style="justify-content:space-between">
+      <h2>Hand on every screen</h2>
+      <button class="ctl x" data-hide="concept-hand">Hide this concept</button>
+    </div>
+    <p class="lede">Today's structure, with the gaps closed. Card in Hand opens on one page too, so the folded phone in one hand does the whole day. Its state outlives Close, a fold, a tab change and leaving the app. A count line says what today has done. A card no envelope holds goes to Orphaned with one press. Day's End shows the day and anything odd. The pile in your hand says how much is left; the app does not count it.</p>
+    <div class="opts">
+      <div class="row"><span class="lbl">States</span><span class="row" data-states></span></div>
+      <div class="row"><span class="lbl">Type a card</span><span class="row" data-types></span></div>
+      <div class="row" data-opt-group="hand-end"><span class="lbl">Day's end opens by</span>
+        <span class="row" data-opt="hand-end-control"><button class="ctl" data-optset="endBy" data-val="control">A Day's End control</button><button class="ctl x" data-hideopt="hand-end-control" aria-label="Hide the Day's End control option">Hide</button></span>
+        <span class="row" data-opt="hand-end-empty"><button class="ctl" data-optset="endBy" data-val="empty">The empty field</button><button class="ctl x" data-hideopt="hand-end-empty" aria-label="Hide the empty field option">Hide</button></span>
+      </div>
+      <div class="row"><span class="lbl">Place</span><button class="ctl" data-leave>Leave the app and come back</button><button class="ctl x" data-reset>Start over</button></div>
+    </div>
+    <div class="frames" data-frames>
+      <figure id="hand-folded"><div class="scroller"><div class="dev folded" data-device="iphone-duo-folded" data-dev="folded" role="group" aria-label="Duo, folded"></div></div><figcaption><b>Duo, folded.</b> Outer screen, 466 x 678 pt (duo-fold-and-keyboard). One page, in one hand.</figcaption></figure>
+      <figure id="hand-open"><div class="scroller"><div class="dev open" data-device="iphone-duo-unfolded" data-dev="open" role="group" aria-label="Duo, open"></div></div><figcaption><b>Duo, open.</b> Inner screen, 951 x 669 pt. Query on the left page, the answer on the right. Nothing sits across x 455.5 to 495.5 but the system keys.</figcaption></figure>
+      <figure id="hand-phone"><div class="scroller"><div class="dev phone" data-device="iphone-regular" data-dev="phone" role="group" aria-label="Large phone"></div></div><figcaption><b>Large phone.</b> No size is written for it: drawn at the folded size as a stand-in. Drag the corner to resize; the layout follows.</figcaption></figure>
+      <figure id="hand-ax5"><div class="scroller"><div class="dev folded ax5" data-device="iphone-duo-folded" data-dev="ax5" role="group" aria-label="Duo, folded, AX5"></div></div><figcaption><b>Duo, folded, AX5.</b> The largest accessibility size. Words scale with their text style; the Post bar and the dock buttons stop at xxxLarge, as the Post bar ruling does.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="concept" id="concept-pile" data-c="pile">
+    <div class="row" style="justify-content:space-between">
+      <h2>The pile</h2>
+      <button class="ctl x" data-hide="concept-pile">Hide this concept</button>
+    </div>
+    <p class="lede">The bold one. Mail day becomes one run with a start, a middle and an end. You count the small piles first. A row of envelopes shows the pile and shrinks as you go. Each envelope ends with Next Envelope or Set Aside, so the count of what is left is always true. The last envelope lands a wax seal, and under it a short list of anything to come back to. Card in Hand still does the matching inside each envelope, as ruled.</p>
+    <div class="opts">
+      <div class="row"><span class="lbl">States</span><span class="row" data-states></span></div>
+      <div class="row"><span class="lbl">Type a card</span><span class="row" data-types></span></div>
+      <div class="row" data-opt-group="pile-count"><span class="lbl">Count by</span>
+        <span class="row" data-opt="pile-count-piles"><button class="ctl" data-optset="countBy" data-val="piles">Small piles</button><button class="ctl x" data-hideopt="pile-count-piles" aria-label="Hide the small piles option">Hide</button></span>
+        <span class="row" data-opt="pile-count-one"><button class="ctl" data-optset="countBy" data-val="one">One count</button><button class="ctl x" data-hideopt="pile-count-one" aria-label="Hide the one count option">Hide</button></span>
+      </div>
+      <div class="row"><span class="lbl">Place</span><button class="ctl" data-leave>Leave the app and come back</button><button class="ctl x" data-reset>Start over</button></div>
+    </div>
+    <div class="frames" data-frames>
+      <figure id="pile-folded"><div class="scroller"><div class="dev folded" data-device="iphone-duo-folded" data-dev="folded" role="group" aria-label="Duo, folded"></div></div><figcaption><b>Duo, folded.</b> Outer screen, 466 x 678 pt (duo-fold-and-keyboard). One page, in one hand.</figcaption></figure>
+      <figure id="pile-open"><div class="scroller"><div class="dev open" data-device="iphone-duo-unfolded" data-dev="open" role="group" aria-label="Duo, open"></div></div><figcaption><b>Duo, open.</b> Inner screen, 951 x 669 pt. Query on the left page, the answer on the right. Nothing sits across x 455.5 to 495.5 but the system keys.</figcaption></figure>
+      <figure id="pile-phone"><div class="scroller"><div class="dev phone" data-device="iphone-regular" data-dev="phone" role="group" aria-label="Large phone"></div></div><figcaption><b>Large phone.</b> No size is written for it: drawn at the folded size as a stand-in. Drag the corner to resize; the layout follows.</figcaption></figure>
+      <figure id="pile-ax5"><div class="scroller"><div class="dev folded ax5" data-device="iphone-duo-folded" data-dev="ax5" role="group" aria-label="Duo, folded, AX5"></div></div><figcaption><b>Duo, folded, AX5.</b> The largest accessibility size. Words scale with their text style; the Post bar and the dock buttons stop at xxxLarge, as the Post bar ruling does.</figcaption></figure>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+/* ---------- sample data: the ledger's own shapes (packages-group-by-order-seller; item key orderId|itemNumber|vendorProductId) ---------- */
+const TODAY = "2026-11-21";
+const PKGS = [
+  { orderId:"2611-H6A0", seller:"Kestrel Cards", date:"2026-11-17", tracking:"Without Tracking", items:[
+    { n:1, v:"51102", name:"Thought Vessel", set:"Commander Legends", cond:"Near Mint", qty:1, price:0.60 } ] },
+  { orderId:"2611-E922", seller:"Harbor & Hex", date:"2026-11-15", tracking:"Without Tracking", items:[
+    { n:1, v:"50710", name:"Cultivate", set:"Core Set 2021", cond:"Near Mint", qty:1, price:0.45 },
+    { n:2, v:"50733", name:"Kodama's Reach", set:"Champions of Kamigawa", cond:"Lightly Played", qty:1, price:0.35 } ] },
+  { orderId:"2611-C3D9", seller:"Brightwater TCG", date:"2026-11-14", tracking:"Without Tracking", items:[
+    { n:1, v:"50077", name:"Lightning Bolt", set:"Magic 2011", cond:"Near Mint", qty:4, price:0.35 } ] },
+  { orderId:"2611-B07E", seller:"Tinpot Cards", date:"2026-11-13", tracking:"Without Tracking", items:[
+    { n:1, v:"50212", name:"Arcane Signet", set:"Wilds of Eldraine Commander", cond:"Near Mint", qty:1, price:0.79 },
+    { n:2, v:"50555", name:"Swords to Plowshares", set:"Double Masters", cond:"Near Mint", qty:1, price:1.95 } ] },
+  { orderId:"2611-A41C", seller:"Low Tide Games", date:"2026-11-12", tracking:"Without Tracking", items:[
+    { n:1, v:"50211", name:"Arcane Signet", set:"Commander Masters", cond:"Near Mint", qty:1, price:0.89 },
+    { n:2, v:"50388", name:"Command Tower", set:"Commander Legends", cond:"Near Mint", qty:2, price:0.25 },
+    { n:3, v:"50442", name:"Sol Ring", set:"Commander Masters", cond:"Lightly Played", qty:1, price:1.49 } ] },
+  { orderId:"2611-D58F", seller:"Mossgate Collectibles", date:"2026-11-11", tracking:"Without Tracking", items:[
+    { n:1, v:"50901", name:"Brainstorm", set:"Masters 25", cond:"Near Mint", qty:2, price:0.30 },
+    { n:2, v:"50902", name:"Counterspell", set:"Dominaria Remastered", cond:"Near Mint", qty:1, price:0.65 },
+    { n:3, v:"50903", name:"Ponder", set:"Magic 2012", cond:"Near Mint", qty:1, price:0.40 } ] },
+  { orderId:"2611-F114", seller:"Old Mill Cards", date:"2026-11-02", tracking:"Without Tracking", items:[
+    { n:1, v:"50620", name:"Farseek", set:"Magic 2013", cond:"Near Mint", qty:1, price:0.55 },
+    { n:2, v:"50621", name:"Rampant Growth", set:"Commander 2021", cond:"Near Mint", qty:1, price:0.30 } ] },
+  { orderId:"2610-G280", seller:"Fernwood Games", date:"2026-10-19", tracking:"Without Tracking", items:[
+    { n:1, v:"49890", name:"Path to Exile", set:"Double Masters", cond:"Near Mint", qty:1, price:2.10 } ] },
+].map(p => ({ ...p, gk:`${p.orderId}::${p.seller}`, items:p.items.map(i => ({ ...i, key:`${p.orderId}|${i.n}|${i.v}` })) }));
+const OLD_ENVELOPES = [{ id:"env-1118", created:"2026-11-18", names:["Birds of Paradise"] }];
+const TYPES = ["Sol Ring", "Arcane Signet", "Lightning Bolt", "Brainstorm", "Counterspell", "Llanowar Elves", "Cultivate", "Kodama's Reach", "arc"];
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+const norm = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+const money = v => `$${v.toFixed(2)}`;
+const days = d => Math.floor((Date.parse(TODAY) - Date.parse(d)) / 864e5);
+const pkgOf = gk => PKGS.find(p => p.gk === gk);
+const got = (S, it) => Math.min(it.qty, S.rec[it.key] || 0);
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+function pill(S, p) { let l = 0, v = 0; for (const i of p.items) { const o = i.qty - got(S, i); l += o; v += o * i.price; } return l > 0 ? { left:l, text:`${l} left · ${money(v)}` } : null; }
+function transitRows(S) {   /* pastTransit: untracked, unstamped, still owing, 14 days or more from the order date */
+  return PKGS.filter(p => pill(S, p) && !S.stamps[p.gk] && days(p.date) >= 14).map(p => {
+    const d = days(p.date); const cb = new Date(Date.parse(p.date) + 30 * 864e5).toISOString().slice(0, 10);
+    return { p, d, tier: d >= 30 ? "deadline" : "maybe", claimBy: cb };
+  }).sort((a, b) => a.d - b.d);
+}
+function missing(S) { let l = 0, v = 0; for (const p of PKGS) for (const i of p.items) { const o = i.qty - got(S, i); l += o; v += o * i.price; } return { l, v }; }
+
+/* ---------- state: one per concept, shared by its four frames ---------- */
+function fresh(c) {
+  return { c, tab:"packages", open:false, sub:null, back:null, focusGk:null, rec:{}, inToday:0, stamps:{},
+    query:"", matchNames:[], holdList:null, chosen:null, held:null, strays:[], hits:[], shown:null, offer:null, receipt:null,
+    cur:{ gk:null, names:{} }, log:[], asides:[], keys:false, focusPose:null, dayEnd:false,
+    phase: c === "pile" ? "count" : null, piles:[4, 2], pileIdx:0, doneInPile:0, counted:true,
+    endBy:"control", countBy:"piles", justEnded:false, justFiled:-1, away:false };
+}
+const STORE = c => `mail-day-flow-informed-1:${c}`;
+function save(S) { try { localStorage.setItem(STORE(S.c), JSON.stringify({ ...S, justEnded:false, justFiled:-1, away:false })); } catch (e) {} }
+function load(c) { try { const t = localStorage.getItem(STORE(c)); if (t) return { ...fresh(c), ...JSON.parse(t) }; } catch (e) {} return null; }
+
+/* Typing reads, as HandModel.type and rules.js handStep do: nothing is saved, a shared exact name is held. */
+function read(S) {
+  S.receipt = null; S.offer = null;
+  const q = S.query.trim().toLowerCase(), nq = norm(S.query);
+  if (!nq) { S.hits = []; S.shown = null; S.matchNames = []; return; }
+  const open = [];
+  for (const p of PKGS) for (const i of p.items) if (got(S, i) < i.qty) open.push({ p, i });
+  const hay = ({ p, i }) => [i.name, i.set, p.seller, p.orderId].join(" ").toLowerCase().includes(q);
+  const hitP = [...new Set(open.filter(hay).map(o => o.p.gk))];
+  const names = [...new Set(open.filter(o => o.i.name.toLowerCase().includes(q)).map(o => o.i.name))];
+  if (!S.holdList) S.matchNames = names;
+  const exact = names.find(n => norm(n) === nq);
+  let hits = hitP;
+  if (exact) {
+    const f = [...new Set(open.filter(o => norm(o.i.name) === nq).map(o => o.p.gk))];
+    hits = f;
+    const d = S.held ? norm(S.held) : null;
+    if (!d || d === nq) { if (f.length >= 2) S.held = exact; }
+    else if (f.length === 1) {
+      const m = pkgOf(f[0]);
+      if (m.items.some(i => norm(i.name) === d && got(S, i) < i.qty)) S.offer = { gk:m.gk, names:[S.held, exact] };
+    }
+  }
+  S.hits = hits;
+  S.shown = hits.length === 1 ? hits[0] : null;
+}
+function tapLine(S, key) {
+  for (const p of PKGS) for (const i of p.items) if (i.key === key) {
+    const g = got(S, i); const ng = g >= i.qty ? 0 : i.qty;
+    if (ng) S.rec[key] = ng; else delete S.rec[key];
+    S.inToday += ng - g; S.cur.gk = p.gk; S.cur.names[i.name] = (S.cur.names[i.name] || 0) + (ng - g);
+    if (S.cur.names[i.name] <= 0) delete S.cur.names[i.name];
+    if (S.offer && S.offer.gk === p.gk && !p.items.some(x => norm(x.name) === norm(S.held) && got(S, x) < x.qty)) S.offer = null;
+  }
+}
+function post(S) {
+  const o = S.offer; if (!o) return; const p = pkgOf(o.gk); let n = 0;
+  for (const nm of o.names) { const it = p.items.find(i => norm(i.name) === norm(nm) && got(S, i) < i.qty); if (it) { S.rec[it.key] = got(S, it) + 1; n++; S.inToday++; S.cur.names[it.name] = (S.cur.names[it.name] || 0) + 1; } }
+  S.cur.gk = p.gk; S.strays = S.strays.filter(s => !o.names.some(x => norm(x) === norm(s)));
+  S.held = null; S.offer = null; S.holdList = null; S.chosen = null;
+  S.receipt = { gk:p.gk, line:`${plural(n, "card")} checked in · 1 was held` };
+}
+function endEnvelope(S, kind) {
+  let entry;
+  if (kind === "aside") entry = { kind:"aside", names:S.asides[S.asides.length - 1].names };
+  else if (S.cur.gk) {
+    const p = pkgOf(S.cur.gk); const g = Object.values(S.cur.names).reduce((a, b) => a + b, 0);
+    const short = p.items.filter(i => got(S, i) < i.qty).map(i => ({ name:i.name, n:i.qty - got(S, i) }));
+    entry = { kind:"in", gk:p.gk, seller:p.seller, got:g, qty:p.items.reduce((a, i) => a + i.qty, 0), short, pill:(pill(S, p) || {}).text || null };
+  } else entry = S.c === "pile" ? { kind:"empty" } : null;
+  if (S.held && kind !== "aside") { if (!S.strays.includes(S.held)) S.strays.push(S.held); }
+  S.held = null;
+  if (entry) { S.log.push(entry); S.justFiled = S.log.length - 1; }
+  S.query = ""; S.hits = []; S.shown = null; S.offer = null; S.receipt = null; S.matchNames = []; S.holdList = null; S.chosen = null;
+  S.cur = { gk:null, names:{} };
+  if (S.c === "pile" && entry) {
+    S.doneInPile++;
+    const size = S.countBy === "one" ? S.piles.reduce((a, b) => a + b, 0) : S.piles[S.pileIdx];
+    if (S.counted && S.doneInPile >= size) {
+      const done = S.pileIdx + 1;
+      S.pileIdx = S.countBy === "one" ? S.piles.length : S.pileIdx + 1; S.doneInPile = 0;
+      if (S.pileIdx >= S.piles.length) { S.phase = "end"; S.justEnded = true; S.keys = false; }
+      else S.receipt = { pile:done, line:`${plural(size, "envelope")} · ${leftCount(S)} to go` };
+    }
+  }
+}
+function setAside(S) {
+  const names = [S.query.trim() && (S.matchNames.find(n => norm(n) === norm(S.query)) || S.query.trim()), S.held].filter(Boolean);
+  const uniq = [...new Set(names)];
+  S.asides.push({ id:`env-${TODAY}-${S.asides.length + 1}`, created:TODAY, names:uniq.length ? uniq : ["(no card typed)"] });
+  endEnvelope(S, "aside");
+}
+function totalPile(S) { return S.piles.reduce((a, b) => a + b, 0); }
+function doneCount(S) { return S.log.length; }
+function leftCount(S) { return S.counted ? Math.max(0, totalPile(S) - doneCount(S)) : null; }
+
+/* ---------- presets: the deep-linked states ---------- */
+function typeIn(S, t) { S.query = t; S.holdList = null; S.chosen = null; read(S); }
+function tapName(S, name) { const it = PKGS.flatMap(p => p.items.map(i => ({ p, i }))).find(o => o.i.name === name && o.p.gk === S.shown); if (it) tapLine(S, it.i.key); }
+const PRESETS = {
+  hand: {
+    start: S => {},
+    typing: S => { S.open = true; S.keys = true; S.focusPose = "folded"; typeIn(S, "arc"); },
+    envelope: S => { S.open = true; typeIn(S, "Sol Ring"); tapName(S, "Sol Ring"); },
+    tie: S => { S.open = true; typeIn(S, "Arcane Signet"); },
+    post: S => { S.open = true; typeIn(S, "Arcane Signet"); typeIn(S, "Sol Ring"); },
+    nomatch: S => { PRESETS.hand.post(S); post(S); endEnvelope(S); typeIn(S, "Llanowar Elves"); },
+    end: S => { dayRun(S); S.dayEnd = true; },
+    well: S => { wellRun(S); S.dayEnd = true; },
+    orphaned: S => { dayRun(S); S.tab = "orphaned"; },
+    transit: S => { S.open = true; S.sub = "transit"; S.back = null; },
+  },
+  pile: {
+    start: S => {},
+    count: S => { S.open = true; },
+    work: S => { S.phase = "work"; S.open = true; typeIn(S, "Sol Ring"); tapName(S, "Sol Ring"); tapName(S, "Command Tower"); },
+    tie: S => { S.phase = "work"; S.open = true; typeIn(S, "Arcane Signet"); },
+    post: S => { S.phase = "work"; S.open = true; typeIn(S, "Arcane Signet"); typeIn(S, "Sol Ring"); },
+    "pile-done": S => { S.phase = "work"; S.open = true; pileRun(S, 4); },
+    nomatch: S => { S.phase = "work"; S.open = true; pileRun(S, 4); typeIn(S, "Llanowar Elves"); },
+    "no-count": S => { S.phase = "work"; S.open = true; S.counted = false; typeIn(S, "Lightning Bolt"); },
+    end: S => { S.phase = "work"; S.open = true; pileRun(S, 6); S.justEnded = false; },
+    well: S => { S.phase = "work"; S.open = true; S.piles = [3]; wellRun(S); S.justEnded = false; },
+    resume: S => { S.phase = "work"; S.open = true; pileRun(S, 2); S.open = false; },
+  }
+};
+function checkAll(S, gk, skip) { const p = pkgOf(gk); for (const i of p.items) if (got(S, i) < i.qty && i.name !== skip) tapLine(S, i.key); }
+function dayRun(S) {   /* the sample day: six envelopes, one short, one with no sender */
+  S.open = true;
+  typeIn(S, "Arcane Signet"); typeIn(S, "Sol Ring"); post(S); checkAll(S, "2611-A41C::Low Tide Games"); endEnvelope(S);
+  typeIn(S, "Swords to Plowshares"); checkAll(S, "2611-B07E::Tinpot Cards"); endEnvelope(S);
+  typeIn(S, "Lightning Bolt"); checkAll(S, "2611-C3D9::Brightwater TCG"); endEnvelope(S);
+  typeIn(S, "Brainstorm"); checkAll(S, "2611-D58F::Mossgate Collectibles", "Ponder"); endEnvelope(S);
+  typeIn(S, "Llanowar Elves"); setAside(S);
+  typeIn(S, "Cultivate"); checkAll(S, "2611-E922::Harbor & Hex"); endEnvelope(S);
+}
+function pileRun(S, n) {
+  const steps = [
+    () => { typeIn(S, "Arcane Signet"); typeIn(S, "Sol Ring"); post(S); checkAll(S, "2611-A41C::Low Tide Games"); endEnvelope(S); },
+    () => { typeIn(S, "Swords to Plowshares"); checkAll(S, "2611-B07E::Tinpot Cards"); endEnvelope(S); },
+    () => { typeIn(S, "Lightning Bolt"); checkAll(S, "2611-C3D9::Brightwater TCG"); endEnvelope(S); },
+    () => { typeIn(S, "Brainstorm"); checkAll(S, "2611-D58F::Mossgate Collectibles", "Ponder"); endEnvelope(S); },
+    () => { typeIn(S, "Llanowar Elves"); setAside(S); },
+    () => { typeIn(S, "Cultivate"); checkAll(S, "2611-E922::Harbor & Hex"); endEnvelope(S); },
+  ];
+  for (let k = 0; k < n; k++) steps[k]();
+}
+function wellRun(S) {   /* a day with nothing odd: three whole envelopes, nothing late */
+  S.open = true; S.stamps = { "2611-F114::Old Mill Cards":"Seller contacted", "2610-G280::Fernwood Games":"Claim filed" };
+  typeIn(S, "Swords to Plowshares"); checkAll(S, "2611-B07E::Tinpot Cards"); endEnvelope(S);
+  typeIn(S, "Lightning Bolt"); checkAll(S, "2611-C3D9::Brightwater TCG"); endEnvelope(S);
+  typeIn(S, "Cultivate"); checkAll(S, "2611-E922::Harbor & Hex"); endEnvelope(S);
+}
+
+/* ---------- small renderers shared by both concepts ---------- */
+const ICON = {
+  ledger:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>',
+  orphaned:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="6" width="18" height="13" rx="1.5"/><path d="m3 7 9 6 9-6"/></svg>',
+  tally:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 4 7 20M17 4l-2 16M4 9h16M3 15h16"/></svg>',
+  packages:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/></svg>',
+};
+const TABS = [["ledger","Ledger"],["orphaned","Orphaned"],["tally","Tally"],["packages","Packages"]];
+function tabs(S, cls) {
+  const badge = OLD_ENVELOPES.length + S.asides.length;
+  return `<nav class="${cls}" aria-label="Tabs">${TABS.map(([id, t]) => `<button class="${S.tab === id ? "on" : ""}" data-act="tab" data-arg="${id}" aria-label="${t}${id === "orphaned" ? `, ${badge} waiting` : ""}">${ICON[id]}<span>${t}</span>${id === "orphaned" ? `<span class="badge">${badge}</span>` : ""}</button>`).join("")}</nav>`;
+}
+function keys(S) {
+  const r = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
+  return `<div class="kb" aria-label="System keys, drawn">${S.c && S.matchNames.length && S.query ? `<div class="sugg">${S.matchNames.slice(0, 3).map(n => `<span>${esc(n)}</span>`).join("")}</div>` : `<div class="sugg"><span></span></div>`}
+    ${r.map((row, ix) => `<div class="krow">${ix === 2 ? `<button class="f" data-act="key" data-arg="shift" aria-label="Shift">⇧</button>` : ""}${[...row].map(k => `<button data-act="key" data-arg="${k}">${k}</button>`).join("")}${ix === 2 ? `<button class="f" data-act="key" data-arg="back" aria-label="Delete">⌫</button>` : ""}</div>`).join("")}
+    <div class="krow"><button class="f" data-act="key" data-arg="hide" aria-label="Hide keys">⌨︎↓</button><button class="w" data-act="key" data-arg=" ">space</button><button class="f" data-act="key" data-arg="hide">done</button></div></div>`;
+}
+function head(S, p) {
+  const pl = pill(S, p);
+  return `<div class="head" data-tag="Today: sender, pinned"><div class="micro">It came from</div><div class="who">${esc(p.seller)}</div>
+    <div class="meta"><span>ordered ${p.date}</span>${pl ? `<span class="owe"><em>Still owed here</em>${pl.text}</span>` : `<span class="whole">complete</span>`}</div></div>`;
+}
+function typedName(S) { const n = S.matchNames.find(x => norm(x) === norm(S.query)); return n || null; }
+function lines(S, p) {
+  const tn = typedName(S);
+  return `<div class="lines">${p.items.map(i => {
+    const g = got(S, i), st = g >= i.qty ? "done" : "";
+    const held = S.held && norm(S.held) === norm(i.name) && g < i.qty;
+    const now = (tn && norm(tn) === norm(i.name)) || (S.offer && S.offer.names.some(x => norm(x) === norm(i.name)) && g < i.qty && !held);
+    const det = [i.qty > 1 ? `×${i.qty}` : "", i.set, i.cond].filter(Boolean).join(" · ");
+    return `<div class="line ${st} ${now ? "now" : ""} ${held ? "held" : ""}"><button class="box" data-act="line" data-arg="${esc(i.key)}" aria-label="${g >= i.qty ? "Undo check in" : "Check in"} ${esc(i.name)}"><i></i></button>
+      <div class="t"><b><span style="font:inherit;color:inherit">${esc(i.name)}</span><span>${money(i.price)}</span></b><small>${esc(det)}${held ? ` · <em>on the Suspense line</em>` : ""}</small>${i.qty > 1 ? `<span class="ro">${g}/${i.qty}</span>` : ""}</div></div>`;
+  }).join("")}</div>`;
+}
+function tie(S, withAside) {
+  const ps = S.hits.map(pkgOf);
+  return `<div class="tie" data-tag="Today: tie"><div class="micro">${ps.length} envelopes hold this card</div>
+    <p class="note">Name the next card from this envelope to tell them apart. Nothing checks in until you post.</p>
+    ${ps.map(p => { const pl = pill(S, p); return `<div class="tcard"><b>${esc(p.seller)}</b><small>ordered ${p.date} · ${pl ? pl.left : 0} ${pl && pl.left === 1 ? "card" : "cards"} out</small></div>`; }).join("")}
+    ${withAside ? asideCta(S, "No sender on it, and no second card to name?") : ""}</div>`;
+}
+function asideCta(S, why) {
+  return `<div class="aside-cta" data-tag="New: Set Aside"><p class="note" style="color:var(--manilaInk)">${esc(why)} Set it aside: it goes to Orphaned with the card${S.held && S.query.trim() ? "s" : ""} you named, and nothing is checked in.</p>
+    <div><button class="mini" data-act="aside">Set Aside</button></div></div>`;
+}
+function answer(S, withAside) {
+  const q = S.query.trim();
+  if (S.hits.length >= 2) return tie(S, withAside);
+  if (S.shown) return lines(S, pkgOf(S.shown));
+  if (!q) return null;
+  if (!S.matchNames.length) return `<p class="hint">No open envelope holds “${esc(q)}”.</p>${withAside ? asideCta(S, "A card no open order holds.") : ""}`;
+  return `<p class="hint">Pick the card from the matches, or type more of its name.</p>`;
+}
+function matches(S, compact) {
+  const names = S.holdList || S.matchNames;
+  if (!names.length || !S.query.trim()) return "";
+  /* On one page, a lone match that is already the typed name adds nothing, and its 60 pt is the lines' room. */
+  if (compact && !S.holdList && names.length === 1 && norm(names[0]) === norm(S.query)) return "";
+  return `<div class="micro" style="flex:none">Matches</div><div class="matches" role="list">${names.map(n => `<button role="listitem" class="match ${S.chosen === n ? "on" : S.chosen ? "soft" : ""}" data-act="match" data-arg="${esc(n)}" ${S.chosen === n ? 'aria-selected="true"' : ""}>${esc(n)}</button>`).join("")}</div>`;
+}
+function field(S, pose, ph) {
+  const chip = [S.held ? "1 held" : null, S.strays.length ? `${S.strays.length} released` : null].filter(Boolean).join(" · ");
+  return `<label class="field" data-tag="Today: the field"><input data-pose="${pose}" value="${esc(S.query)}" placeholder="${esc(ph)}" autocapitalize="none" autocomplete="off" spellcheck="false" aria-label="Type the card in hand">${chip ? `<span class="chip" title="Not checked in">${chip}</span>` : ""}</label>`;
+}
+function envNames(S) {
+  const ns = Object.entries(S.cur.names).map(([n, c]) => c > 1 ? `${n} ×${c}` : n);
+  return ns.length ? `<span>${esc(ns.join(", "))}</span>` : `<span class="none">Nothing checked in yet</span>`;
+}
+function envRow(S, button) {
+  return `<div class="envrow" data-tag="New: its cards so far"><div class="what"><span>This envelope</span>${envNames(S)}</div>${button}</div>`;
+}
+function boxes(S) {
+  let h = "";
+  if (S.held) h += `<div class="notice" data-tag="Today: Suspense"><div class="micro">Suspense</div><b>${esc(S.held)}</b><small>Not checked in.</small></div>`;
+  if (S.strays.length) h += `<div class="notice"><div class="micro">Released, not checked in</div><b>${esc(S.strays.join(", "))}</b><small>${S.strays.length === 1 ? "It no longer decides an envelope." : "They no longer decide an envelope."}</small></div>`;
+  return h;
+}
+function postbar(S) {
+  if (S.offer && S.shown === S.offer.gk) return `<div class="postbar" data-tag="Today: Post bar"><button class="mini fill wide" data-act="post" aria-describedby="">Post 2 cards here, 1 held</button></div>`;
+  if (S.receipt && S.receipt.gk && S.receipt.gk === S.shown) return `<div class="postbar"><div class="rc"><span>Posted.</span><span>${esc(S.receipt.line)}</span></div></div>`;
+  if (S.receipt && S.receipt.pile) return `<div class="postbar" data-tag="New: pile receipt"><div class="rc"><span>Pile ${S.receipt.pile} done.</span><span>${esc(S.receipt.line)}</span></div></div>`;
+  return "";
+}
+function transitBox(S) {
+  const rows = transitRows(S); if (!rows.length) return "";
+  const closing = rows.filter(r => r.tier === "deadline").length;
+  return `<div class="tbox" data-tag="Today: past 14 days"><div><span>Past 14 days: ${plural(rows.length, "envelope")}</span>${closing ? `<small>${closing} refund window closing</small>` : ""}</div><button class="mini" data-act="transit" aria-label="Open past 14 days">Open</button></div>`;
+}
+
+/* ---------- end of the day: the list shared by Day's End and the pile's end ---------- */
+function forLater(S) {
+  const rows = [];
+  for (const e of S.log) if (e.kind === "in" && e.short.length) rows.push(`<div class="lr"><div><b>${esc(e.seller)}</b><small class="r">${esc(e.short.map(s => s.name + (s.n > 1 ? ` ×${s.n}` : "")).join(", "))} · ${esc(e.pill || "")}</small></div><button class="mini" data-act="pkgfocus" data-arg="${esc(e.gk)}">Open</button></div>`);
+  for (const a of S.asides) rows.push(`<div class="lr"><div><b>Set aside: ${esc(a.names.join(", "))}</b><small>in Orphaned · nothing checked in</small></div><button class="mini" data-act="tab" data-arg="orphaned">Orphaned</button></div>`);
+  if (S.strays.length) rows.push(`<div class="lr"><div><b>Released: ${esc(S.strays.join(", "))}</b><small>held, then the envelope ended · not checked in</small></div></div>`);
+  const tr = transitRows(S);
+  if (tr.length) { const cl = tr.filter(r => r.tier === "deadline").length; rows.push(`<div class="lr"><div><b>Past 14 days: ${plural(tr.length, "envelope")}</b>${cl ? `<small class="r">${cl} refund window closing</small>` : `<small>not here yet</small>`}</div><button class="mini" data-act="transit" aria-label="Open past 14 days">Open</button></div>`); }
+  return rows.length ? `<div class="list" data-tag="New: for later">${rows.join("")}</div>` : `<p class="well" data-tag="New: all is well">All is well.</p>`;
+}
+function todaysPile(S) {
+  const rows = S.log.map((e, ix) => {
+    if (e.kind === "in") { const ok = !e.short.length; return `<div class="lr"><div><b>${esc(e.seller)}</b><small>${ix + 1} of ${S.log.length}</small></div><span class="g ${ok ? "ok" : "short"}">${e.qty - e.short.reduce((a, s) => a + s.n, 0)}/${e.qty}</span></div>`; }
+    if (e.kind === "aside") return `<div class="lr"><div><b>No sender</b><small>set aside · ${esc(e.names.join(", "))}</small></div><span class="g" style="color:var(--manilaInk)">aside</span></div>`;
+    return `<div class="lr"><div><b>Envelope ${ix + 1}</b><small>nothing checked in</small></div><span class="g">0</span></div>`;
+  });
+  return rows.length ? `<div class="list" data-tag="New: today's pile">${rows.join("")}</div>` : `<p class="hint">Nothing checked in today yet.</p>`;
+}
+function acrossAll(S) { const m = missing(S); return `<div class="micro">Across all orders</div><div class="still ${m.l ? "" : "ok"}">${m.l ? `${m.l} still missing · ${money(m.v)}` : "ALL ACCOUNTED FOR ✓"}</div>`; }
+function dayFigures(S) {
+  const ins = S.log.filter(e => e.kind === "in"); const cards = S.inToday;
+  let v = 0; for (const e of ins) { const p = pkgOf(e.gk); for (const i of p.items) v += got(S, i) * i.price; }
+  return `${plural(S.log.length, "envelope")} · ${plural(cards, "card")} in · ${money(v)}`;
+}
+
+/* ---------- screens ---------- */
+function screenOf(S) {
+  if (S.tab !== "packages") return S.tab;
+  if (S.sub) return S.sub;
+  if (!S.open) return "packages";
+  if (S.c === "hand") return S.dayEnd ? "end" : "hand";
+  return S.phase;
+}
+function packagesScreen(S, compact) {
+  const m = missing(S);
+  const inProgress = S.c === "pile" && S.phase === "work" && S.log.length > 0;
+  const ctl = S.c === "hand"
+    ? `<button class="mini" data-act="open" data-tag="${compact ? "New: on one page" : "Today: hand-open"}">Card in Hand${S.held || S.cur.gk || S.query ? " · resume" : ""}</button>`
+    : `<button class="mini ${inProgress ? "fill" : ""}" data-act="open" data-tag="New: Mail Day">${inProgress ? `Resume Mail Day · ${leftCount(S) ?? "?"} left` : S.phase === "end" ? "Mail Day: done" : "Mail Day"}</button>`;
+  const cards = PKGS.slice(0, 6).map(p => {
+    const pl = pill(S, p);
+    return `<div class="pkg ${S.focusGk === p.gk ? "focus" : ""}"><div class="ph"><div><b>${esc(p.seller)}</b><small>${p.date}</small></div>${pl ? `<span class="pill">${pl.text}</span>` : `<span class="pill rcv">RECEIVED</span>`}</div>${lines({ ...S, matchNames:[], query:"", held:null, offer:null }, p)}</div>`;
+  }).join("");
+  const mast = `<div class="mast"><div class="lh">MANIFEST</div><div class="still ${m.l ? "" : "ok"}">${m.l ? `${m.l} still missing · ${money(m.v)}` : "ALL ACCOUNTED FOR ✓"}</div></div>`;
+  const back = S.focusGk ? `<button class="mini" data-act="unfocus">Back to the day</button>` : "";
+  return { mast, ctl, cards, back };
+}
+function dockHand(S, pose) {
+  return `<div class="dock">${matches(S, true)}${field(S, pose, "Type the card in hand")}${envRow(S, `<button class="mini" data-act="newenv">New Envelope</button>`)}</div>`;
+}
+function envG(cls, just) {
+  return `<span class="env ${cls || ""} ${just ? "just" : ""}" aria-hidden="true"><svg viewBox="0 0 34 24"><rect x="1" y="1" width="32" height="22" rx="2"/><path class="flap" d="M2 2.5 17 13 32 2.5"/>`
+    + `<path class="mk tick" d="M11 17.5l4 3.5 8-8"/><path class="mk gap" d="M24 17h6"/><path class="mk band" d="M2 17h30"/></svg></span>`;
+}
+const envCls = e => e.kind === "aside" ? "aside" : e.kind === "in" && e.short.length ? "short" : "done";
+function stripPile(S) {
+  const total = totalPile(S); const lc = leftCount(S);
+  let k = 0; const bundles = [];
+  const piles = S.countBy === "one" ? [total] : S.piles;
+  if (S.counted) {
+    for (let b = 0; b < piles.length; b++) {
+      let h = "";
+      for (let j = 0; j < piles[b]; j++, k++) {
+        const e = S.log[k]; let cls = "";
+        if (e) cls = envCls(e);
+        else if (k === S.log.length && S.phase === "work") cls = "now";
+        h += envG(cls, k === S.justFiled);
+      }
+      bundles.push(`<span class="bundle">${h}</span>`);
+    }
+  } else {
+    bundles.push(`<span class="bundle">${S.log.map((e, ix) => envG(envCls(e), ix === S.justFiled)).join("")}${envG("now")}</span>`);
+  }
+  const label = S.counted ? `${plural(lc, "envelope")} left of ${total}. ${S.log.length} done.` : `${S.log.length} done. Not counted.`;
+  return `<div class="strip" data-tag="New: the pile" data-tagpos="tl" role="img" aria-label="${label}"><div class="envs">${bundles.join("")}</div>
+    <div class="leftfig"><b>${S.counted ? lc : "?"}</b><span>${S.counted ? `left of ${total}` : "not counted"}</span></div></div>`;
+}
+function pileNote(S, compact) {
+  let where;
+  if (!S.counted) where = `Pile not counted · ${S.log.length} done`;
+  else if (S.countBy === "one") where = `Envelope ${Math.min(S.log.length + 1, totalPile(S))} of ${totalPile(S)}`;
+  else { const size = S.piles[S.pileIdx] || 0; where = `Pile ${S.pileIdx + 1} of ${S.piles.length} · envelope ${Math.min(S.doneInPile + 1, size)} of ${size}`; }
+  if (!compact) return `<div class="pilenote">${where}</div>`;
+  const ns = Object.entries(S.cur.names).map(([n, c]) => c > 1 ? `${n} ×${c}` : n);
+  return `<div class="pilenote" data-tag="New: its cards so far" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${where}${ns.length ? ` · <span style="color:var(--ink)">${esc(ns.join(", "))}</span>` : ""}</div>`;
+}
+function pileActions(S) {
+  const p = S.shown && pkgOf(S.shown); const whole = p && p.items.every(i => got(S, i) >= i.qty);
+  const next = `<button class="mini wide ${whole ? "fill" : ""}" data-act="newenv">Next Envelope</button>`;
+  return `<div class="acts" data-tag="New: one way to end it"><button class="mini wide" data-act="aside">Set Aside</button>${next}</div>`;
+}
+function dockPile(S, pose) {
+  /* On one page the envelope's cards so far ride on the pile note above, so the lines keep 44 pt more room. */
+  return `<div class="dock">${matches(S, true)}${field(S, pose, "Type a card from this envelope")}${pileActions(S)}${!S.counted ? `<button class="mini" data-act="endpile">End the Pile</button>` : ""}</div>`;
+}
+function countForm(S) {
+  const rows = S.countBy === "one"
+    ? `<div class="prow"><span>Envelopes</span><span class="step"><button class="mini" data-act="pminus" data-arg="all" aria-label="One fewer">−</button><b>${totalPile(S)}</b><button class="mini" data-act="pplus" data-arg="all" aria-label="One more">+</button></span></div>`
+    : S.piles.map((n, i) => `<div class="prow"><span>Pile ${i + 1}</span><span class="step">${S.piles.length > 1 ? `<button class="mini" data-act="premove" data-arg="${i}" aria-label="Remove pile ${i + 1}">Remove</button>` : ""}<button class="mini" data-act="pminus" data-arg="${i}" aria-label="One fewer in pile ${i + 1}">−</button><b>${n}</b><button class="mini" data-act="pplus" data-arg="${i}" aria-label="One more in pile ${i + 1}">+</button></span></div>`).join("")
+      + `<div><button class="mini" data-act="padd">Add Pile</button></div>`;
+  return `<div class="count" data-tag="New: count the pile"><p class="hint" style="color:var(--ink)">Count ${S.countBy === "one" ? "the envelopes" : "each small pile"}. The count only tracks what is left. It checks nothing in.</p>${rows}<p class="note">${plural(totalPile(S), "envelope")} in all.</p></div>`;
+}
+function bigPile(S) {
+  const piles = S.countBy === "one" ? [totalPile(S)] : S.piles;
+  return `<div class="bigpile" aria-hidden="true">${piles.map(n => `<span class="bundle">${envG("").repeat(n)}</span>`).join("")}</div>`;
+}
+function endPile(S) {
+  return `<div class="end"><div class="seal ${S.justEnded ? "lands" : ""}" data-tag="New: the seal" role="img" aria-label="Wax seal"><span><b>${S.log.length}</b>${S.log.length === 1 ? "envelope" : "envelopes"}</span></div>
+    <h4 class="endh">The pile is done.</h4><p class="ends">${dayFigures(S)}</p></div>`;
+}
+
+function render(S, pose) {
+  const compact = pose !== "open";
+  const sc = screenOf(S);
+  const kup = S.keys && ["hand", "work"].includes(sc);
+  const status = `<div class="status"><span>9:41</span><span></span></div>`;
+  let body = "";
+  if (compact) {
+    let main = "";
+    if (sc === "packages") {
+      const P = packagesScreen(S, true);
+      main = `${P.mast}<div class="nav" style="justify-content:space-between"><h3>Packages</h3>${P.back}${P.ctl}</div><div class="ans">${P.cards}</div>`;
+    } else if (sc === "hand") {
+      const ans = (S.endBy === "empty" && !S.query.trim() && S.log.length) ? `<div class="micro">Today's pile</div>${todaysPile(S)}<div class="micro">Not normal today</div>${forLater(S)}${acrossAll(S)}` : (answer(S, true) || `<p class="hint">Type the card in hand. The envelope it came from shows here.</p>${transitBox(S)}`);
+      main = `<div class="nav" data-tag="New: Card in Hand on one page"><h3>Mail Day</h3>${S.endBy === "control" ? `<button class="mini" data-act="dayend" data-tag="New: Day's End">Day's End</button>` : ""}<button class="mini" data-act="close">Close</button></div>
+        <div class="today" data-tag="New: today's count">Today <b>${plural(S.log.length, "envelope")} done</b> · <b>${S.inToday}</b> cards in</div>
+        ${S.shown && S.hits.length < 2 ? head(S, pkgOf(S.shown)) : ""}<div class="ans">${ans}${S.held || S.strays.length ? boxes(S) : ""}</div>${postbar(S)}${dockHand(S, pose)}`;
+    } else if (sc === "end") {
+      main = `<div class="nav"><h3>Day's End</h3><button class="mini" data-act="dayback">Back</button></div><div class="today">${dayFigures(S)}</div>
+        <div class="ans"><div class="micro">Today's pile</div>${todaysPile(S)}<div class="micro">Not normal today</div>${forLater(S)}${acrossAll(S)}</div>
+        <div class="dock"><button class="mini fill wide" data-act="finish">Done for Today</button></div>`;
+    } else if (sc === "count") {
+      main = `<div class="nav"><h3>Today's Post</h3><button class="mini" data-act="close">Close</button></div><div class="ans">${countForm(S)}${bigPile(S)}</div>
+        <div class="dock"><button class="mini fill wide" data-act="start">Start</button><button class="mini" data-act="skipcount">Skip the Count</button></div>`;
+    } else if (sc === "work") {
+      main = `<div class="nav"><h3>Today's Post</h3><button class="mini" data-act="close">Close</button></div>${stripPile(S)}${pileNote(S, true)}
+        ${S.shown && S.hits.length < 2 ? head(S, pkgOf(S.shown)) : ""}<div class="ans">${answer(S, false) || `<p class="hint">Take the next envelope. Type any card from it.</p>${transitBox(S)}`}${S.held || S.strays.length ? boxes(S) : ""}</div>${postbar(S)}${dockPile(S, pose)}`;
+    } else if (sc === "end") {
+      main = "";
+    }
+    if (sc === "end" && S.c === "pile") {
+      main = `<div class="nav"><h3>Today's Post</h3></div><div class="ans">${endPile(S)}<div class="micro">For later</div>${forLater(S)}${acrossAll(S)}</div>
+        <div class="dock"><button class="mini fill wide" data-act="finish">Close the Day</button></div>`;
+    }
+    if (sc === "orphaned") main = orphanedScreen(S, true);
+    if (sc === "transit") main = transitScreen(S);
+    if (sc === "tally" || sc === "ledger") main = `<div class="nav"><h3>${sc === "tally" ? "Tally" : "Ledger"}</h3></div><div class="placeholder">Not part of this flow. Drawn as a blank. Go back to Packages: your place is kept.</div>`;
+    body = `${status}<div class="scr"><div class="main">${main}</div>${kup ? keys(S) : tabs(S, "tabbar")}</div>`;
+  } else {
+    body = status + openPose(S, sc, kup) + `<div class="fold" aria-hidden="true"><span>FOLD 455.5–495.5</span></div>`;
+  }
+  return body + (S.away ? `<div class="away">MANIFEST is in the background</div>` : "");
+}
+
+function openPose(S, sc, kup) {
+  const lb = kup ? 264 : 20, rb = kup ? 264 : 84;   /* page foot: the keys' drawn top (405), or the Duo bar (593) and the left inset */
+  const L = h => `<div class="page l" style="bottom:${lb}px">${h}</div>`;
+  const R = h => `<div class="page r" style="bottom:${rb}px">${h}</div>`;
+  const bar = kup ? keys(S) : tabs(S, "duobar");
+  if (sc === "packages") {
+    const P = packagesScreen(S, false);
+    return L(`<div class="nav"><h3>Packages</h3>${P.back}</div><div class="ans">${P.cards}</div>`) + R(`${P.mast}<div class="nav" style="justify-content:flex-end">${P.ctl}</div><div class="ans"><p class="note">Today: Packages keeps its one-page layout on the open Duo (default, not owner). Drawn simply here.</p></div>`) + bar;
+  }
+  if (sc === "hand") {
+    const emptyEnd = S.endBy === "empty" && !S.query.trim() && S.log.length;
+    const left = `<div class="nav"><h3>Mail Day</h3>${S.endBy === "control" ? `<button class="mini" data-act="dayend" data-tag="New: Day's End">Day's End</button>` : ""}<button class="mini" data-act="close">Close</button></div>
+      <div class="today" data-tag="New: today's count">Today <b>${plural(S.log.length, "envelope")} done</b> · <b>${S.inToday}</b> cards in</div>
+      <div class="ans">${field(S, "open", "Type the card in hand")}${envRow(S, `<button class="mini" data-act="newenv">New Envelope</button>`)}${matches(S)}${boxes(S)}${emptyEnd ? `<div class="micro">Today's pile</div>${todaysPile(S)}` : ""}</div>`;
+    const right = `${S.shown && S.hits.length < 2 ? head(S, pkgOf(S.shown)) : ""}<div class="ans">${emptyEnd ? `<div class="micro">Not normal today</div>${forLater(S)}${acrossAll(S)}` : (answer(S, true) || `<p class="hint">Type the card in hand. The envelope it came from shows here.</p>`)}${emptyEnd ? "" : transitBox(S)}</div>${postbar(S)}`;
+    return L(left) + R(right) + bar;
+  }
+  if (sc === "end" && S.c === "hand") {
+    return L(`<div class="nav"><h3>Day's End</h3><button class="mini" data-act="dayback">Back</button></div><div class="today">${dayFigures(S)}</div><div class="ans"><div class="micro">Today's pile</div>${todaysPile(S)}</div><div class="dock"><button class="mini fill wide" data-act="finish">Done for Today</button></div>`)
+      + R(`<div class="ans" style="padding-top:16px"><div class="micro">Not normal today</div>${forLater(S)}${acrossAll(S)}</div>`) + bar;
+  }
+  if (sc === "count") {
+    return L(`<div class="nav"><h3>Today's Post</h3><button class="mini" data-act="close">Close</button></div><div class="ans">${countForm(S)}</div><div class="dock"><button class="mini fill wide" data-act="start">Start</button><button class="mini" data-act="skipcount">Skip the Count</button></div>`)
+      + R(`<div class="ans" style="padding-top:16px"><div class="micro">Today's post</div>${bigPile(S)}<p class="note">Each small pile is one group of envelopes. Work through them in any order; the count goes down by one with each envelope you end.</p></div>`) + bar;
+  }
+  if (sc === "work") {
+    const lrows = []; let k = 0; const piles = S.countBy === "one" ? [totalPile(S)] : S.piles;
+    if (S.counted) piles.forEach((n, b) => { lrows.push(`<div class="micro">${S.countBy === "one" ? "Today's post" : `Pile ${b + 1}`}</div>`); for (let j = 0; j < n; j++, k++) lrows.push(ledgerRow(S, k)); });
+    else { S.log.forEach((e, ix) => lrows.push(ledgerRow(S, ix))); lrows.push(ledgerRow(S, S.log.length)); }
+    const left = `<div class="nav"><h3>Today's Post</h3><button class="mini" data-act="close">Close</button></div>${stripPile(S)}${pileNote(S)}
+      <div class="ans">${field(S, "open", "Type a card from this envelope")}${envRow(S, "")}${pileActions(S)}${!S.counted ? `<button class="mini" data-act="endpile">End the Pile</button>` : ""}${matches(S)}${boxes(S)}<div class="ledger" data-tag="New: the pile, envelope by envelope">${lrows.join("")}</div></div>`;
+    const right = `${S.shown && S.hits.length < 2 ? head(S, pkgOf(S.shown)) : ""}<div class="ans">${answer(S, false) || `<p class="hint">Take the next envelope. Type any card from it. The envelope it came from shows here.</p>`}${transitBox(S)}</div>${postbar(S)}`;
+    return L(left) + R(right) + bar;
+  }
+  if (sc === "end" && S.c === "pile") {
+    const lrows = S.log.map((e, ix) => ledgerRow(S, ix)).join("");
+    return L(`<div class="ans" style="padding-top:16px">${endPile(S)}<div class="ledger">${lrows}</div></div><div class="dock"><button class="mini fill wide" data-act="finish">Close the Day</button></div>`)
+      + R(`<div class="ans" style="padding-top:16px"><div class="micro">For later</div>${forLater(S)}${acrossAll(S)}</div>`) + bar;
+  }
+  if (sc === "orphaned") return orphanedOpen(S) + bar;
+  if (sc === "transit") return L(`<div class="nav"><h3>Mail Day</h3></div><div class="ans"><p class="note">The late mail opens on the answer page, as built.</p></div>`) + R(transitScreen(S)) + bar;
+  return L(`<div class="nav"><h3>${sc === "tally" ? "Tally" : "Ledger"}</h3></div><div class="placeholder">Not part of this flow. Go back to Packages: your place is kept.</div>`) + R("") + bar;
+}
+function ledgerRow(S, k) {
+  const e = S.log[k];
+  if (!e) return k === S.log.length && S.phase === "work"
+    ? `<div class="lrow now">${envG("now")}<span>Envelope ${k + 1} · now</span><span class="g">${Object.values(S.cur.names).reduce((a, b) => a + b, 0)} in</span></div>`
+    : `<div class="lrow blank">${envG("")}<span>Envelope ${k + 1}</span></div>`;
+  if (e.kind === "aside") return `<div class="lrow">${envG("aside")}<span>Set aside · ${esc(e.names.join(", "))}</span><span class="g" style="color:var(--manilaInk)">Orphaned</span></div>`;
+  if (e.kind === "empty") return `<div class="lrow">${envG("done")}<span>Envelope ${k + 1}</span><span class="g">nothing in</span></div>`;
+  const ok = !e.short.length;
+  return `<div class="lrow">${envG(ok ? "done" : "short")}<span>${esc(e.seller)}</span><span class="g ${ok ? "ok" : "short"}">${ok ? `${e.qty}/${e.qty}` : `${e.short.length} short`}</span></div>`;
+}
+function orphanCards(S) {
+  return [...S.asides.map(a => ({ ...a, today:true })), ...OLD_ENVELOPES].map(a => `<div class="orph" ${a.today ? 'data-tag="New: set aside today"' : ""}><b>${esc(a.names.join(", "))}</b><small>recorded ${a.created}</small><p>No outstanding package accounts for any of these. It’ll start matching if a later import brings in the order.</p></div>`).join("");
+}
+function orphanedScreen(S, compact) {
+  return `<div class="nav" data-tag="Today: Orphaned"><h3>Orphaned</h3></div><div class="ans">${orphanCards(S)}<div><button class="mini" data-act="tab" data-arg="packages">Back to the day</button></div></div>`;
+}
+function orphanedOpen(S) {
+  return `<div class="page l" style="bottom:20px"><div class="nav" data-tag="Today: Orphaned spreads"><h3>Orphaned</h3></div><div class="ans">${orphanCards(S)}</div></div>
+    <div class="page r" style="bottom:84px"><div class="ans" style="padding-top:16px"><p class="note">The envelope's detail and its ranked accounts show here, as built. Set Aside recorded it with the card names only: it decides nothing (orphaned-mail-never-decides).</p><div><button class="mini" data-act="tab" data-arg="packages">Back to the day</button></div></div></div>`;
+}
+function transitScreen(S) {
+  const rows = transitRows(S);
+  return `<div class="nav" data-tag="Today: past transit page"><h3>Past 14 days</h3><button class="mini" data-act="transitback">Back</button></div><div class="ans">
+    <div class="micro">${plural(rows.length, "envelope")} · oldest last</div>
+    ${rows.map(r => `<div class="trow"><div class="tt"><span style="font:inherit">${esc(r.p.seller)}</span><span style="color:${r.tier === "deadline" ? "var(--red)" : "var(--amber)"}">${r.d} d</span></div>
+      <small class="${r.tier === "deadline" ? "r" : ""}">${r.tier === "deadline" ? "refund window closing" : `claim by ${r.claimBy}`}</small>
+      <div class="acts"><button class="mini" data-act="stamp" data-arg="${esc(r.p.gk)}|Claim filed">Claim filed</button><button class="mini" data-act="stamp" data-arg="${esc(r.p.gk)}|Refunded">Refunded</button></div></div>`).join("") || `<p class="well">All is well.</p>`}
+    ${Object.keys(S.stamps).length ? `<p class="note">Stamped today: ${esc(Object.entries(S.stamps).map(([g, k]) => `${pkgOf(g).seller} (${k})`).join(", "))}. <button class="mini" data-act="unstamp">Undo</button></p>` : ""}
+    <p class="note">Days count from the order date. TCGplayer counts 30 days from the delivery estimate, so its window can close later.</p></div>`;
+}
+
+/* ---------- wiring: one state per concept, four frames ---------- */
+const POSES = [
+  ["folded", "dev folded", "iphone-duo-folded", "Duo, folded", "Outer screen, 466 x 678 pt (duo-fold-and-keyboard). One page, in one hand."],
+  ["open", "dev open", "iphone-duo-unfolded", "Duo, open", "Inner screen, 951 x 669 pt. Query on the left page, the answer on the right. Nothing sits across x 455.5 to 495.5 but the system keys."],
+  ["phone", "dev phone", "iphone-regular", "Large phone", "No size is written for it: drawn at the folded size as a stand-in. Drag the corner to resize; the layout follows."],
+  ["ax5", "dev folded ax5", "iphone-duo-folded", "Duo, folded, AX5", "The largest accessibility size. Words scale with their text style; the Post bar and the dock buttons stop at xxxLarge, as the Post bar ruling does."],
+];
+const STATES = { hand:["start","typing","envelope","tie","post","nomatch","end","well","orphaned","transit"], pile:["start","count","work","tie","post","pile-done","nomatch","no-count","end","well","resume"] };
+const ST = {};
+function build(c, preset, keysUp) {
+  const S = fresh(c);
+  const old = ST[c];
+  if (old) { S.endBy = old.endBy; S.countBy = old.countBy; }
+  if (preset && PRESETS[c][preset]) PRESETS[c][preset](S);
+  if (keysUp) { S.keys = true; S.focusPose = S.focusPose || "folded"; }
+  return S;
+}
+function paint(c) {
+  const S = ST[c]; const sec = document.getElementById(`concept-${c}`);
+  const active = document.activeElement; const ap = active && active.dataset && active.dataset.pose && sec.contains(active) ? active.dataset.pose : null;
+  const caret = ap ? active.selectionStart : null;
+  for (const [pose] of POSES) sec.querySelector(`[data-dev="${pose}"]`).innerHTML = render(S, pose);
+  sec.querySelectorAll(".mini[data-tag]").forEach(b => b.title = b.dataset.tag);
+  sec.querySelectorAll(".dev.ax5 .main").forEach(m => { const d = m.querySelector(":scope > .dock"); m.style.setProperty("--dockh", `${d ? d.offsetHeight : 0}px`); });
+  sec.querySelectorAll("[data-optset]").forEach(b => b.setAttribute("aria-pressed", String(S[b.dataset.optset] === b.dataset.val)));
+  const fp = ap || (S.keys ? S.focusPose : null);
+  if (fp) { const inp = sec.querySelector(`input[data-pose="${fp}"]`); if (inp && document.activeElement !== inp && ap) { inp.focus({ preventScroll:true }); const p = caret ?? inp.value.length; inp.setSelectionRange(p, p); } }
+  S.justEnded = false; S.justFiled = -1;
+  save(S);
+}
+function act(S, a, arg, pose) {
+  switch (a) {
+    case "tab": S.tab = arg; S.keys = false; if (arg === "packages") S.focusGk = null; break;
+    case "open": S.open = true; S.focusGk = null; if (S.c === "pile" && S.phase === "end" && !S.log.length) S.phase = "count"; break;
+    case "close": S.open = false; S.keys = false; S.holdList = null; S.chosen = null; break;
+    case "line": tapLine(S, arg); break;
+    case "match": if (!S.holdList) S.holdList = S.matchNames.slice(); S.chosen = arg; S.query = arg; read(S); break;
+    case "post": post(S); break;
+    case "newenv": endEnvelope(S); break;
+    case "aside": setAside(S); break;
+    case "dayend": S.dayEnd = true; S.keys = false; break;
+    case "dayback": S.dayEnd = false; break;
+    case "finish": S.open = false; S.dayEnd = false; S.keys = false; if (S.c === "pile") { S.phase = "count"; S.log = []; S.pileIdx = 0; S.doneInPile = 0; S.counted = true; S.strays = []; } break;
+    case "transit": S.back = { open:S.open, dayEnd:S.dayEnd, phase:S.phase }; S.sub = "transit"; S.tab = "packages"; S.keys = false; break;
+    case "transitback": S.sub = null; break;
+    case "stamp": { const [g, k] = arg.split("|"); S.stamps[g] = k; break; }
+    case "unstamp": S.stamps = {}; break;
+    case "pkgfocus": S.focusGk = arg; S.open = false; S.sub = null; S.tab = "packages"; break;
+    case "unfocus": S.focusGk = null; S.open = true; break;
+    case "pminus": if (arg === "all") { const t = totalPile(S); S.piles = [Math.max(1, t - 1)]; } else S.piles[+arg] = Math.max(1, S.piles[+arg] - 1); break;
+    case "pplus": if (arg === "all") S.piles = [totalPile(S) + 1]; else S.piles[+arg] = Math.min(99, S.piles[+arg] + 1); break;
+    case "padd": S.piles.push(1); break;
+    case "premove": S.piles.splice(+arg, 1); break;
+    case "start": S.phase = "work"; S.counted = true; S.log = []; S.pileIdx = 0; S.doneInPile = 0; if (S.countBy === "one") S.piles = [totalPile(S)]; break;
+    case "skipcount": S.phase = "work"; S.counted = false; S.log = []; break;
+    case "endpile": if (S.cur.gk || S.query) endEnvelope(S); S.phase = "end"; S.justEnded = true; S.keys = false; break;
+    case "key":
+      if (arg === "hide") { S.keys = false; break; }
+      if (arg === "shift") break;
+      S.query = arg === "back" ? S.query.slice(0, -1) : S.query + arg; S.holdList = null; S.chosen = null; read(S); break;
+  }
+}
+function setup(c) {
+  const sec = document.getElementById(`concept-${c}`);
+  sec.querySelector("[data-states]").innerHTML = STATES[c].map(s => `<a class="ctl" href="#c=${c}&s=${s}">${s.replace("-", " ")}</a>`).join("") + `<a class="ctl" href="#c=${c}&s=${c === "hand" ? "typing" : "work"}&k=1">keys up</a>`;
+  sec.querySelector("[data-types]").innerHTML = TYPES.map(t => `<button class="ctl" data-type="${esc(t)}">${esc(t)}</button>`).join("");
+  sec.addEventListener("click", e => {
+    const S = ST[c];
+    const t = e.target.closest("[data-act],[data-type],[data-optset],[data-leave],[data-reset],input[data-pose]");
+    if (!t || !sec.contains(t)) return;
+    if (t.matches("input[data-pose]")) { if (!S.keys || S.focusPose !== t.dataset.pose) { S.keys = true; S.focusPose = t.dataset.pose; paint(c); } return; }
+    if (t.dataset.type != null) { S.open = true; S.tab = "packages"; S.sub = null; if (c === "pile" && S.phase !== "work") { S.phase = "work"; } S.query = t.dataset.type; S.holdList = null; S.chosen = null; read(S); paint(c); return; }
+    if (t.dataset.optset) { S[t.dataset.optset] = t.dataset.val; if (t.dataset.optset === "countBy" && t.dataset.val === "one") { S.piles = [totalPile(S)]; } paint(c); return; }
+    if (t.hasAttribute("data-leave")) { const snap = JSON.stringify(S); S.away = true; paint(c); setTimeout(() => { ST[c] = { ...fresh(c), ...JSON.parse(snap), away:false }; paint(c); }, 900); return; }
+    if (t.hasAttribute("data-reset")) { ST[c] = fresh(c); ST[c].endBy = S.endBy; ST[c].countBy = S.countBy; paint(c); return; }
+    const pose = t.closest("[data-dev]")?.dataset.dev;
+    act(S, t.dataset.act, t.dataset.arg, pose);
+    paint(c);
+  });
+  sec.addEventListener("input", e => {
+    const t = e.target; if (!t.matches("input[data-pose]")) return;
+    const S = ST[c]; S.query = t.value; S.focusPose = t.dataset.pose; S.keys = true; S.holdList = null; S.chosen = null; read(S); paint(c);
+  });
+  sec.addEventListener("keydown", e => { const t = e.target; if (t.matches("input[data-pose]") && e.key === "Enter") { ST[c].keys = false; t.blur(); paint(c); } });
+}
+function route() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  const c = h.get("c"), s = h.get("s"), k = h.get("k") === "1";
+  for (const cc of ["hand", "pile"]) {
+    if (cc === c && s) ST[cc] = build(cc, s, k);
+    else if (!ST[cc]) ST[cc] = (cc === c && !s ? null : null) || load(cc) || build(cc, null, false);
+    paint(cc);
+  }
+  if (c) document.getElementById(`concept-${c}`)?.scrollIntoView({ block:"start" });
+}
+["hand", "pile"].forEach(setup);
+window.addEventListener("hashchange", route);
+route();
+
+/* page controls: tags and the hide buttons (one press hides one option) */
+document.getElementById("tags-btn").addEventListener("click", e => { const on = document.body.classList.toggle("tags-on"); e.currentTarget.setAttribute("aria-pressed", String(on)); e.currentTarget.textContent = on ? "Tags shown" : "Tags hidden"; });
+document.addEventListener("click", e => {
+  const h = e.target.closest("[data-hide]"); if (h) { document.getElementById(h.dataset.hide).hidden = true; }
+  const o = e.target.closest("[data-hideopt]"); if (o) { document.querySelector(`[data-opt="${o.dataset.hideopt}"]`).classList.add("opt-hidden"); }
+});
+document.getElementById("unhide").addEventListener("click", () => { document.querySelectorAll("section.concept").forEach(s => s.hidden = false); document.querySelectorAll(".opt-hidden").forEach(x => x.classList.remove("opt-hidden")); });
+</script>
+</body>
+</html>

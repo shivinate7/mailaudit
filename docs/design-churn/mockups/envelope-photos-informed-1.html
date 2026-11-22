@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Envelope Photos</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light (UIUserInterfaceStyle Light in
+   native/Manifest/Info.plist), so this page draws one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832;
+  --gold:#C9A961; --shadow:rgba(28,43,36,0.06); --scrim:rgba(28,43,36,0.92);
+  /* Cochin sets words, Menlo sets numbers (typography-cochin-and-mono). Off a Mac they fall back. */
+  --cochin: Cochin, "Liberation Serif", Georgia, serif;
+  --mono: Menlo, "DejaVu Sans Mono", ui-monospace, monospace;
+  --sys: -apple-system, system-ui, "Helvetica Neue", sans-serif;
+  /* mockup marks: what exists today, what an option adds */
+  --today:#A8443C; --new:#2E7A5E;
+}
+* { box-sizing:border-box; }
+html { color-scheme:light; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.4; }
+main { margin:0 auto; padding:16px; max-width:2200px; }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-weight:600; max-width:110ch; }
+h1 { font-family:var(--cochin); font-size:26px; margin:16px 0 4px; }
+.sub { color:var(--inkSoft); margin:0 0 8px; max-width:110ch; }
+.kind { display:inline-block; font-size:13px; border:1px solid var(--line); border-radius:8px; padding:2px 8px; background:var(--card); }
+nav.bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:8px 0; }
+nav.bar .lab { font-size:13px; color:var(--inkSoft); min-width:6.5em; }
+nav.bar a, nav.bar button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav.bar a[aria-current="true"], nav.bar button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+nav.bar button.off { text-decoration:line-through; color:var(--inkSoft); }
+nav.bar .x { border:0; background:none; min-height:44px; min-width:32px; padding:0 4px; color:var(--inkSoft); }
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.howto { font-size:13px; color:var(--inkSoft); max-width:110ch; margin:4px 0 0; }
+#stage { display:flex; flex-wrap:wrap; gap:24px 32px; align-items:flex-start; margin-top:16px; overflow-x:auto; padding:8px 4px 16px; }
+.devwrap { display:flex; flex-direction:column; gap:8px; }
+[hidden] { display:none !important; }
+.devcap { font-size:13px; max-width:466px; }
+.devcap b { font-family:var(--cochin); font-size:16px; }
+.devcap .size { color:var(--inkSoft); display:block; }
+.hidden-concept { color:var(--inkSoft); font-style:italic; }
+
+/* ---------- device frames: 1 CSS px = 1 pt ---------- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:20px; overflow:hidden; flex:none;
+  font-family:var(--sys); color:var(--ink); line-height:1.25; }
+.dev.folded, .dev.regular { width:466px; height:678px; }
+.dev.open { width:951px; height:669px; border-radius:12px; }
+.page { position:absolute; top:0; bottom:0; overflow:hidden; background:var(--paper); }
+.dev.folded .page, .dev.regular .page { left:0; right:0; }
+.dev.open .page.left { left:0; width:455.5px; }
+.dev.open .page.right { left:495.5px; width:455.5px; }
+.hinge { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:repeating-linear-gradient(90deg,#1b1a1f,#2b2930 3px,#1b1a1f 6px); z-index:40; }
+.scroll { position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain;
+  padding:calc(env(safe-area-inset-top) + 16px) calc(env(safe-area-inset-right) + 16px) calc(env(safe-area-inset-bottom) + 99px) calc(env(safe-area-inset-left) + 16px); scrollbar-width:none; }
+.scroll::-webkit-scrollbar { display:none; }
+.scroll.kup { padding-bottom:calc(289px + 12px); }
+.scroll.fabpad { padding-bottom:calc(env(safe-area-inset-bottom) + 83px + 12px + 52px + 16px); }
+.dev.open .page.left .scroll.fabpad { padding-bottom:calc(env(safe-area-inset-bottom) + 24px + 52px + 16px); }
+.dev.open .scroll.kup { padding-bottom:calc(264px + 12px); }
+.stack { display:flex; flex-direction:column; gap:12px; }
+
+/* the masthead is today's and is not redrawn here */
+.masthead { height:88px; border:1px dashed var(--line); border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; color:var(--inkSoft); }
+.masthead .mh { font-family:var(--cochin); letter-spacing:0.2em; font-size:20px; color:var(--ink); }
+.masthead small { font-size:11px; }
+
+/* buttons drawn as MiniLabel (ControlViews.swift) */
+.mini { font-family:var(--mono); color:var(--ink); background:var(--card); border:1px solid var(--line); border-radius:5px; padding:4px 8px; position:relative; cursor:pointer; line-height:1.2; }
+.mini::after { content:""; position:absolute; inset:-8px -2px; } /* outsetHit: 44 pt reach */
+.mini.discard { color:var(--red); border-color:var(--redSoft); }
+.mini.armed { color:var(--card); background:var(--red); border-color:var(--red); font-weight:700; }
+.mini.bold { font-weight:700; }
+.mini.ready { background:var(--ink); color:var(--card); border-color:var(--ink); font-weight:700; }
+.mini.empty { color:var(--inkSoft); }
+.record { font-family:var(--cochin); font-weight:700; color:var(--card); background:var(--ink); border:0; border-radius:8px; min-height:44px; width:100%; cursor:pointer; padding:4px 12px; }
+
+/* the envelope card (OrphanedView.swift EnvelopeCard) */
+.card { background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 2px var(--shadow); position:relative; }
+.ehead { display:flex; align-items:center; gap:8px; padding:12px 12px 8px; position:relative; z-index:2; }
+.micro { font-family:var(--mono); text-transform:uppercase; color:var(--inkSoft); flex:1 1 0; min-width:0; letter-spacing:0.12em; }
+.askpanel { position:absolute; right:12px; top:calc(100% - 4px); display:flex; gap:4px; padding:4px; background:var(--card); border:1px solid var(--redSoft); border-radius:8px; box-shadow:0 2px 6px var(--shadow); z-index:5; }
+.entries { display:flex; flex-direction:column; gap:4px; padding:0 12px 8px; font-family:var(--cochin); }
+.entry { display:flex; gap:8px; align-items:baseline; }
+.entry span:first-child { flex:1; min-width:0; }
+.nocopy { font-family:var(--mono); color:var(--manilaInk); background:var(--manila); border-radius:999px; padding:0 8px; flex:none; }
+.enote { font-family:var(--mono); color:var(--inkSoft); overflow-wrap:anywhere; }
+.rule { height:1px; background:var(--line); }
+.cands { display:flex; flex-direction:column; gap:8px; padding:8px 12px 12px; }
+.tie { font-family:var(--cochin); background:var(--manila); color:var(--manilaInk); border-radius:6px; padding:4px 8px; }
+.cand { display:flex; align-items:center; gap:8px; padding:8px; border:1px solid var(--line); border-radius:8px; }
+.cand .col { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.seller { font-family:var(--cochin); font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cmeta, .fit { font-family:var(--mono); color:var(--inkSoft); overflow-wrap:anywhere; }
+.fit.exact { color:var(--green); font-weight:700; }
+.cand .mini { min-height:44px; min-width:44px; }
+.cand .mini::after { display:none; }
+.notice { display:flex; align-items:center; gap:8px; padding:4px 0 4px 12px; background:var(--greenSoft); border:1px solid var(--green); border-radius:8px; font-family:var(--cochin); }
+.notice span { flex:1; }
+.xbtn { width:44px; height:44px; border:0; background:none; color:var(--inkSoft); cursor:pointer; font-size:14px; }
+.emptyline { font-family:var(--cochin); color:var(--inkSoft); text-align:center; padding:28px 8px; }
+
+/* ---------- photos ---------- */
+.strip { display:flex; gap:8px; height:56px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; flex:none; }
+.strip::-webkit-scrollbar { display:none; }
+.photorow { display:flex; gap:12px; align-items:center; padding:0 12px 12px; }
+.photorow .cap { font-family:var(--cochin); color:var(--inkSoft); }
+.tile { width:56px; height:56px; flex:none; border-radius:8px; border:1px solid var(--line); padding:0; overflow:hidden; background:var(--manila); cursor:pointer; position:relative; display:block; }
+.tile svg { width:100%; height:100%; display:block; }
+.tile.lost { cursor:default; display:flex; align-items:center; justify-content:center; color:var(--manilaInk); font-family:var(--sys); font-size:11px; }
+.tile.saving::after { content:""; position:absolute; left:50%; top:50%; width:18px; height:18px; margin:-9px 0 0 -9px; border-radius:50%;
+  border:2px solid var(--manilaInk); border-right-color:transparent; animation:spin 0.9s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.addtile { width:56px; height:56px; flex:none; border-radius:8px; border:1.5px dashed var(--inkSoft); background:var(--card); color:var(--ink); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; }
+.addtile svg { width:26px; height:26px; }
+.advis { display:flex; gap:8px; align-items:center; background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:4px 4px 4px 12px; font-family:var(--cochin); margin:0 12px 12px; }
+.advis span { flex:1; }
+.stack > .advis { margin:0; }
+.advis .mini { min-height:36px; }
+.thumbmark { width:56px; height:56px; flex:none; position:relative; border-radius:8px; overflow:hidden; border:1px solid var(--line); }
+.thumbmark svg { width:100%; height:100%; display:block; }
+.thumbmark .more { position:absolute; right:2px; bottom:2px; font-family:var(--mono); font-size:11px; background:var(--card); color:var(--ink); border-radius:4px; padding:0 4px; }
+.cellrow { display:flex; gap:8px; align-items:flex-start; padding:0 12px 12px; }
+.cellrow .entries { padding:0; flex:1; }
+.picked { outline:2px solid var(--accent); outline-offset:-2px; }
+.cellbtn { all:unset; display:block; cursor:pointer; border-radius:8px; }
+.cellbtn:focus-visible { outline:2px solid var(--accent); }
+
+/* ---------- composer (OrphanedView.swift ComposerView) ---------- */
+.composer { padding:12px; display:flex; flex-direction:column; gap:8px; border-color:var(--accent); }
+.composer .photorow { padding:4px 0 0; }
+.composer .advis { margin:0; }
+.inbox { font-family:var(--cochin); font-size:16px; color:var(--ink); background:var(--card); border:1px solid var(--line); border-radius:8px; padding:8px 12px; min-height:48px; width:100%; resize:none; line-height:18px; }
+.sugg { border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.sugg button { all:unset; box-sizing:border-box; display:flex; width:100%; min-height:44px; align-items:center; padding:8px 12px; cursor:pointer; font-family:var(--cochin); }
+.sugg button + button { border-top:1px solid var(--line); }
+.sugg .q { font-family:var(--mono); color:var(--inkSoft); margin-left:auto; }
+.sugg .typed { background:var(--manila); color:var(--manilaInk); }
+.ents { border-top:1px solid var(--line); }
+.ents .row { display:flex; align-items:center; border-bottom:1px solid var(--line); padding-left:12px; font-family:var(--cochin); }
+.ents .row span:first-child { flex:1; }
+.step { width:44px; height:44px; border:0; background:none; font-family:var(--mono); cursor:pointer; color:var(--ink); }
+.foot { display:flex; align-items:center; gap:8px; padding-top:4px; }
+.foot .count { flex:1; font-family:var(--mono); color:var(--inkSoft); }
+.foot .mini { min-height:36px; }
+.why { font-family:var(--cochin); color:var(--inkSoft); }
+
+/* ---------- system parts ---------- */
+.tabbar { position:absolute; left:0; right:0; bottom:0; height:83px; z-index:20; display:flex; align-items:flex-start; justify-content:center; padding-top:8px; pointer-events:none; }
+.tabbar .pill { pointer-events:auto; display:flex; gap:4px; padding:4px; border-radius:999px; background:rgba(252,246,234,0.72); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid rgba(51,46,63,0.12); box-shadow:0 2px 8px var(--shadow); }
+.tab { width:84px; height:52px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:10px; color:var(--ink); border-radius:999px; position:relative; }
+.tab.on { background:rgba(111,92,166,0.12); color:var(--accent); font-weight:600; }
+.tab svg { width:22px; height:22px; }
+.tab .badge { position:absolute; top:2px; left:50%; margin-left:6px; background:var(--red); color:var(--card); font-size:11px; border-radius:999px; min-width:18px; height:18px; padding:0 5px; display:flex; align-items:center; justify-content:center; }
+.keys { position:absolute; left:0; right:0; bottom:0; height:289px; z-index:30; background:#D1D3D9; display:flex; flex-direction:column; gap:10px; padding:8px 4px 0; }
+.dev.open .keys { height:264px; }
+.keys .sugbar { height:36px; display:flex; justify-content:space-around; align-items:center; color:#333; font-size:15px; }
+.keys .krow { display:flex; gap:6px; justify-content:center; }
+.keys .k { height:42px; flex:1; max-width:40px; background:#fff; border-radius:6px; box-shadow:0 1px 0 #898a8d; display:flex; align-items:center; justify-content:center; font-size:18px; color:#111; }
+.dev.open .keys .k { max-width:78px; }
+.keys .k.w { max-width:none; flex:4; font-size:14px; }
+.keys .k.f { background:#ABB0BA; flex:1.5; max-width:none; font-size:14px; }
+.keys .systag { position:absolute; right:8px; top:-22px; }
+
+/* camera: the system picker, drawn roughly */
+.camera { position:absolute; inset:0; background:#000; z-index:60; color:#fff; display:flex; flex-direction:column; }
+.camera .vf { flex:1; position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#2a2622; margin-top:calc(env(safe-area-inset-top) + 44px); }
+.camera .vf svg { width:86%; transform:rotate(-4deg); box-shadow:0 8px 24px rgba(0,0,0,0.5); }
+.camera .ctl { height:140px; display:flex; align-items:center; justify-content:space-between; padding:0 24px calc(env(safe-area-inset-bottom) + 16px); }
+.camera .ctl button { font:inherit; font-size:17px; color:#fff; background:none; border:0; min-height:44px; min-width:64px; cursor:pointer; }
+.camera .shutter { width:66px; height:66px; border-radius:50%; border:4px solid #fff; background:#fff; box-shadow:inset 0 0 0 3px #000; padding:0; }
+.camera .flash { position:absolute; inset:0; background:#fff; animation:flash 0.35s ease-out forwards; pointer-events:none; }
+@keyframes flash { from { opacity:0.9; } to { opacity:0; } }
+
+/* viewer (PhotoViews.swift PhotoViewer): full-screen, scrim */
+.viewer { position:absolute; inset:0; background:var(--scrim); z-index:50; color:var(--card); display:flex; flex-direction:column; }
+.vtop { display:flex; align-items:center; justify-content:space-between; padding:calc(env(safe-area-inset-top) + 8px) 8px 0 16px; min-height:52px; }
+.vtop .count { font-family:var(--mono); font-size:13px; color:var(--card); opacity:0.85; }
+.vbtn { font:inherit; font-size:17px; font-weight:600; color:var(--card); background:none; border:0; min-height:44px; min-width:44px; padding:0 12px; cursor:pointer; border-radius:8px; }
+.vstage { flex:1; position:relative; overflow:hidden; touch-action:none; cursor:zoom-in; display:flex; align-items:center; justify-content:center; }
+.vstage.z { cursor:grab; }
+.vimg { width:calc(100% - 32px); transform-origin:0 0; will-change:transform; }
+.vimg svg { width:100%; display:block; border-radius:8px; }
+.vfoot { display:flex; flex-direction:column; align-items:center; gap:4px; padding:0 16px calc(env(safe-area-inset-bottom) + 16px); }
+.dots { display:flex; gap:0; }
+.dots button { width:28px; height:44px; border:0; background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; }
+.dots button i { width:8px; height:8px; border-radius:50%; background:var(--card); opacity:0.4; display:block; }
+.dots button[aria-current="true"] i { opacity:1; }
+.vact { display:flex; gap:8px; align-items:center; justify-content:center; min-height:44px; flex-wrap:wrap; }
+.rmbtn { font:inherit; font-size:15px; font-weight:600; min-height:44px; padding:0 16px; border-radius:8px; background:var(--redSoft); color:var(--red); border:1px solid var(--redSoft); cursor:pointer; }
+.rmbtn.armed { background:var(--red); color:var(--card); border-color:var(--red); }
+.rmcancel { font:inherit; font-size:15px; min-height:44px; padding:0 16px; border-radius:8px; background:var(--card); color:var(--ink); border:1px solid var(--line); cursor:pointer; }
+.keepline { font-size:13px; color:var(--card); opacity:0.85; text-align:center; max-width:36ch; }
+.vleft { padding:calc(env(safe-area-inset-top) + 16px) 16px 16px; display:flex; flex-direction:column; gap:12px; }
+.vleft .big { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; }
+.vleft .big button { padding:0; border:2px solid transparent; border-radius:8px; overflow:hidden; cursor:pointer; background:none; aspect-ratio:4/3; }
+.vleft .big button[aria-current="true"] { border-color:var(--card); }
+.vleft .big svg { width:100%; height:100%; display:block; }
+.vleft h3 { margin:0; font-family:var(--cochin); font-size:17px; font-weight:400; color:var(--card); }
+.vleft p { margin:0; font-family:var(--cochin); font-size:14px; color:var(--card); opacity:0.85; }
+
+/* ---------- Envelope faces ---------- */
+.sheet { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.sheet.one { grid-template-columns:1fr; }
+.print { all:unset; box-sizing:border-box; cursor:pointer; display:flex; flex-direction:column; gap:6px; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:6px 6px 10px; box-shadow:0 1px 2px var(--shadow); min-width:0; }
+.print:focus-visible { outline:2px solid var(--accent); }
+.print.picked { outline:2px solid var(--accent); outline-offset:-2px; }
+.print .face { aspect-ratio:4/3; border-radius:4px; overflow:hidden; position:relative; background:var(--manila); }
+.print .face svg { width:100%; height:100%; display:block; }
+.print .face .n { position:absolute; right:4px; bottom:4px; font-family:var(--mono); font-size:11px; background:var(--card); color:var(--ink); border-radius:4px; padding:1px 5px; }
+.print .face.none { background:repeating-linear-gradient(180deg, var(--card) 0 19px, var(--line) 19px 20px); display:flex; flex-direction:column; justify-content:center; padding:8px 10px; gap:2px; }
+.print .face.none i { font-family:var(--cochin); font-size:15px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.print .face.none em { font-style:normal; font-family:var(--sys); font-size:11px; color:var(--inkSoft); position:absolute; right:6px; top:4px; }
+.print .face.lostface { display:flex; align-items:center; justify-content:center; color:var(--manilaInk); font-family:var(--cochin); font-size:14px; padding:8px; text-align:center; }
+.print .names { font-family:var(--cochin); font-size:14px; padding:0 4px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.print .pm { font-family:var(--mono); font-size:11px; color:var(--inkSoft); padding:0 4px; }
+.fab { position:absolute; left:50%; transform:translateX(-50%); bottom:calc(83px + 12px); z-index:21; display:flex; align-items:center; gap:8px; min-height:52px; padding:0 20px; border-radius:999px; border:0;
+  background:var(--ink); color:var(--card); font-family:var(--cochin); font-weight:700; font-size:16px; box-shadow:0 4px 12px rgba(28,43,36,0.25); cursor:pointer; white-space:nowrap; }
+.fab svg { width:22px; height:22px; }
+.navbar { display:flex; align-items:center; min-height:44px; gap:4px; margin:-8px -8px 4px; }
+.navbar .back { font:inherit; font-size:17px; color:var(--accent); background:none; border:0; min-height:44px; padding:0 8px; cursor:pointer; display:flex; align-items:center; gap:2px; }
+.navbar .ttl { flex:1; text-align:center; font-weight:600; font-size:17px; margin-right:72px; }
+.carousel { position:relative; border-radius:8px; overflow:hidden; background:#000; }
+.carousel .slide { all:unset; display:block; width:100%; aspect-ratio:4/3; cursor:zoom-in; }
+.carousel .slide svg { width:100%; height:100%; display:block; }
+.carousel .cdots { position:absolute; left:0; right:0; bottom:0; display:flex; justify-content:center; }
+.carousel .cdots button i { background:#fff; }
+.carousel.empty { background:repeating-linear-gradient(180deg, var(--card) 0 23px, var(--line) 23px 24px); min-height:120px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; border:1px solid var(--line); }
+.carousel.empty p { margin:0; font-family:var(--cochin); color:var(--inkSoft); font-size:15px; }
+.photobar { display:flex; gap:8px; align-items:center; }
+.photobar .addp { font-family:var(--cochin); font-weight:700; font-size:15px; min-height:44px; padding:0 14px; border-radius:8px; border:1px solid var(--ink); background:var(--card); color:var(--ink); cursor:pointer; display:flex; gap:6px; align-items:center; }
+.photobar .addp svg { width:20px; height:20px; }
+.photobar .pc { margin-left:auto; font-family:var(--mono); font-size:11px; color:var(--inkSoft); }
+.typesub { all:unset; cursor:pointer; font-family:var(--cochin); font-size:15px; color:var(--ink); text-decoration:underline; text-underline-offset:3px; min-height:44px; display:flex; align-items:center; }
+.labelbig { border-radius:8px; overflow:hidden; border:1px solid var(--line); }
+.labelbig svg { width:100%; display:block; }
+.pagehead { font-family:var(--cochin); font-size:17px; margin:0; }
+.pagesub { font-family:var(--cochin); font-size:13px; color:var(--inkSoft); margin:0; }
+
+/* ---------- marks ---------- */
+.mk-today { outline:2px dashed var(--today); outline-offset:2px; }
+.mk-new { outline:2px dashed var(--new); outline-offset:2px; }
+.mk-sys { outline:2px dashed var(--inkSoft); outline-offset:-2px; }
+.mtag { position:absolute; z-index:45; font:600 10.5px/1.2 var(--sys); padding:1px 5px; border-radius:4px; background:var(--card); border:1.5px dashed currentColor; pointer-events:none; white-space:nowrap; }
+.mtag.t { color:var(--today); } .mtag.n { color:var(--new); } .mtag.s { color:var(--inkSoft); }
+body.nomarks .mk-today, body.nomarks .mk-new, body.nomarks .mk-sys { outline:0; }
+body.nomarks .mtag { display:none; }
+.tagwrap { position:relative; }
+
+.notes { max-width:110ch; font-size:14px; }
+.notes li { margin:4px 0; }
+code { font-family:var(--mono); font-size:0.9em; overflow-wrap:anywhere; }
+@media (prefers-reduced-motion: reduce) { .tile.saving::after { animation:none; } .camera .flash { animation:none; opacity:0; } * { scroll-behavior:auto !important; } }
+@media (max-width: 520px) { main { padding:16px; } #stage { gap:16px; } }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No card, seller, date, order number, note or photo on this page is real. Sizes come from the code, the records and Apple's pages, not from a device.</div>
+<h1>Envelope photos on Orphaned</h1>
+<p class="sub"><span class="kind">Designer kind: informed</span> <span class="kind">Designer: envelope-photos-informed-1</span> Native Orphaned tab. Take, look at, zoom into and remove the photos of an envelope nobody can place yet, and see in the pile which envelopes have them. Two concepts. Light theme only: the app is held to light. Every tap below works.</p>
+
+<nav class="bar" id="nav-concept" aria-label="Concept"></nav>
+<nav class="bar" id="nav-device" aria-label="Device"></nav>
+<nav class="bar" id="nav-state" aria-label="State"></nav>
+<nav class="bar" id="nav-opts" aria-label="Options you can hide"></nav>
+<nav class="bar" aria-label="Marks"><span class="lab">Marks</span><button type="button" id="marks" aria-pressed="true">Show Today, New and System marks</button></nav>
+<p class="howto">Deep link: <code>#c=strip|faces&amp;d=folded|open|regular|ax5|all&amp;s=&lt;state&gt;</code>. In the viewer, double-click (double-tap) to zoom, drag to pan, pinch on a trackpad, swipe or use the dots to move between photos, one click on the picture closes it.</p>
+
+<section id="stage" aria-live="polite">
+  <!-- Four fixed frames, folded first (skill ios-apps, Mockups). The script fills the ones the Device row shows. -->
+  <div class="devwrap" data-slot="folded"><div class="devcap"></div><div class="dev folded" data-device="iphone-duo-folded" data-frame="folded"></div></div>
+  <div class="devwrap" data-slot="open"><div class="devcap"></div><div class="dev open" data-device="iphone-duo-unfolded" data-frame="open"></div></div>
+  <div class="devwrap" data-slot="regular"><div class="devcap"></div><div class="dev regular" data-device="iphone-regular" data-frame="regular"></div></div>
+  <div class="devwrap" data-slot="ax5"><div class="devcap"></div><div class="dev folded" data-device="iphone-duo-folded" data-frame="ax5"></div></div>
+  <p class="hidden-concept" data-slot="hidden" hidden></p>
+</section>
+
+<section class="notes">
+  <h2 style="font-family:var(--cochin);font-weight:400;">What the marks mean</h2>
+  <ul>
+    <li><b style="color:var(--today)">Today</b>: a part the app has now, drawn as built.</li>
+    <li><b style="color:var(--new)">New</b>: a part this concept adds.</li>
+    <li><b style="color:var(--inkSoft)">System</b>: a part iOS draws (keys, camera, tab bar glass). Drawn roughly.</li>
+  </ul>
+  <p>Choices, costs and owner questions: <code>envelope-photos-informed-1-notes.md</code>, beside this file.</p>
+</section>
+</main>
+
+<script>
+"use strict";
+/* ================= sample data ================= */
+const TODAY = "2026-11-21";
+function sample() {
+  return {
+    envs: [
+      { id:"e1", date:"2026-11-18", entries:[{name:"Lightning Bolt",qty:2},{name:"Counterspell",qty:1}],
+        note:"Pink bubble mailer, Ohio postmark, no return address", photos:["p1","p2"],
+        cands:[{seller:"Gryphon Cards", date:"2026-11-03", order:"0412-77A1", untracked:false, exact:true, matched:3, total:3, left:0},
+               {seller:"Northside Singles", date:"2026-11-05", order:"3390-12C4", untracked:true, exact:true, matched:3, total:3, left:0}], tied:2 },
+      { id:"e2", date:"2026-11-17", entries:[{name:"Sol Ring",qty:1}], note:"", photos:[],
+        cands:[{seller:"Lowtide Games", date:"2026-11-08", order:"5521-09F0", untracked:false, exact:false, matched:1, total:1, left:2}], tied:0 },
+      { id:"e3", date:"2026-11-06", entries:[{name:"Llanowar Elves",qty:1},{name:"Dark Ritual",qty:1},{name:"Brainstorm",qty:1,nocopy:true}],
+        note:"Toploader in a team bag, plain white #10", photos:["p3","p4"], lost:["p4"],
+        cands:[{seller:"Mossy Den Cards", date:"2026-10-29", order:"7781-3B2D", untracked:false, exact:false, matched:2, total:3, left:0}], tied:0 },
+    ],
+  };
+}
+const OUTSTANDING = [
+  {name:"Lightning Bolt",qty:4,sellers:3},{name:"Llanowar Elves",qty:2,sellers:2},{name:"Sol Ring",qty:3,sellers:2},
+  {name:"Counterspell",qty:2,sellers:2},{name:"Dark Ritual",qty:1,sellers:1},{name:"Swords to Plowshares",qty:2,sellers:2},
+  {name:"Lotus Petal",qty:1,sellers:1},{name:"Lava Spike",qty:3,sellers:1}];
+
+/* ================= photo drawings (sample envelopes, no readable text) ================= */
+function rng(seed){ let s=0; for (const ch of seed) s=(s*31+ch.charCodeAt(0))>>>0; return ()=>{ s=(s*1664525+1013904223)>>>0; return s/4294967296; }; }
+function scribble(r, x, y, w, amp, stroke, sw){
+  let d=`M${x} ${y}`; let cx=x;
+  while (cx < x+w) { const step=4+r()*7; cx+=step; const yy=y+(r()-0.5)*amp*2; d+=` Q${(cx-step/2).toFixed(1)} ${(y-(r())*amp*1.6).toFixed(1)} ${cx.toFixed(1)} ${yy.toFixed(1)}`; if (r()<0.12) { cx+=8; d+=` M${cx.toFixed(1)} ${y}`; } }
+  return `<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>`;
+}
+const KINDS = { p1:"mailer", p2:"back", p3:"white", p4:"white", p5:"padded", p6:"padbak", p7:"mailer", p8:"white", p9:"padded" };
+function photoSVG(id, slice) {
+  const kind = KINDS[id] || "white"; const r = rng(id);
+  const bg = "#3b3530";
+  let body = "", ink = "#2b3a67";
+  if (kind==="mailer" || kind==="back") {
+    body += `<rect x="22" y="30" width="356" height="240" rx="10" fill="#E7A7B7"/>`;
+    for (let i=0;i<26;i++) body += `<circle cx="${30+r()*340}" cy="${38+r()*224}" r="${2+r()*3}" fill="#F3C3CF" opacity="0.6"/>`;
+    if (kind==="mailer") {
+      body += `<rect x="300" y="44" width="56" height="66" fill="#f5f0e6" stroke="#b98" stroke-dasharray="3 2"/><rect x="306" y="50" width="44" height="54" fill="#6d8fb3"/><circle cx="328" cy="72" r="12" fill="#e9d38a"/>`;
+      body += `<g opacity="0.55"><circle cx="276" cy="86" r="26" fill="none" stroke="#333" stroke-width="2"/><circle cx="276" cy="86" r="18" fill="none" stroke="#333" stroke-width="1"/>${[0,1,2,3].map(i=>`<path d="M300 ${74+i*8} q20 -6 40 0 t40 0" fill="none" stroke="#333" stroke-width="1.5"/>`).join("")}</g>`;
+      for (let i=0;i<4;i++) body += scribble(r, 130, 150+i*24, 160-i*12, 6, ink, 2.6);
+      body += scribble(r, 44, 58, 90, 4, ink, 1.6);
+      body += `<rect x="44" y="232" width="150" height="24" fill="#fff"/>${Array.from({length:40},(_,i)=>`<rect x="${48+i*3.5}" y="235" width="${r()<0.5?1.4:2.4}" height="18" fill="#111"/>`).join("")}`;
+    } else {
+      body += `<path d="M22 30 L200 140 L378 30" fill="none" stroke="#c98597" stroke-width="3"/><rect x="150" y="122" width="100" height="26" fill="#d9d2c0" opacity="0.85" transform="rotate(-3 200 135)"/>`;
+      body += scribble(r, 120, 210, 150, 5, "#444", 2);
+    }
+  } else if (kind==="padded" || kind==="padbak") {
+    body += `<rect x="30" y="24" width="340" height="252" rx="6" fill="#d7b98a"/><rect x="30" y="24" width="340" height="252" rx="6" fill="url(#crinkle)" opacity="0.35"/>`;
+    if (kind==="padded") {
+      body += `<rect x="110" y="120" width="200" height="110" fill="#fbfaf6" stroke="#bbb"/>`;
+      for (let i=0;i<4;i++) body += `<rect x="120" y="${132+i*20}" width="${150-i*20}" height="7" fill="#555" opacity="0.75"/>`;
+      body += `<rect x="296" y="36" width="58" height="40" fill="#f6f2ea"/>${Array.from({length:3},(_,i)=>`<rect x="302" y="${42+i*10}" width="46" height="5" fill="#777"/>`).join("")}`;
+      body += scribble(r, 48, 48, 100, 4, "#222", 1.6);
+    } else {
+      body += `<path d="M30 24 L200 120 L370 24" fill="none" stroke="#b8975f" stroke-width="3"/>`;
+      body += scribble(r, 60, 230, 120, 4, "#222", 2);
+    }
+  } else {
+    body += `<rect x="18" y="64" width="364" height="172" rx="4" fill="#f7f6f1"/>`;
+    body += `<rect x="322" y="76" width="44" height="52" fill="#e8e3d8" stroke="#bbb" stroke-dasharray="2 2"/><rect x="327" y="81" width="34" height="42" fill="#b33a3a"/><path d="M332 90 h24 M332 98 h24 M332 106 h24" stroke="#fff" stroke-width="3"/>`;
+    for (let i=0;i<3;i++) body += scribble(r, 150, 150+i*22, 140-i*10, 5, "#1d1d1d", 2.2);
+    body += `<g opacity="0.5">${[0,1,2,3,4].map(i=>`<path d="M220 ${88+i*7} q14 -5 28 0 t28 0 t28 0" fill="none" stroke="#333" stroke-width="1.3"/>`).join("")}</g>`;
+  }
+  return `<svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg"${slice?' preserveAspectRatio="xMidYMid slice"':""} role="img" aria-label="Sample envelope photo">
+    <defs><pattern id="crinkle" width="12" height="12" patternUnits="userSpaceOnUse"><path d="M0 6 Q3 2 6 6 T12 6" fill="none" stroke="#8a6a3a" stroke-width="1"/></pattern></defs>
+    <rect width="400" height="300" fill="${bg}"/>${body}</svg>`;
+}
+const CAM = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="4"/></svg>`;
+const ICONS = {
+  ledger:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>`,
+  orphaned:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="1.5"/><path d="M3 7l9 6 9-6"/></svg>`,
+  tally:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 5v14M10 5v14M14 5v14M18 5v14M4 15l16-6"/></svg>`,
+  packages:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 8l9-4 9 4v9l-9 4-9-4z M3 8l9 4 9-4 M12 12v9"/></svg>`,
+};
+
+/* ================= state ================= */
+const STATES = {
+  strip: ["pile","compose","camera","review","saving","composed","viewer","zoom","remove","denied","failed","lost","empty"],
+  faces: ["pile","detail","camera","review","saving","composed","compose","viewer","zoom","remove","denied","failed","lost","empty"],
+};
+const STATE_NAMES = { pile:"Pile", detail:"Envelope page", compose:"Composer, keys up", camera:"Camera", review:"Use or retake", saving:"Photo saving",
+  composed:"Composer with photos", viewer:"Viewer", zoom:"Viewer zoomed", remove:"Remove armed", denied:"Camera access off", failed:"Photo not saved", lost:"Lost photo", empty:"Empty pile" };
+const CONCEPTS = { strip:"Label strip", faces:"Envelope faces" };
+const DEVICES = { folded:"Duo folded", open:"Duo open", regular:"Large phone", ax5:"Folded, AX5 text", all:"All four" };
+/* Options the owner can cull. Each hides one part. Defaults all shown. */
+const OPTS = {
+  addOnCard: { c:"strip", label:"Add-photo tile on a saved card" },
+  cellThumb: { c:"strip", label:"Photo mark on Duo cells" },
+  spreadViewer: { c:"both", label:"Viewer uses the left page on the open Duo" },
+  vDone: { c:"both", label:"Done button in the viewer" },
+  vRemove: { c:"both", label:"Remove in the viewer" },
+  keepLine: { c:"both", label:"Backup-keeps-a-copy line" },
+  photoErr: { c:"both", label:"Photo error lines" },
+  fab: { c:"faces", label:"Floating Photograph button" },
+  photoOnly: { c:"faces", label:"Save with a photo and no cards" },
+  labelWhileTyping: { c:"faces", label:"Photo beside the composer on the open Duo" },
+};
+const S = {
+  c:"strip", d:"folded", s:"pile", hide:new Set(), hiddenConcepts:new Set(), marks:true,
+  data:sample(), sel:"e1", detail:null,
+  comp:null, keys:false, camera:null, view:null, err:null, undo:null, armed:null, scrollTo:null,
+};
+let nextPhoto = 5;
+const on = (k) => !S.hide.has(k);
+
+function freshComp(target, photos=[]) { return { target, input:"", entries:[], note:"", photos:[...photos], saving:null }; }
+function env(id) { return S.data.envs.find(e=>e.id===id); }
+function applyState(s) {
+  S.s = s; S.data = sample(); S.sel = "e1"; S.detail = null; S.comp = null; S.keys = false; S.camera = null; S.view = null; S.err = null; S.undo = null; S.armed = null; S.scrollTo = null;
+  nextPhoto = 5;
+  const faces = S.c === "faces";
+  const compWithPhotos = (ids) => { S.comp = freshComp("new", ids); S.comp.entries = [{name:"Lava Spike",qty:1}]; };
+  switch (s) {
+    case "pile": break;
+    case "detail": S.detail = faces ? "e1" : null; break;
+    case "compose": S.comp = freshComp("new"); S.comp.entries = [{name:"Lava Spike",qty:1}]; S.keys = true; break;
+    case "camera": if (!faces) { S.comp = freshComp("new"); S.comp.entries=[{name:"Lava Spike",qty:1}]; } S.camera = { target: faces ? "fresh" : "comp", shot:null }; break;
+    case "review": if (!faces) { S.comp = freshComp("new"); S.comp.entries=[{name:"Lava Spike",qty:1}]; } S.camera = { target: faces ? "fresh" : "comp", shot:"p5" }; break;
+    case "saving": S.comp = freshComp("new", ["p5"]); if (!faces) S.comp.entries=[{name:"Lava Spike",qty:1}]; S.comp.saving = "p5"; S.keys = faces; break;
+    case "composed": S.comp = freshComp("new", ["p5","p6"]); S.comp.entries = faces ? [] : [{name:"Lava Spike",qty:1}]; S.keys = true; break;
+    case "viewer": S.view = { src:"env", id:"e1", i:0, zoom:1, tx:0, ty:0 }; if (faces) S.detail = "e1"; break;
+    case "zoom": S.view = { src:"env", id:"e1", i:0, zoom:2.5, tx:-0.45, ty:-0.35 }; if (faces) S.detail = "e1"; break;
+    case "remove":
+      if (faces) { S.detail = "e1"; S.view = { src:"env", id:"e1", i:1, zoom:1, tx:0, ty:0 }; }
+      else { S.comp = freshComp("e1", env("e1").photos); S.comp.entries = env("e1").entries.map(e=>({...e})); S.comp.note = env("e1").note; S.view = { src:"comp", id:"e1", i:1, zoom:1, tx:0, ty:0 }; }
+      S.armed = "photo"; break;
+    case "denied": if (faces) { S.detail = "e2"; } else { S.comp = freshComp("new"); S.comp.entries=[{name:"Lava Spike",qty:1}]; } S.err = "denied"; break;
+    case "failed": if (faces) { S.detail = "e2"; } else { S.comp = freshComp("new"); S.comp.entries=[{name:"Lava Spike",qty:1}]; } S.err = "failed"; break;
+    case "lost": S.scrollTo = "e3"; if (faces) S.detail = null; S.sel = "e3"; break;
+    case "empty": S.data.envs = []; break;
+  }
+}
+
+/* ================= type scale ================= */
+/* Dynamic Type, from Apple's typography page (read 2026-11-21): at Large, Body 17, Footnote 13, Caption 1 12;
+   at AX5, Body 53, Footnote 44, Caption 1 43; at xxxLarge, Body 23. Cochin and Menlo scale relative to those styles (Theme.swift). */
+const SCALES = { L:{body:1, foot:1, cap:1}, AX5:{body:53/17, foot:44/13, cap:43/12} };
+let K = SCALES.L;
+const fs = (n, st="body") => `font-size:${(n*K[st]).toFixed(1)}px`;
+const esc = (s) => String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const cardsOf = (n) => `${n} card${n===1?"":"s"}`;
+let PRIMARY = true; /* ids (focus targets) are written only in the first frame of a render */
+const pid = (id) => PRIMARY ? ` id="${id}"` : "";
+const mark = (kind, label) => kind ? ` data-mark="${kind}" data-mlabel="${esc(label)}"` : "";
+
+/* ================= shared pieces ================= */
+function tile(eid, src, id, i, lost) {
+  if (lost) return `<div class="tile lost" role="img" aria-label="Photo lost: neither this device nor the backup has it.">Lost</div>`;
+  const saving = S.comp && S.comp.saving === id;
+  if (saving) return `<div class="tile saving" role="img" aria-label="Saving photo"></div>`;
+  return `<button class="tile" type="button" data-act="open" data-src="${src}" data-id="${eid}" data-i="${i}" aria-label="View photo ${i+1}">${photoSVG(id, true)}</button>`;
+}
+function addTile(target, label="Add a photo of the label") {
+  return `<button class="addtile" type="button" data-act="cam" data-target="${target}" aria-label="${label}">${CAM}</button>`;
+}
+function errLine(where) {
+  if (!S.err || !on("photoErr")) return "";
+  if (S.err === "denied") return `<div class="advis"${mark("new","New: camera off line")} style="${fs(13,"foot")}"><span>Camera access is off for MANIFEST.</span><button class="mini" type="button" data-act="settings" style="${fs(11,"cap")}">Open Settings</button></div>`;
+  return `<div class="advis"${mark("new","New: photo not saved line")} style="${fs(13,"foot")}"><span>Photo not saved: the phone is out of space.</span><button class="mini" type="button" data-act="cam" data-target="${where}" style="${fs(11,"cap")}">Try again</button></div>`;
+}
+function tabbar(count) {
+  const t = (k, label) => `<div class="tab${k==="orphaned"?" on":""}">${ICONS[k]}<span>${label}</span>${k==="orphaned"&&count?`<span class="badge">${count}</span>`:""}</div>`;
+  return `<div class="tabbar"><div class="pill"${mark("sys","System: tab bar (today)")}>${t("ledger","Ledger")}${t("orphaned","Orphaned")}${t("tally","Tally")}${t("packages","Packages")}</div></div>`;
+}
+function keys() {
+  const row = (s) => `<div class="krow">${[...s].map(c=>`<div class="k">${c}</div>`).join("")}</div>`;
+  return `<div class="keys" aria-hidden="true"${mark("sys","System: keys")}><div class="sugbar"><span>Lava</span><span>Lava Spike</span><span>Lavender</span></div>${row("qwertyuiop")}${row("asdfghjkl")}<div class="krow"><div class="k f">⇧</div>${[..."zxcvbnm"].map(c=>`<div class="k">${c}</div>`).join("")}<div class="k f">⌫</div></div><div class="krow"><div class="k f">123</div><div class="k w">space</div><div class="k f">done</div></div></div>`;
+}
+function masthead() { return `<div class="masthead"${mark("today","Today: masthead, not redrawn")}><span class="mh">MANIFEST</span><small>masthead as built</small></div>`; }
+function undoNotice() {
+  if (!S.undo) return "";
+  return `<div class="notice"${mark("today","Today: Undo notice")} style="${fs(13,"foot")}"><span>Checked in ${cardsOf(S.undo.qty)} against ${esc(S.undo.label)}.</span><button class="mini" type="button" data-act="undo" style="${fs(11,"cap")}">Undo</button><button class="xbtn" type="button" data-act="undo-x" aria-label="Dismiss">✕</button></div>`;
+}
+function candidates(e) {
+  if (!e.entries.length) return `<div class="cands"><span class="why" style="${fs(13,"foot")}"${mark("new","New: no cards yet")}>No cards recorded yet. Add them with Edit, and the packages they could have come from show here.</span></div>`;
+  if (!e.cands.length) return `<div class="cands"><span class="why" style="${fs(13,"foot")}">No outstanding package accounts for any of these.</span></div>`;
+  const tie = e.tied > 1 ? `<div class="tie" style="${fs(12.5,"foot")}">${e.tied} packages fit these cards equally well — pick the right one yourself.</div>` : "";
+  return `<div class="cands"><div class="micro" style="${fs(10.5,"cap")}">Could have come from</div>${tie}${e.cands.map(c=>{
+    const sure = c.exact && e.tied < 2;
+    const fit = c.exact ? `explains all ${c.matched} · nothing left over` : `${c.matched} of ${c.total} cards` + (c.left ? ` · ${c.left} more still owed` : " · whole package");
+    return `<div class="cand"><div class="col"><span class="seller" style="${fs(14)}">${esc(c.seller)}</span><span class="cmeta" style="${fs(10.5,"cap")}">${[c.date, c.untracked?"○ untracked":"", c.order].filter(Boolean).join(" · ")}</span><span class="fit${sure?" exact":""}" style="${fs(11,"cap")}">${fit}</span></div><button class="mini" type="button" data-act="assign" data-id="${e.id}" data-seller="${esc(c.seller)}" style="${fs(11.5,"cap")}">This one</button></div>`;
+  }).join("")}</div>`;
+}
+function head(e, mode) {
+  const total = e.entries.reduce((s,x)=>s+x.qty,0);
+  const armed = S.armed === "discard:"+e.id;
+  const ask = armed ? `<div class="askpanel"><button class="mini" type="button" data-act="disarm" style="${fs(11,"cap")}" autofocus>Cancel</button><button class="mini armed" type="button" data-act="discard-go" data-id="${e.id}" style="${fs(11,"cap")}">Tap again to discard ${cardsOf(total)}</button></div>` : "";
+  const btns = mode === "cell" ? "" : `<button class="mini" type="button" data-act="edit" data-id="${e.id}" style="${fs(11,"cap")}">Edit</button><button class="mini discard${armed?" armed":""}" type="button" data-act="discard" data-id="${e.id}" style="${fs(11,"cap")}">Discard</button>`;
+  return `<div class="ehead"><span class="micro" style="${fs(11,"cap")}">Envelope · ${e.date} · ${cardsOf(total)}</span>${btns}${ask}</div>`;
+}
+function entries(e) {
+  return `<div class="entries">${e.entries.map(x=>`<div class="entry" style="${fs(13.5)}"><span>${x.qty>1?`×${x.qty} `:""}${esc(x.name)}</span>${x.nocopy?`<span class="nocopy" style="${fs(10,"cap")}">no outstanding copy</span>`:""}</div>`).join("")}${e.note?`<div class="enote" style="${fs(11,"cap")}">${esc(e.note)}</div>`:""}</div>`;
+}
+
+/* ================= Label strip ================= */
+function stripRow(e, isFocus) {
+  const lost = new Set(e.lost||[]);
+  const tiles = e.photos.map((p,i)=>tile(e.id,"env",p,i,lost.has(p))).join("");
+  const add = on("addOnCard") ? addTile(e.id) : "";
+  if (!tiles && !add) return "";
+  return `<div class="photorow" data-anchor="strip-${e.id}"${isFocus?pid("focus-label-strip"):""}${mark("new","New: photo strip")}><div class="strip">${add}${tiles}</div>${!e.photos.length && add ? `<span class="cap" style="${fs(13,"foot")}">No photo yet</span>`:""}</div>`;
+}
+function stripCard(e, mode, first) {
+  if (S.comp && S.comp.target === e.id && mode !== "detail") return composer();
+  if (mode === "cell") {
+    const picked = S.sel === e.id;
+    const p = e.photos.find(x=>!(e.lost||[]).includes(x));
+    const thumb = on("cellThumb") && p ? `<span class="thumbmark"${mark("new","New: photo mark")}>${photoSVG(p, true)}${e.photos.length>1?`<span class="more">${e.photos.length}</span>`:""}</span>` : "";
+    return `<button class="cellbtn" type="button" data-act="pick" data-id="${e.id}" aria-pressed="${picked}" data-anchor="${e.id}"><div class="card${picked?" picked":""}">${head(e,"cell")}<div class="cellrow">${entries(e)}${thumb}</div></div></button>`;
+  }
+  return `<div class="card" data-anchor="${e.id}">${head(e,mode)}${entries(e)}${stripRow(e, first)}<div class="rule"></div>${candidates(e)}</div>`;
+}
+function composer() {
+  const c = S.comp; const total = c.entries.reduce((s,x)=>s+x.qty,0);
+  const typed = c.input.trim();
+  const found = typed ? OUTSTANDING.filter(o=>o.name.toLowerCase().includes(typed.toLowerCase())).slice(0,4) : [];
+  const asTyped = typed && !found.some(f=>f.name.toLowerCase()===typed.toLowerCase());
+  const sugg = (found.length || asTyped) ? `<div class="sugg">${found.map(f=>`<button type="button" data-act="addname" data-name="${esc(f.name)}" style="${fs(14)}"><span>${esc(f.name)}</span><span class="q" style="${fs(10.5,"cap")}">${f.qty} out · ${f.sellers} seller${f.sellers===1?"":"s"}</span></button>`).join("")}${asTyped?`<button type="button" class="typed" data-act="addname" data-name="${esc(typed)}" style="${fs(13,"foot")}">Add “${esc(typed)}” as typed</button>`:""}</div>` : "";
+  const ents = c.entries.length ? `<div class="ents">${c.entries.map((x,i)=>`<div class="row" style="${fs(14)}"><span>${esc(x.name)}</span><button class="step" type="button" data-act="qty" data-i="${i}" data-d="-1" aria-label="${x.qty>1?"One fewer":"Remove"} ${esc(x.name)}">–</button><span style="font-family:var(--mono);${fs(13,"cap")};min-width:20px;text-align:center">${x.qty}</span><button class="step" type="button" data-act="qty" data-i="${i}" data-d="1" aria-label="One more ${esc(x.name)}">+</button></div>`).join("")}</div>` : "";
+  const faces = S.c === "faces";
+  const tiles = c.photos.map((p,i)=>tile("comp","comp",p,i,false)).join("");
+  const ready = c.entries.length > 0 || (faces && on("photoOnly") && c.photos.length > 0);
+  const photoOnlyNew = faces && on("photoOnly") && !c.entries.length && c.photos.length;
+  const head = faces && c.photos.length && !(S.d==="open" && on("labelWhileTyping")) ? `<div class="labelbig"${mark("new","New: the photo leads")} style="max-height:150px;overflow:hidden">${photoSVG(c.photos[c.photos.length-1])}</div>` : "";
+  const prow = `<div class="photorow"${PRIMARY && !faces ? ' id="focus-composer-strip"':""}${mark("new", faces ? "New: more photos" : "New: photo row (web has it)")}><div class="strip">${addTile("comp", "Take a photo of the label")}${tiles}</div>${!c.photos.length?`<span class="cap" style="${fs(13,"foot")}">Photo of the label · optional</span>`:""}</div>`;
+  return `<div class="card composer" data-anchor="composer">
+    <div class="micro" style="${fs(11,"cap")}">${c.target==="new"?"New envelope":"Edit envelope"}</div>
+    ${head}
+    <textarea class="inbox" rows="2" data-in="name" placeholder="Type a card name…" aria-label="Card name" style="${fs(16)};line-height:1.15">${esc(c.input)}</textarea>
+    ${sugg}${ents}
+    <textarea class="inbox" rows="2" data-in="note" placeholder="Note (optional) — tracking #, sender, mailer…" aria-label="Note" style="${fs(16)};line-height:1.15">${esc(c.note)}</textarea>
+    ${prow}${errLine("comp")}
+    <div class="foot" data-anchor="saverow"><span class="count" style="${fs(11,"cap")}">${cardsOf(total)}${c.photos.length?` · ${c.photos.length} photo${c.photos.length===1?"":"s"}`:""}</span>
+      <button class="mini" type="button" data-act="comp-cancel" style="${fs(11,"cap")}">Cancel</button>
+      <button class="mini ${ready?"ready":"empty"}" type="button" data-act="comp-save" ${ready?"":'aria-disabled="true"'} style="${fs(11,"cap")}"${photoOnlyNew?mark("new","New: saves with no cards"):""}>${c.target==="new"?"Save envelope":"Save changes"}</button></div>
+    ${!ready?`<span class="why" style="${fs(12,"foot")}">Add a card first.</span>`:""}
+  </div>`;
+}
+function stripList(mode) {
+  const envs = S.data.envs;
+  let out = masthead();
+  if (S.comp && S.comp.target === "new") out += composer();
+  else out += `<button class="record" type="button" data-act="record" style="${fs(15)}"${mark("today","Today: record button")}>+ Record an envelope</button>`;
+  if (S.undo) out += undoNotice();
+  envs.forEach((e,i)=>{ out += stripCard(e, mode, i===0); });
+  if (!envs.length && !S.comp) out += `<div class="emptyline" style="${fs(14)}">Nothing waiting: record a package here when you can’t tell who sent it.</div>`;
+  return `<div class="stack">${out}</div>`;
+}
+
+/* ================= Envelope faces ================= */
+function printCell(e, i) {
+  const total = e.entries.reduce((s,x)=>s+x.qty,0);
+  const lost = new Set(e.lost||[]);
+  const live = e.photos.filter(p=>!lost.has(p));
+  let face;
+  if (live.length) face = `<div class="face">${photoSVG(live[0])}${e.photos.length>1?`<span class="n">${e.photos.length} photos</span>`:""}</div>`;
+  else if (e.photos.length) face = `<div class="face lostface">Photo lost</div>`;
+  else face = `<div class="face none" aria-hidden="true">${e.note ? `<i style="white-space:normal">${esc(e.note)}</i>` : e.entries.slice(0,3).map(x=>`<i>${esc(x.name)}</i>`).join("")}<em>no photo</em></div>`;
+  const picked = S.d === "open" && S.sel === e.id;
+  return `<button class="print${picked?" picked":""}" type="button" data-act="${S.d==="open"?"pick":"detail"}" data-id="${e.id}" data-anchor="${e.id}"${i===0?pid("focus-envelope-faces"):""}>${face}<span class="names" style="${fs(14)}">${e.entries.map(x=>(x.qty>1?`×${x.qty} `:"")+esc(x.name)).join(", ")}</span><span class="pm" style="${fs(11,"cap")}">${e.date.slice(5)} · ${cardsOf(total)}</span></button>`;
+}
+function facesPile() {
+  const envs = S.data.envs;
+  let out = masthead();
+  if (S.comp && S.comp.target === "new") out += composer();
+  else out += `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><p class="pagesub" style="${fs(13,"foot")}">${envs.length} envelope${envs.length===1?"":"s"} waiting${envs.some(e=>!e.photos.length)?` · ${envs.filter(e=>!e.photos.length).length} with no photo`:""}</p><button class="typesub" type="button" data-act="record" style="${fs(15)}">Type cards only</button></div>`;
+  if (S.undo) out += undoNotice();
+  if (envs.length) out += `<div class="sheet${K.body>1.5?" one":""}"${mark("new","New: contact sheet")}>${envs.map(printCell).join("")}</div>`;
+  else if (!S.comp) out += `<div class="emptyline" style="${fs(14)}">Nothing waiting. Photograph an envelope when you can’t tell who sent it.</div>`;
+  return `<div class="stack">${out}</div>`;
+}
+function facesDetail(e, withBack) {
+  const lost = new Set(e.lost||[]);
+  const nav = withBack ? `<div class="navbar"><button class="back" type="button" data-act="back" aria-label="Back to Orphaned">‹ Orphaned</button><span class="ttl">Envelope</span></div>` : "";
+  let car;
+  if (e.photos.length) {
+    const i = Math.min(S.slide||0, e.photos.length-1); const p = e.photos[i];
+    const slide = lost.has(p) ? `<div class="slide" style="display:flex;align-items:center;justify-content:center;background:var(--manila);color:var(--manilaInk);font-family:var(--cochin)" role="img" aria-label="Photo lost: neither this device nor the backup has it.">Photo lost</div>` :
+      `<button class="slide" type="button" data-act="open" data-src="env" data-id="${e.id}" data-i="${i}" aria-label="Open photo ${i+1} of ${e.photos.length}">${photoSVG(p)}</button>`;
+    car = `<div class="carousel"${mark("new","New: the photo leads the page")}>${slide}${e.photos.length>1?`<div class="cdots dots">${e.photos.map((_,j)=>`<button type="button" data-act="slide" data-i="${j}" aria-label="Photo ${j+1}" aria-current="${j===i}"><i></i></button>`).join("")}</div>`:""}</div>`;
+  } else {
+    car = `<div class="carousel empty"${mark("new","New: no-photo face")}><p style="${fs(15)}">No photo of this envelope yet.</p></div>`;
+  }
+  const bar = `<div class="photobar"><button class="addp" type="button" data-act="cam" data-target="${e.id}" style="${fs(15)}"${mark("new","New: add a photo")}>${CAM}${e.photos.length?"Add a photo":"Photograph it"}</button>${e.photos.length?`<span class="pc" style="${fs(11,"cap")}">${e.photos.length} photo${e.photos.length===1?"":"s"}</span>`:""}</div>`;
+  return `<div class="stack">${nav}${car}${bar}${errLine(e.id)}<div class="card">${head(e,"full")}${entries(e)}<div class="rule"></div>${candidates(e)}</div></div>`;
+}
+
+/* ================= overlays ================= */
+function cameraView() {
+  const shot = S.camera.shot;
+  const vf = `<div class="vf"><div style="width:86%">${photoSVG(shot || "p" + nextPhoto)}</div>${S.camera.flash?'<div class="flash"></div>':""}</div>`;
+  const ctl = shot
+    ? `<div class="ctl"><button type="button" data-act="cam-retake">Retake</button><span></span><button type="button" data-act="cam-use" style="font-weight:600">Use Photo</button></div>`
+    : `<div class="ctl"><button type="button" data-act="cam-cancel">Cancel</button><button class="shutter" type="button" data-act="cam-shoot" aria-label="Take photo"></button><span style="min-width:64px"></span></div>`;
+  return `<div class="camera" role="dialog" aria-label="Camera"${mark("sys","System: camera")}>${vf}${ctl}</div>`;
+}
+function viewerPhotos() {
+  const v = S.view; if (!v) return [];
+  if (v.src === "comp") return S.comp ? S.comp.photos : [];
+  const e = env(v.id); if (!e) return [];
+  return e.photos.filter(p=>!(e.lost||[]).includes(p));
+}
+function canRemove() {
+  if (!on("vRemove")) return false;
+  return S.c === "faces" || S.view.src === "comp";
+}
+function viewerMain(withLeft) {
+  const v = S.view; const ph = viewerPhotos(); const i = Math.min(v.i, ph.length-1); const p = ph[i];
+  const armed = S.armed === "photo";
+  const top = `<div class="vtop"><span class="count">${ph.length>1?`${i+1} of ${ph.length}`:""}</span>${on("vDone")?`<button class="vbtn" type="button" data-act="v-done"${mark("new","New: Done")}>Done</button>`:'<span style="min-height:44px"></span>'}</div>`;
+  const img = `<div class="vstage${v.zoom>1?" z":""}" data-act="v-stage"><div class="vimg" style="transform:translate(${(v.tx*100).toFixed(1)}%, ${(v.ty*100).toFixed(1)}%) scale(${v.zoom})">${photoSVG(p)}</div></div>`;
+  const dots = ph.length > 1 && !withLeft ? `<div class="dots">${ph.map((_,j)=>`<button type="button" data-act="v-dot" data-i="${j}" aria-label="Photo ${j+1}" aria-current="${j===i}"><i></i></button>`).join("")}</div>` : "";
+  let act = "";
+  if (canRemove()) {
+    act = armed
+      ? `<div class="vact"><button class="rmcancel" type="button" data-act="disarm" autofocus>Cancel</button><button class="rmbtn armed" type="button" data-act="v-remove-go"${PRIMARY?' id="focus-remove"':""}>Tap again to remove this photo</button></div>${on("keepLine")?`<p class="keepline"${mark("new","New: honest line")}>It leaves this envelope. A copy already sent to the backup stays there.</p>`:""}`
+      : `<div class="vact"><button class="rmbtn" type="button" data-act="v-remove"${mark("new","New: Remove")}>Remove photo</button></div>`;
+  }
+  return `<div class="viewer" role="dialog" aria-modal="true" aria-label="Envelope photo viewer">${top}${img}<div class="vfoot">${dots}${act}</div></div>`;
+}
+function viewerLeft() {
+  const v = S.view; const ph = viewerPhotos(); const i = Math.min(v.i, ph.length-1);
+  const e = v.src === "comp" ? null : env(v.id);
+  const title = e ? `Envelope · ${e.date}` : "This envelope, not saved yet";
+  return `<div class="viewer" style="z-index:50"${mark("new","New: the left page lists the photos")}><div class="vleft"><h3>${esc(title)}</h3>${e?`<p>${esc(e.entries.map(x=>x.name).join(", "))}</p>`:""}<div class="big">${ph.map((p,j)=>`<button type="button" data-act="v-dot" data-i="${j}" aria-label="Photo ${j+1}" aria-current="${j===i}">${photoSVG(p)}</button>`).join("")}</div>${e&&e.note?`<p style="font-family:var(--mono);font-size:12px">${esc(e.note)}</p>`:""}</div></div>`;
+}
+
+/* ================= frames ================= */
+function pageScroll(inner, opts={}) {
+  return `<div class="scroll${opts.keys?" kup":opts.fab?" fabpad":""}" data-scroll>${inner}</div>`;
+}
+function screenFolded(dev) {
+  const faces = S.c === "faces";
+  let content, overlays = "";
+  if (faces) content = S.detail && env(S.detail) ? facesDetail(env(S.detail), true) : facesPile();
+  else content = stripList("full");
+  const keysUp = S.keys && S.comp && !S.camera && !S.view;
+  const count = S.data.envs.length;
+  let fab = "";
+  if (faces && on("fab") && !S.detail && !S.comp && !keysUp) fab = `<button class="fab" type="button" data-act="cam" data-target="fresh" style="font-size:${Math.min(16*K.body, 16*23/17).toFixed(1)}px"${mark("new","New: Photograph button")}>${CAM}Photograph an envelope</button>`;
+  if (S.camera) overlays += cameraView();
+  if (S.view) overlays += viewerMain(false);
+  return `<div class="page">${pageScroll(content,{keys:keysUp, fab:!!fab})}${fab}${tabbar(count)}${keysUp?keys():""}${overlays}</div>`;
+}
+function screenOpen() {
+  const faces = S.c === "faces";
+  const sel = env(S.sel) || S.data.envs[0];
+  let left, right;
+  if (faces) {
+    left = facesPile();
+    if (S.comp && S.comp.photos.length && on("labelWhileTyping")) right = `<div class="stack"><p class="pagehead">The label, while you type</p><div class="labelbig"${mark("new","New: the photo stays in view")}>${photoSVG(S.comp.photos[S.comp.photos.length-1])}</div><p class="pagesub" style="${fs(13,"foot")}">Double-tap to zoom. Type the cards on the left.</p></div>`;
+    else right = sel ? facesDetail(sel, false) : `<div class="emptyline" style="${fs(14)}">Pick an envelope on the left.</div>`;
+  } else {
+    left = stripList("cell");
+    right = sel ? `<div class="stack">${stripCard(sel,"detail",true)}</div>` : "";
+  }
+  const keysUp = S.keys && S.comp && !S.camera && !S.view;
+  let fab = "";
+  if (faces && on("fab") && !S.comp && !keysUp) fab = `<button class="fab" type="button" data-act="cam" data-target="fresh" style="bottom:24px"${mark("new","New: Photograph button")}>${CAM}Photograph an envelope</button>`;
+  let lo = "", ro = "";
+  if (S.camera) ro += cameraView();
+  if (S.view) { if (on("spreadViewer")) { lo += viewerLeft(); ro += viewerMain(true); } else { ro += viewerMain(false); lo += `<div class="viewer" style="z-index:50"></div>`; } }
+  return `<div class="page left">${pageScroll(left,{keys:keysUp, fab:!!fab})}${fab}${lo}</div><div class="hinge" aria-hidden="true"></div><div class="page right">${pageScroll(right,{keys:keysUp})}${tabbar(S.data.envs.length)}${ro}</div>${keysUp?keys():""}`;
+}
+function frame(d) {
+  K = d === "ax5" ? SCALES.AX5 : SCALES.L;
+  let cls, dataDev, cap, size;
+  if (d === "open") { cls = "open"; dataDev = "iphone-duo-unfolded"; cap = "iPhone Duo, open"; size = "951 × 669 pt. Hinge 455.5 to 495.5 pt, empty. Tab bar under the right page."; }
+  else if (d === "regular") { cls = "regular"; dataDev = "iphone-regular"; cap = "Large phone"; size = "Size not written in the device list or the brief: drawn at 466 × 678 pt, the folded Duo's size, as a one-page compact layout."; }
+  else if (d === "ax5") { cls = "folded"; dataDev = "iphone-duo-folded"; cap = "iPhone Duo, folded, AX5 text"; size = "466 × 678 pt. Biggest accessibility size. Cochin and Menlo scaled by Apple's AX5 table."; }
+  else { cls = "folded"; dataDev = "iphone-duo-folded"; cap = "iPhone Duo, folded"; size = "466 × 678 pt (duo-fold-and-keyboard). Tab bar from y 595, 83 pt."; }
+  const inner = d === "open" ? screenOpen() : screenFolded(d);
+  return { cap:`<b>${cap}</b> · ${CONCEPTS[S.c]} · ${STATE_NAMES[S.s]}<span class="size">${size}</span>`, inner };
+}
+
+/* ================= render ================= */
+function render() {
+  document.body.classList.toggle("nomarks", !S.marks);
+  const stage = document.getElementById("stage");
+  const keep = {}; stage.querySelectorAll("[data-frame]").forEach(f=>{ const sc=f.querySelector("[data-scroll]"); if (sc) keep[f.dataset.frame]=sc.scrollTop; });
+  stage.querySelectorAll(".mtag").forEach(t=>t.remove());
+  const hid = S.hiddenConcepts.has(S.c);
+  const msg = stage.querySelector('[data-slot="hidden"]'); msg.hidden = !hid; msg.textContent = hid ? `${CONCEPTS[S.c]} is hidden. Show it again from the Concept row.` : "";
+  const list = hid ? [] : S.d === "all" ? ["folded","open","regular","ax5"] : [S.d];
+  PRIMARY = true;
+  for (const d of ["folded","open","regular","ax5"]) {
+    const slot = stage.querySelector(`[data-slot="${d}"]`), dev = slot.querySelector(".dev");
+    if (!list.includes(d)) { slot.hidden = true; dev.innerHTML = ""; continue; }
+    slot.hidden = false; const f = frame(d); slot.querySelector(".devcap").innerHTML = f.cap; dev.innerHTML = f.inner; PRIMARY = false;
+  }
+  K = SCALES.L;
+  stage.querySelectorAll("[data-frame]").forEach(f=>{
+    const d = f.dataset.frame; if (f.closest("[hidden]")) return;
+    f.querySelectorAll("[data-scroll]").forEach((sc, idx)=>{
+      const want = S.scrollTo || (d === "ax5" && S.s === "pile" ? (S.c === "strip" ? "strip-e1" : null) : null);
+      if (want) { const a = sc.querySelector(`[data-anchor="${want}"]`); if (a) { sc.scrollTop = 0; sc.scrollTop = a.getBoundingClientRect().top - sc.getBoundingClientRect().top - 120; } }
+      else if (S.keys && S.comp && !S.camera && !S.view) { const a = sc.querySelector('[data-anchor="saverow"]'); if (a) { const r = a.getBoundingClientRect(), s = sc.getBoundingClientRect(); const keysTop = s.top + sc.clientHeight - (d==="open"?264:289); sc.scrollTop += (r.bottom + 12) - keysTop; } }
+      else if (keep[d] != null && idx === 0) sc.scrollTop = keep[d];
+    });
+  });
+  placeMarks();
+  renderNav();
+  writeHash();
+}
+function placeMarks() {
+  document.querySelectorAll("[data-mark]").forEach(el=>{
+    const k = el.dataset.mark; el.classList.add(k==="new"?"mk-new":k==="today"?"mk-today":"mk-sys");
+    if (el.closest("[hidden]")) return;
+    const host = el.closest("[data-scroll]") || el.closest(".page") || el.closest(".dev"); if (!host) return;
+    const t = document.createElement("span"); t.className = "mtag " + (k==="new"?"n":k==="today"?"t":"s"); t.textContent = el.dataset.mlabel;
+    const hr = host.getBoundingClientRect(), r = el.getBoundingClientRect();
+    t.style.top = Math.max(2, r.top - hr.top + host.scrollTop + (r.height >= 72 ? 3 : -16)) + "px"; /* a tall part takes its tag inside the outline, top right; a small control takes it above */
+    host.appendChild(t);
+    /* right-aligned on the marked part, where rows are mostly empty; kept inside the page */
+    const w = t.offsetWidth; t.style.left = Math.max(2, Math.min(host.clientWidth - w - 2, r.right - hr.left - w - 4)) + "px";
+  });
+}
+function renderNav() {
+  const nc = document.getElementById("nav-concept");
+  nc.innerHTML = `<span class="lab">Concept</span>` + Object.entries(CONCEPTS).map(([k,v])=>`<a href="#c=${k}&d=${S.d}&s=pile" aria-current="${S.c===k}">${v}${k==="faces"?" (bold)":""}</a><button class="x" type="button" data-hidec="${k}" aria-label="${S.hiddenConcepts.has(k)?"Show":"Hide"} ${v}">${S.hiddenConcepts.has(k)?"show":"hide"}</button>`).join("");
+  document.getElementById("nav-device").innerHTML = `<span class="lab">Device</span>` + Object.entries(DEVICES).map(([k,v])=>`<a href="#c=${S.c}&d=${k}&s=${S.s}" aria-current="${S.d===k}">${v}</a>`).join("");
+  document.getElementById("nav-state").innerHTML = `<span class="lab">State</span>` + STATES[S.c].map(k=>`<a href="#c=${S.c}&d=${S.d}&s=${k}" aria-current="${S.s===k}">${STATE_NAMES[k]}</a>`).join("");
+  document.getElementById("nav-opts").innerHTML = `<span class="lab">Options</span>` + Object.entries(OPTS).filter(([,o])=>o.c==="both"||o.c===S.c).map(([k,o])=>`<button type="button" data-opt="${k}" aria-pressed="${on(k)}" class="${on(k)?"":"off"}" title="${on(k)?"Hide":"Show"} this option">${o.label}</button>`).join("");
+  document.getElementById("marks").setAttribute("aria-pressed", S.marks);
+}
+let writing = false;
+function writeHash() {
+  const h = `#c=${S.c}&d=${S.d}&s=${S.s}` + (S.hide.size?`&h=${[...S.hide].join(",")}`:"");
+  if (location.hash !== h) { writing = true; history.replaceState(null, "", h); writing = false; }
+}
+function readHash() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  const c = p.get("c"); if (c && CONCEPTS[c]) S.c = c;
+  const d = p.get("d"); if (d && DEVICES[d]) S.d = d;
+  const s = p.get("s"); S.hide = new Set((p.get("h")||"").split(",").filter(k=>OPTS[k]));
+  applyState(s && STATES[S.c].includes(s) ? s : "pile");
+  render();
+}
+window.addEventListener("hashchange", ()=>{ if (!writing) readHash(); });
+
+/* ================= interaction ================= */
+let disarmTimer = null;
+function arm(what) { S.armed = what; clearTimeout(disarmTimer); disarmTimer = setTimeout(()=>{ S.armed = null; render(); }, 4000); }
+function go(s) { S.s = s; S.scrollTo = null; }
+function addPhotoTo(target) {
+  const id = "p" + (nextPhoto++);
+  if (target === "comp") { S.comp.photos.push(id); S.comp.saving = id; go("saving"); render(); setTimeout(()=>{ if (S.comp) { S.comp.saving = null; go("composed"); S.keys = true; render(); } }, 900); }
+  else if (target === "fresh") { S.comp = freshComp("new", [id]); S.comp.saving = id; S.detail = null; go("saving"); render(); setTimeout(()=>{ if (S.comp) { S.comp.saving = null; S.keys = true; go("composed"); render(); } }, 900); }
+  else { const e = env(target); if (e) { e.photos.push(id); S.slide = e.photos.length-1; } go(S.c==="faces"?"detail":"pile"); render(); }
+}
+document.addEventListener("click", (ev)=>{
+  const hc = ev.target.closest("[data-hidec]"); if (hc) { const k = hc.dataset.hidec; S.hiddenConcepts.has(k) ? S.hiddenConcepts.delete(k) : S.hiddenConcepts.add(k); render(); return; }
+  const op = ev.target.closest("[data-opt]"); if (op) { const k = op.dataset.opt; S.hide.has(k) ? S.hide.delete(k) : S.hide.add(k); render(); return; }
+  if (ev.target.closest("#marks")) { S.marks = !S.marks; render(); return; }
+  const b = ev.target.closest("[data-act]"); if (!b || !b.closest("#stage")) return;
+  const a = b.dataset.act, id = b.dataset.id;
+  if (a === "v-stage") return; /* handled by the tap timer */
+  switch (a) {
+    case "record": S.comp = freshComp("new"); S.keys = true; S.detail = null; go("compose"); break;
+    case "cam": S.err = null; S.camera = { target: b.dataset.target, shot:null }; go("camera"); break;
+    case "cam-cancel": S.camera = null; go(S.comp ? "compose" : S.detail ? "detail" : "pile"); break;
+    case "cam-shoot": S.camera.shot = "p" + nextPhoto; S.camera.flash = true; go("review"); render(); S.camera.flash = false; return;
+    case "cam-retake": S.camera.shot = null; go("camera"); break;
+    case "cam-use": { const t = S.camera.target; S.camera = null; addPhotoTo(t); return; }
+    case "settings": S.err = null; break;
+    case "open": S.view = { src:b.dataset.src, id, i:+b.dataset.i, zoom:1, tx:0, ty:0 }; S.armed = null; go("viewer"); break;
+    case "v-done": closeViewer(); return;
+    case "v-dot": S.view.i = +b.dataset.i; S.view.zoom = 1; S.view.tx = S.view.ty = 0; S.armed = null; go("viewer"); break;
+    case "v-remove": arm("photo"); go("remove"); break;
+    case "v-remove-go": removeShown(); return;
+    case "disarm": S.armed = null; if (S.view) go("viewer"); break;
+    case "slide": S.slide = +b.dataset.i; break;
+    case "pick": S.sel = id; break;
+    case "detail": S.detail = id; S.slide = 0; go("detail"); break;
+    case "back": S.detail = null; go("pile"); break;
+    case "edit": { const e = env(id); S.comp = freshComp(id, e.photos.filter(p=>!(e.lost||[]).includes(p))); S.comp.entries = e.entries.map(x=>({...x})); S.comp.note = e.note; S.keys = false; S.detail = null; S.sel = id; go("composed"); break; }
+    case "discard": if (S.armed === "discard:"+id) { S.armed = null; } else arm("discard:"+id); break;
+    case "discard-go": S.data.envs = S.data.envs.filter(e=>e.id!==id); S.armed = null; S.detail = null; if (S.sel===id) S.sel = S.data.envs[0]?.id; go("pile"); break;
+    case "assign": { const e = env(id); S.undo = { env:e, qty:e.entries.reduce((s,x)=>s+x.qty,0), label:b.dataset.seller, at:S.data.envs.indexOf(e) }; S.data.envs = S.data.envs.filter(x=>x.id!==id); S.detail = null; if (S.sel===id) S.sel = S.data.envs[0]?.id; go("pile"); break; }
+    case "undo": if (S.undo) { S.data.envs.splice(S.undo.at, 0, S.undo.env); S.undo = null; } break;
+    case "undo-x": S.undo = null; break;
+    case "addname": addName(b.dataset.name); break;
+    case "qty": { const i = +b.dataset.i, e = S.comp.entries[i]; e.qty += +b.dataset.d; if (e.qty < 1) S.comp.entries.splice(i,1); break; }
+    case "comp-cancel": S.comp = null; S.keys = false; go(S.detail ? "detail" : "pile"); break;
+    case "comp-save": saveComp(); break;
+  }
+  render();
+});
+function addName(name) { const c = S.comp; const i = c.entries.findIndex(e=>e.name.toLowerCase()===name.toLowerCase()); if (i<0) c.entries.unshift({name, qty:1}); else { const [x] = c.entries.splice(i,1); x.qty++; c.entries.unshift(x); } c.input = ""; S.keys = true; S.refocus = true; }
+function saveComp() {
+  const c = S.comp; const faces = S.c === "faces";
+  const ready = c.entries.length > 0 || (faces && on("photoOnly") && c.photos.length > 0); if (!ready) return;
+  if (c.target === "new") {
+    const e = { id:"n"+Date.now(), date:TODAY, entries:c.entries, note:c.note.trim(), photos:c.photos, cands:c.entries.length?[{seller:"Lowtide Games", date:"2026-11-08", order:"5521-09F0", untracked:false, exact:false, matched:1, total:c.entries.reduce((s,x)=>s+x.qty,0), left:1}]:[], tied:0 };
+    S.data.envs.unshift(e); S.sel = e.id;
+  } else { const e = env(c.target); e.entries = c.entries; e.note = c.note.trim(); e.photos = [...c.photos, ...(e.lost||[])]; }
+  S.comp = null; S.keys = false; S.detail = null; go("pile");
+}
+function closeViewer() { S.view = null; S.armed = null; go(S.comp ? "composed" : S.detail ? "detail" : "pile"); render(); }
+function removeShown() {
+  const ph = viewerPhotos(); const p = ph[Math.min(S.view.i, ph.length-1)];
+  if (S.view.src === "comp") S.comp.photos = S.comp.photos.filter(x=>x!==p);
+  else { const e = env(S.view.id); e.photos = e.photos.filter(x=>x!==p); }
+  S.armed = null;
+  const left = viewerPhotos();
+  if (!left.length) { closeViewer(); return; }
+  S.view.i = Math.min(S.view.i, left.length-1); go("viewer"); render();
+}
+document.addEventListener("input", (ev)=>{
+  const t = ev.target; if (!t.dataset.in || !S.comp) return;
+  if (t.dataset.in === "note") { S.comp.note = t.value; return; }
+  if (t.value.includes("\n")) { addName(t.value.split("\n")[0].trim() || ""); render(); return; }
+  S.comp.input = t.value; const pos = t.selectionStart; render();
+  const n = document.querySelector('#stage [data-in="name"]'); if (n) { n.focus(); n.setSelectionRange(pos,pos); }
+});
+
+/* viewer gestures: one tap closes (after the double-tap window), double-tap zooms at the point, drag pans or swipes, trackpad pinch zooms */
+let tapTimer = null, drag = null;
+document.addEventListener("dblclick", (ev)=>{
+  const st = ev.target.closest(".vstage"); if (!st || !S.view) return;
+  clearTimeout(tapTimer); tapTimer = null;
+  const v = S.view;
+  if (v.zoom > 1) { v.zoom = 1; v.tx = v.ty = 0; go("viewer"); }
+  else { const img = st.querySelector(".vimg").getBoundingClientRect(); const fx = (ev.clientX - img.left)/img.width, fy = (ev.clientY - img.top)/img.height; v.zoom = 2.5; v.tx = -fx*(v.zoom-1); v.ty = -fy*(v.zoom-1)*(img.height/img.width); clampPan(); go("zoom"); }
+  render();
+});
+function clampPan() { const v = S.view; const m = v.zoom - 1; v.tx = Math.max(-m, Math.min(0, v.tx)); v.ty = Math.max(-m*0.75, Math.min(0, v.ty)); }
+document.addEventListener("pointerdown", (ev)=>{ const st = ev.target.closest(".vstage"); if (!st || !S.view) return; drag = { x:ev.clientX, y:ev.clientY, tx:S.view.tx, ty:S.view.ty, moved:false, el:st.querySelector(".vimg"), w:st.querySelector(".vimg").getBoundingClientRect().width/S.view.zoom }; });
+document.addEventListener("pointermove", (ev)=>{ if (!drag) return; const dx = ev.clientX-drag.x, dy = ev.clientY-drag.y; if (Math.abs(dx)+Math.abs(dy) > 6) drag.moved = true;
+  if (S.view.zoom > 1) { S.view.tx = drag.tx + dx/drag.w; S.view.ty = drag.ty + dy/drag.w; clampPan(); drag.el.style.transform = `translate(${(S.view.tx*100).toFixed(1)}%, ${(S.view.ty*100/0.75*0.75).toFixed(1)}%) scale(${S.view.zoom})`; }
+  else drag.el.style.transform = `translateX(${dx}px)`; });
+document.addEventListener("pointerup", (ev)=>{ if (!drag) return; const d = drag; drag = null; const dx = ev.clientX-d.x;
+  if (!d.moved) { if (ev.target.closest(".vstage")) { clearTimeout(tapTimer); tapTimer = setTimeout(()=>{ tapTimer = null; if (S.view) closeViewer(); }, 280); } return; }
+  if (S.view.zoom === 1 && Math.abs(dx) > 60) { const n = viewerPhotos().length; S.view.i = Math.max(0, Math.min(n-1, S.view.i + (dx<0?1:-1))); S.armed = null; go("viewer"); }
+  render(); });
+document.addEventListener("wheel", (ev)=>{ const st = ev.target.closest(".vstage"); if (!st || !S.view || !ev.ctrlKey) return; ev.preventDefault();
+  const v = S.view; v.zoom = Math.max(1, Math.min(4, v.zoom * (1 - ev.deltaY*0.01))); if (v.zoom === 1) { v.tx = v.ty = 0; } clampPan(); go(v.zoom > 1 ? "zoom" : "viewer"); render(); }, { passive:false });
+document.addEventListener("keydown", (ev)=>{ if (ev.key === "Escape" && S.view) closeViewer(); });
+
+readHash();
+</script>
+</body>
+</html>

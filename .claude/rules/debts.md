@@ -37,7 +37,6 @@ One known gap per file under `docs/debts/`. Each carries a Status line and a Dec
 - `armed-reset-mistap-unmeasured` — A mis-tap beside the armed Reset box is unmeasured.
 - `orphaned-reach-unpinned` — Re-import, Backup and Reset on Orphaned have no test.
 - `panels-overlay-unbuilt` — Disclosure panels still push the list.
-- `panel-paper-fill-unbuilt` — Overlay panels carry no paper fill.
 - `order-id-visible-unbuilt` — The Tally order id has no narrow-width rule.
 - `tcgplayer-link-opens-history-list` — The TCGplayer link may not search by order id.
 - `header-gestures-unmeasured` — Header gestures are unmeasured.
@@ -65,3 +64,4 @@ One known gap per file under `docs/debts/`. Each carries a Status line and a Dec
 - `orders-job-unbuilt` — The orders status screen is unbuilt, and the first live run has not happened.
 - `claim-17a-ci-red-unexplained` — Claim 17a failed twice on CI, and why only those runs is unknown.
 - `suite-flakes-under-load` — A suite case fails under load and passes on a re-run.
+- `suite-size-placeholder-ungraded` — A measurement record can keep an unfilled placeholder and pass `check:docs`.

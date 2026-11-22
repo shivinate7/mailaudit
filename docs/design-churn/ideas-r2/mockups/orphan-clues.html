@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Orphan Clues</title>
+<style>
+/* Own neutral tokens for an idea mockup, matching the round-1 mockup frame. Type sizes are the
+   iOS Dynamic Type styles at the default size. */
+:root{
+  --page:#ebe9e3; --screen:#f5f4f0; --surface:#ffffff; --ink:#1d1c1a; --ink2:#5c5a55; --ink3:#6b685f;
+  --line:#dcd9d1; --accent:#a8402a; --accent-faint:#f8ece7; --ok:#256b41; --ok-bg:#e3f0e7; --ok-ink:#17462a;
+  --warn:#8a5200; --warn-bg:#f8ecd6; --tag-new:#2c5aa8; --tag-today:#5c5a55; --chip:#efede7; --chip-on:#1d1c1a; --chip-on-ink:#f5f4f0;
+  --chrome:#ffffff; --chrome-line:#d6d3cb; --scrim:rgba(20,18,15,.32); --hinge:#2a2926; --bezel:#151412; --toast:#2b2a27; --toast-ink:#f5f4f0;
+  --flash:#fbf1d9;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --page:#0d0d0c; --screen:#121210; --surface:#1f1e1b; --ink:#f2f0ea; --ink2:#b5b1a8; --ink3:#9a968d;
+    --line:#35332e; --accent:#e2795d; --accent-faint:#2e211c; --ok:#7cc898; --ok-bg:#1a3123; --ok-ink:#c9ecd5;
+    --warn:#e6aa52; --warn-bg:#3b2c13; --tag-new:#8fb2ef; --tag-today:#b5b1a8; --chip:#2a2925; --chip-on:#f2f0ea; --chip-on-ink:#121210;
+    --chrome:#1a1917; --chrome-line:#34322d; --scrim:rgba(0,0,0,.55); --hinge:#000; --bezel:#2b2a27; --toast:#e9e6df; --toast-ink:#1d1c1a;
+    --flash:#3a3018;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --page:#0d0d0c; --screen:#121210; --surface:#1f1e1b; --ink:#f2f0ea; --ink2:#b5b1a8; --ink3:#9a968d;
+  --line:#35332e; --accent:#e2795d; --accent-faint:#2e211c; --ok:#7cc898; --ok-bg:#1a3123; --ok-ink:#c9ecd5;
+  --warn:#e6aa52; --warn-bg:#3b2c13; --tag-new:#8fb2ef; --tag-today:#b5b1a8; --chip:#2a2925; --chip-on:#f2f0ea; --chip-on-ink:#121210;
+  --chrome:#1a1917; --chrome-line:#34322d; --scrim:rgba(0,0,0,.55); --hinge:#000; --bezel:#2b2a27; --toast:#e9e6df; --toast-ink:#1d1c1a;
+  --flash:#3a3018;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--ink);font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;font-size:17px;line-height:22px;
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+:focus-visible{outline:3px solid var(--tag-new);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+code{font-size:12px}
+
+/* Page chrome */
+.sample{background:var(--warn-bg);color:var(--warn);font-size:13px;line-height:18px;padding:8px 12px;border-radius:10px;margin:0 0 12px;max-width:1100px}
+header.page{max-width:1100px;margin:0 0 8px}
+header.page h1{font-size:28px;line-height:34px;margin:0;font-weight:700;letter-spacing:-.01em}
+header.page .meta{font-size:15px;line-height:20px;color:var(--ink2);margin:4px 0 0}
+header.page .meta b{color:var(--accent);font-weight:600}
+.controls{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:12px 0 0;max-width:1100px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border-radius:18px;border:1px solid var(--line);background:var(--surface);font-size:15px;color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
+.ctl-label{font-size:13px;color:var(--ink3);min-width:56px}
+.note{font-size:13px;line-height:18px;color:var(--ink3);max-width:1100px;margin:16px 0 0}
+.caption{font-size:15px;line-height:20px;color:var(--ink2);max-width:780px;margin:14px 0 0;min-height:80px}
+.stage{display:flex;gap:32px;align-items:flex-start;overflow-x:auto;padding:8px 2px 12px;margin-top:8px}
+
+/* Frames */
+.phone{flex:none;background:var(--bezel);border-radius:50px;padding:10px;box-shadow:0 18px 40px rgba(0,0,0,.18)}
+.phone[hidden]{display:none}
+.screen{position:relative;width:390px;height:844px;border-radius:40px;overflow:hidden;background:var(--screen);display:flex;flex-direction:column}
+.duo{display:flex}
+.duo .screen{width:360px;border-radius:32px}
+.duo .screen.left{border-top-right-radius:6px;border-bottom-right-radius:6px}
+.duo .screen.right{border-top-left-radius:6px;border-bottom-left-radius:6px}
+.hinge{width:14px;background:var(--hinge);margin:30px 0;border-radius:3px}
+.status{flex:none;height:50px;padding:16px 30px 0;display:flex;justify-content:space-between;font-size:15px;font-weight:600}
+.status i{display:block;width:22px;height:11px;border-radius:3px;border:1.5px solid currentColor;opacity:.85;margin-top:5px}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:110px;height:32px;border-radius:16px;background:#000}
+.homebar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--ink);opacity:.8;z-index:30}
+
+.nav{flex:none;padding:0 16px 6px}
+.nav-top{height:44px;display:flex;align-items:center;justify-content:space-between}
+.largetitle{font-size:34px;line-height:41px;font-weight:700;margin:0}
+.navtitle{font-size:17px;line-height:22px;font-weight:600;margin:0;text-align:center;flex:1}
+.navbtn{min-width:44px;min-height:44px;font-size:17px;color:var(--accent);display:inline-flex;align-items:center;gap:2px}
+.sub{font-size:15px;line-height:20px;color:var(--ink2);margin:0}
+.fine{font-size:13px;line-height:18px;color:var(--ink2);margin:4px 4px 0}
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:14px 16px 110px;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+
+/* Packages */
+.grp-h{display:flex;align-items:baseline;justify-content:space-between;min-height:36px;margin:6px 4px 2px;gap:8px}
+.grp-h .sect,.cand-h .sect{font-size:13px;line-height:18px;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em;margin:0}
+.grp-h .cnt{font-size:13px;line-height:18px;color:var(--ink3)}
+.list{background:var(--surface);border-radius:14px;margin:0 0 10px}
+.row{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px 0 14px;border-top:.5px solid var(--line)}
+.list > .row:first-child,.lbl > .row:first-child{border-top:0}
+.row .main{flex:1;min-width:0}
+.row .t{font-size:17px;line-height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .s{font-size:13px;line-height:18px;color:var(--ink2)}
+.circ{width:26px;height:26px;border-radius:13px;border:2px solid var(--ink3);flex:none;display:grid;place-items:center}
+.circ.on{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.circ svg{width:14px;height:14px}
+
+/* Clue line under a package */
+.clue{border-top:.5px solid var(--line);padding:8px 10px 6px 14px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;min-height:60px}
+.clue .main + .pillbtn{margin-left:auto}
+.clue.saved{flex-wrap:nowrap}
+.clue .k{font-size:12px;line-height:16px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em}
+.clue .v{font-size:15px;line-height:20px;color:var(--ink)}
+.clue .main{flex:1 1 100%;min-width:0}
+.clue.saved .main{flex-basis:auto}
+.clue.saved{background:var(--ok-bg);border-bottom-left-radius:14px;border-bottom-right-radius:14px}
+.clue.saved .v,.clue.saved .k{color:var(--ok-ink)}
+.pillbtn{min-height:44px;min-width:44px;padding:0 14px;border-radius:22px;font-size:15px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
+.pillbtn.pri{background:var(--accent);color:var(--surface)}
+.pillbtn.sec{background:var(--chip);color:var(--ink)}
+.pillbtn.sec[aria-expanded="true"]{background:var(--ink);color:var(--page)}
+.pillbtn.ghost{color:var(--accent);padding:0 8px}
+.pillbtn[disabled]{color:var(--ink3);cursor:default}
+.drawer{border-top:.5px solid var(--line);padding:6px 0 10px}
+.drawer .acts{display:flex;justify-content:flex-end;gap:8px;padding:6px 10px 0}
+
+/* Chip rows: one line each, fixed height, scroll sideways */
+.crow{display:flex;align-items:center;height:44px}
+.crow .rl{flex:none;width:82px;padding-left:14px;font-size:13px;line-height:16px;color:var(--ink2)}
+.chips{flex:1;display:flex;gap:6px;overflow-x:auto;padding-right:14px;scrollbar-width:none;height:44px;align-items:center}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;height:44px;display:inline-flex;align-items:center}
+.chip span{display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:16px;background:var(--chip);font-size:15px;line-height:20px;white-space:nowrap;border:1px solid transparent}
+.chip[aria-pressed="true"] span{background:var(--chip-on);color:var(--chip-on-ink)}
+.chip.cr span{border:1px dashed var(--ink3);background:none;color:var(--ink2)}
+.chip.cr[aria-pressed="true"] span{background:var(--ink2);color:var(--screen);border-style:solid}
+.chip[disabled]{cursor:default}
+.chip[disabled] span{opacity:.55}
+.vsep{flex:none;width:1px;height:24px;background:var(--line);margin:0 4px}
+.qlab{flex:none;font-size:13px;color:var(--ink2);white-space:nowrap}
+
+/* Orphan */
+.orph{display:flex;gap:12px;align-items:center;background:var(--surface);border-radius:14px;padding:10px 12px;margin:0 0 10px}
+.cardglyph{flex:none;width:36px;height:50px;border-radius:5px;border:2px solid var(--ink3);background:var(--chip);display:grid;place-items:center;font-size:15px;color:var(--ink3)}
+.cardglyph svg{width:16px;height:16px}
+.orph .t{font-size:17px;line-height:22px;font-weight:600}
+.orph .s{font-size:13px;line-height:18px;color:var(--ink2)}
+.orph.done{background:var(--ok-bg)}
+.orph.done .t,.orph.done .s,.orph.done .cardglyph{color:var(--ok-ink)}
+.sheetbox{background:var(--surface);border-radius:14px;padding:4px 0 6px;margin:0 0 10px;height:286px;display:flex;flex-direction:column}
+.sheetbox .hd{display:flex;align-items:center;justify-content:space-between;padding:0 6px 0 14px;height:44px;flex:none}
+.sheetbox .hd h3{margin:0;font-size:15px;line-height:20px;font-weight:600}
+.sheetbox .msg{flex:none;height:40px;margin:0;padding:4px 14px 0;font-size:13px;line-height:18px;color:var(--ink2);overflow:hidden}
+.sheetbox .msg.quiet{color:var(--ink3)}
+
+/* Candidates */
+.cand-h{display:flex;align-items:baseline;justify-content:space-between;margin:6px 4px 14px;gap:8px}
+.cand-h .how{font-size:13px;line-height:18px;color:var(--ink3);text-align:right}
+.cand{display:flex;width:100%;gap:10px;align-items:center;padding:10px 10px 10px 14px;border-top:.5px solid var(--line);min-height:64px;border-radius:0}
+.list > .cand:first-child,.list > .cwrap:first-child > .cand{border-top:0;border-top-left-radius:14px;border-top-right-radius:14px}
+.list > .cand:last-child{border-bottom-left-radius:14px;border-bottom-right-radius:14px}
+.cand .main{flex:1;min-width:0}
+.cand .nm{font-size:17px;line-height:22px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.cand .ev{font-size:13px;line-height:18px;color:var(--ink)}
+.cand .ev .miss{color:var(--warn)}
+.cand .ev .none{color:var(--ink3)}
+.cand .meta{font-size:13px;line-height:18px;color:var(--ink2)}
+.cand .chev{flex:none;color:var(--ink3);width:12px}
+.cand.flash{animation:flash .6s ease-out}
+@keyframes flash{from{background:var(--flash)}to{background:transparent}}
+@media (prefers-reduced-motion:reduce){.cand.flash{animation:none}}
+.tag{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:10px;font-size:12px;line-height:16px;font-weight:600;white-space:nowrap}
+.tag.tie{background:var(--accent-faint);color:var(--accent)}
+.tag.cap{background:var(--chip);color:var(--ink2)}
+.sublist{padding:0 10px 10px 14px}
+.sublist .opt{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;padding:0 12px;border-radius:10px;background:var(--chip);margin-top:6px;font-size:15px}
+.sublist .opt .m{font-size:13px;color:var(--ink2)}
+.emptybox{background:var(--surface);border-radius:14px;padding:16px 14px;font-size:15px;line-height:20px;color:var(--ink2)}
+.emptybox b{color:var(--ink);font-weight:600;display:block;margin-bottom:4px}
+.emptybox .pillbtn{margin-top:10px}
+
+/* Tab bar */
+.tabbar{position:absolute;left:16px;right:16px;bottom:22px;height:58px;border-radius:29px;background:var(--chrome);border:.5px solid var(--chrome-line);
+  box-shadow:0 6px 20px rgba(0,0,0,.12);display:grid;grid-template-columns:repeat(3,1fr);align-items:center;z-index:5}
+.tab{min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;line-height:13px;color:var(--ink2);gap:2px;position:relative}
+.tab svg{width:24px;height:24px}
+.tab[aria-current="page"]{color:var(--accent)}
+.tab[disabled]{cursor:default}
+.tab .dot{position:absolute;top:2px;left:calc(50% + 6px);min-width:18px;height:18px;border-radius:9px;background:var(--accent);color:var(--surface);font-size:11px;line-height:18px;font-weight:600;text-align:center;padding:0 5px}
+
+/* In-app sheet and toast */
+.scrim{position:absolute;inset:0;background:var(--scrim);z-index:10}
+.isheet{position:absolute;left:0;right:0;bottom:0;background:var(--screen);border-radius:24px 24px 0 0;z-index:11;padding:6px 16px 40px;box-shadow:0 -6px 24px rgba(0,0,0,.18)}
+.grabber{width:36px;height:5px;border-radius:3px;background:var(--ink3);opacity:.5;margin:0 auto 10px}
+.isheet h3{margin:0 0 6px;font-size:20px;line-height:25px;font-weight:600}
+.isheet p{margin:0 0 10px;font-size:15px;line-height:20px;color:var(--ink2)}
+.isheet .box{background:var(--surface);border-radius:12px;padding:10px 12px;margin:0 0 12px;font-size:15px;line-height:20px}
+.isheet .box .m{font-size:13px;color:var(--ink2)}
+.isheet .btns{display:grid;gap:8px}
+.isheet .btns .pillbtn{width:100%;min-height:50px;border-radius:14px;font-size:17px}
+.toast{position:absolute;left:16px;right:16px;bottom:92px;background:var(--toast);color:var(--toast-ink);border-radius:14px;padding:4px 6px 4px 14px;font-size:15px;line-height:20px;z-index:20;
+  box-shadow:0 8px 20px rgba(0,0,0,.2);display:flex;gap:10px;align-items:center;justify-content:space-between}
+.toast button{color:inherit;font-weight:600;min-height:44px;min-width:44px;padding:0 8px;text-decoration:underline}
+
+/* Dashed labels */
+.lbl{position:relative;outline:1.5px dashed var(--tag-new);outline-offset:3px}
+.lbl[data-k="today"]{outline-color:var(--tag-today)}
+.lbl::after{content:attr(data-lbl);position:absolute;top:-11px;right:10px;font-size:11px;line-height:13px;font-weight:600;padding:2px 6px;border-radius:6px;
+  background:var(--tag-new);color:var(--surface);white-space:nowrap;z-index:4;pointer-events:none}
+.lbl[data-k="today"]::after{background:var(--tag-today)}
+:root[data-labels="off"] .lbl{outline:none}
+:root[data-labels="off"] .lbl::after{display:none}
+.pane-h{flex:none;padding:0 16px 6px}
+.pane-h h2{margin:0;font-size:22px;line-height:28px;font-weight:700}
+</style>
+</head>
+<body>
+<p class="sample" role="note"><b>Sample.</b> Every seller, card, order id, city, date and price on this page is invented. No figure is real.</p>
+<header class="page">
+  <h1>Orphan Clues</h1>
+  <p class="meta"><b>Mockup, not built.</b> Tap how each envelope was packed as the mail comes in. Later, an orphaned package lists its likely sellers with the evidence, and a person still picks.</p>
+  <nav class="controls" aria-label="Screen states">
+    <span class="ctl-label">State</span>
+    <div class="seg" id="states"></div>
+  </nav>
+  <div class="controls">
+    <span class="ctl-label">Device</span>
+    <div class="seg" id="devices"></div>
+    <span class="ctl-label">Theme</span>
+    <div class="seg" id="themes"></div>
+    <span class="ctl-label">Labels</span>
+    <div class="seg"><button type="button" id="lblBtn" aria-pressed="true">Today / New</button></div>
+  </div>
+  <div class="controls" aria-label="Owner decisions">
+    <span class="ctl-label">Ranking</span>
+    <div class="seg" id="sorts"></div>
+    <span class="ctl-label">Postmark</span>
+    <div class="seg" id="pms"></div>
+  </div>
+</header>
+<p class="caption" id="caption" aria-live="polite"></p>
+<div class="stage">
+  <div class="phone" id="folded"><div class="screen" id="fscreen"></div></div>
+  <div class="phone duo" id="unfolded" hidden>
+    <div class="screen left" id="uleft"></div>
+    <div class="hinge" aria-hidden="true"></div>
+    <div class="screen right" id="uright"></div>
+  </div>
+</div>
+<p class="note">Frames: the phone is drawn at 390 by 844 pt, the size the brief names. The device list writes no size for the two-screen fold, so each pane is drawn at 360 by 844 pt, an illustrative size. The plan names no web or desktop layout, so none is drawn. Tap targets are at least 44 by 44 pt. Each chip row keeps one line and scrolls sideways, so the clue sheet has a fixed height and the list below it never jumps while a finger is on a chip. Confirmation uses an in-app sheet, never a browser dialog. The Ranking and Postmark switches are owner decisions 6 and 2 of the plan. Deep links: <code>#s=normal</code>, <code>#s=error&amp;t=dark</code>, <code>#s=normal&amp;d=fold</code>, <code>#s=normal&amp;rank=annotate&amp;pm=zip3</code>.</p>
+<script>
+(function(){
+"use strict";
+var CR="can’t read";
+var ROWS=[
+  {k:"packing",n:"Packing",multi:true,tags:[["plain","plain envelope"],["bubble","bubble mailer"],["rigid","rigid mailer"],["penny","penny sleeve"],["tlclear","top-loader, clear"],["tlblue","top-loader, blue"],["tlother","top-loader, other colour"],["teambag","team bag"],["sandwich","cardboard sandwich"],["thanks","thank-you card"],["branded","branded sleeve"],["cr_packing",CR]]},
+  {k:"postmark",n:"Postmark",tags:[["lark","Larkfield","604"],["west","Westhaven","611"],["marrow","Marrow Bay","598"],["cr_postmark",CR]]},
+  {k:"label",n:"Return label",tags:[["printed","printed sticker"],["handw","handwritten"],["stamp","rubber stamp"],["nolabel","none"],["cr_label",CR]],
+    q:{k:"names",n:"Names this seller?",tags:[["ny","yes"],["nn","no"],["cr_names",CR]]}},
+  {k:"hand",n:"Hand",tags:[["caps","block caps"],["cursive","cursive"],["lprint","label printer"],["typed","typed sticker"],["nohand","none"],["cr_hand",CR]]}
+];
+var ROWKEYS=["packing","postmark","label","names","hand"];
+function tagName(id){
+  for(var i=0;i<ROWS.length;i++){
+    var r=ROWS[i];
+    for(var j=0;j<r.tags.length;j++)if(r.tags[j][0]===id){
+      if(r.k==="postmark"&&r.tags[j][2])return S.pm==="zip3"?"ZIP "+r.tags[j][2]+"xx":r.tags[j][1];
+      return r.tags[j][1];}
+    if(r.q)for(var q=0;q<r.q.tags.length;q++)if(r.q.tags[q][0]===id)return "label names seller: "+r.q.tags[q][1];
+  }
+  return id;
+}
+
+/* Seller history is derived from confirmed packages, never stored: m = packages with that row recorded, c = times each tag was seen. */
+var SELLERS=[
+  {id:"gut",name:"Gutterfold TCG",sold:true,due:"Tue",dn:2,cards:2,orders:[{id:"GT-30417",cards:2,due:"Tue"}],
+    h:{packing:{m:8,c:{tlblue:7,penny:8,plain:8}},postmark:{m:3,c:{lark:3}},label:{m:8,c:{printed:6,handw:2}},names:{m:6,c:{ny:6}},hand:{m:8,c:{lprint:6,caps:2}}}},
+  {id:"kes",name:"Kestrel Card Co.",sold:true,due:"Mon",dn:1,cards:1,orders:[{id:"KC-7702",cards:1,due:"Mon"}],
+    h:{packing:{m:5,c:{penny:5,bubble:5}},postmark:{m:4,c:{west:4}},label:{m:5,c:{stamp:5}},names:{m:5,c:{nn:5}},hand:{m:5,c:{nohand:5}}}},
+  {id:"nor",name:"Northpine Singles",sold:true,due:"Tue",dn:2,cards:1,orders:[{id:"NP-1159",cards:1,due:"Tue"}],
+    h:{packing:{m:5,c:{penny:5,tlclear:5,teambag:3}},postmark:{m:5,c:{west:5}},label:{m:9,c:{handw:9}},names:{m:4,c:{ny:4}},hand:{m:9,c:{cursive:9}}}},
+  {id:"owl",name:"Owl & Anvil Cards",sold:true,due:"Thu",dn:4,cards:4,orders:[{id:"OA-2048",cards:4,due:"Thu"}],
+    h:{packing:{m:2,c:{tlblue:2,thanks:2}},postmark:{m:1,c:{lark:1}},label:{m:2,c:{printed:2}},names:{m:0,c:{}},hand:{m:2,c:{caps:2}}}},
+  {id:"bri",name:"Brindle Box Games",sold:false,due:"Wed",dn:3,cards:3,orders:[{id:"BB-1188",cards:3,due:"Wed"}],
+    h:{packing:{m:6,c:{tlblue:6,branded:6}},postmark:{m:6,c:{marrow:6}},label:{m:6,c:{printed:6}},names:{m:6,c:{ny:6}},hand:{m:6,c:{lprint:6}}}},
+  {id:"cor",name:"Corner Lot TCG",sold:false,due:"Fri",dn:5,cards:1,orders:[{id:"CL-0093",cards:1,due:"Fri"}],h:null}
+];
+var GUT2=[{id:"GT-30417",cards:2,due:"Tue"},{id:"GT-30522",cards:3,due:"Fri"}];
+
+var STATES=[
+  {k:"learn",n:"Packages: same as last time",cap:"A Gutterfold TCG package was just checked in, as today. Below its rows, one line offers last time's clues; one tap on Same saves them. Corner Lot TCG has no clue history yet. The plan does not say what a first package shows, so this draws an assumed Add line. Skipping either line costs nothing."},
+  {k:"change",n:"Packages: change",cap:"Change opens the four chip rows below the tapped line, preset to last time. Nothing above the line or under the thumb moves; the packages further down move down. Packing takes several chips; the other rows take one. Tap chips to try them."},
+  {k:"saved",n:"Packages: saved",cap:"The clues save with the check-in, in the recent-checks log, so undo removes both together. Only fixed tag ids are stored: a city or ZIP3, never a street, and the label as yes or no, never the shop name."},
+  {k:"normal",n:"Orphan: ranked",cap:"An orphan whose card name is readable. The card-name match (another plan) narrows the list to the 4 sellers who sold this card, and clues rank only those. Tap chips: the list re-ranks below a sheet of fixed height. Evidence reads n of m, never a percentage. Kestrel and Northpine show a labelled tie, ordered by due date. The 2 other open sellers stay listed, in due order."},
+  {k:"confirm",n:"Orphan: confirm",cap:"Tapping a seller opens an in-app sheet, never a browser dialog. Assign does exactly what assigning by hand does today. The orphan's clues teach this seller only after this confirm."},
+  {k:"assigned",n:"Orphan: assigned",cap:"Assigned. The orphan's clues now count for Gutterfold TCG. Undo in the toast or in Recent checks reverses the assignment and the learning together."},
+  {k:"empty",n:"Empty: no clues yet",cap:"No seller has clues yet. The sheet still works and keeps what you tap, but the list sorts by due date alone and shows no evidence."},
+  {k:"none",n:"Edge: nothing open",cap:"No order is open. The app says the orphan may come from an order not yet imported, and the orphan stays in Orphaned, as today."},
+  {k:"two",n:"Edge: two open orders",cap:"Gutterfold TCG has two open orders. Its row expands to the orders, and the person picks the order; the clues never pick it."},
+  {k:"contra",n:"Edge: contradicts history",cap:"The envelope shows a rigid mailer. No seller who sold this card has used one: Gutterfold TCG 0 of 8, Kestrel and Northpine 0 of 5. Each mismatch shows in the evidence and is never hidden, and no seller leaves the list."},
+  {k:"cantread",n:"Edge: all can’t read",cap:"Every row is marked can’t read. The list falls back to due order, and the sheet says so."},
+  {k:"error",n:"Error: no history",cap:"Clue history failed to load, or a sync conflict is pending. The sheet still keeps taps, the list shows in due order under one quiet line, and assignment still works."}
+];
+var S={s:"normal",t:"auto",d:"phone",rank:"sort",pm:"city",labels:true,sel:{},pk:{},line:"ask",cor:"ask",sheet:"",pick:"",pickOrder:"",toast:"",prevOrder:[]};
+var NORMAL_SEL={packing:["tlblue","penny"],postmark:["lark"],label:["printed"],names:[],hand:[]};
+var LAST_GUT={packing:["tlblue","penny"],postmark:["lark"],label:["printed"],names:["ny"],hand:["lprint"]};
+function clone(o){return JSON.parse(JSON.stringify(o))}
+function blankSel(){return {packing:[],postmark:[],label:[],names:[],hand:[]}}
+function preset(k){
+  S.sheet="";S.pick="";S.pickOrder="";S.toast="";S.prevOrder=[];S.line="ask";S.cor="ask";S.pk=clone(LAST_GUT);
+  S.sel=clone(NORMAL_SEL);
+  if(k==="change")S.line="change";
+  if(k==="saved"){S.line="saved";S.cor="skipped";S.toast="Clues saved with this check-in."}
+  if(k==="confirm"){S.sheet="confirm";S.pick="gut"}
+  if(k==="assigned"){S.pick="gut";S.toast="Assigned to Gutterfold TCG, order GT-30417."}
+  if(k==="empty")S.sel={packing:["tlblue"],postmark:["lark"],label:[],names:[],hand:[]};
+  if(k==="none")S.sel={packing:["bubble"],postmark:[],label:["handw"],names:[],hand:[]};
+  if(k==="contra")S.sel={packing:["rigid","tlblue"],postmark:[],label:[],names:[],hand:["cursive"]};
+  if(k==="cantread")S.sel={packing:["cr_packing"],postmark:["cr_postmark"],label:["cr_label"],names:["cr_names"],hand:["cr_hand"]};
+  if(k==="error")S.sel={packing:["tlblue"],postmark:[],label:["printed"],names:[],hand:[]};
+}
+
+/* Ranking. It sorts and annotates only; it never assigns, hides or closes anything.
+   Each matched clue adds (n/m) times a weight that is capped below 3 packages.
+   Postmark counts only when another row also matches, so it never lifts a seller alone. */
+function evidence(s,sel,nohist){
+  var pos=[],miss=[],post=0,non=0,capped=false;
+  if(!s.h||nohist)return {pos:pos,miss:miss,score:0,capped:false,none:true};
+  ROWKEYS.forEach(function(r){
+    (sel[r]||[]).forEach(function(t){
+      if(t.indexOf("cr_")===0)return;
+      var h=s.h[r];if(!h||!h.m)return;
+      var c=h.c[t]||0,w=Math.min(1,h.m/3);
+      if(c>0){pos.push({t:t,c:c,m:h.m});if(h.m<3)capped=true;if(r==="postmark")post+=c/h.m*w*0.5;else non+=c/h.m*w}
+      else if(h.m>=3)miss.push({t:t,m:h.m});
+    });
+  });
+  var score=non>0?non+post+(s.dn<=2?0.05:0):0;
+  return {pos:pos,miss:miss,score:Math.round(score*1000)/1000,capped:capped,none:false,postOnly:non===0&&post>0};
+}
+function allCantRead(sel){var any=false,real=false;Object.keys(sel).forEach(function(r){sel[r].forEach(function(t){any=true;if(t.indexOf("cr_")!==0)real=true})});return any&&!real}
+function ranked(){
+  var nohist=S.s==="empty"||S.s==="error";
+  var dueOnly=nohist||allCantRead(S.sel)||S.rank==="annotate";
+  var list=SELLERS.map(function(s){return {s:s,e:evidence(s,S.sel,nohist)}});
+  var sold=list.filter(function(x){return x.s.sold}),other=list.filter(function(x){return !x.s.sold});
+  function byDue(a,b){return a.s.dn-b.s.dn}
+  other.sort(byDue);
+  if(dueOnly)sold.sort(byDue);
+  else{
+    sold.sort(function(a,b){var ah=a.s.h?1:0,bh=b.s.h?1:0;if(ah!==bh)return bh-ah;if(b.e.score!==a.e.score)return b.e.score-a.e.score;return byDue(a,b)});
+    sold.forEach(function(x,i){x.tie=x.e.score>0&&sold.some(function(y,j){return j!==i&&y.e.score===x.e.score})});
+  }
+  return {sold:sold,other:other,dueOnly:dueOnly,nohist:nohist};
+}
+
+/* Markup helpers */
+function L(k,text,inner){return '<div class="lbl" data-k="'+k+'" data-lbl="'+(k==="today"?"Today: ":"New: ")+text+'">'+inner+"</div>"}
+var CHECK='<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var CHEV='<svg viewBox="0 0 8 14" width="8" height="14" aria-hidden="true"><path d="M1 1l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+function status(){return '<div class="island" aria-hidden="true"></div><div class="status" aria-hidden="true"><span class="num">9:41</span><i></i></div>'}
+function tabbar(cur){
+  var I={p:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 8l9 6 9-6"/></svg>',
+    t:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h9"/></svg>',
+    o:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M10 10a2 2 0 1 1 3 1.7c-.6.4-1 .8-1 1.6M12 16h.01"/></svg>'};
+  var n=S.s==="assigned"?0:1;
+  return '<nav class="tabbar" aria-label="Views">'+
+    '<button class="tab" type="button" data-go="learn"'+(cur==="p"?' aria-current="page"':'')+'>'+I.p+'Packages</button>'+
+    '<button class="tab" type="button" disabled>'+I.t+'Tally</button>'+
+    '<button class="tab" type="button" data-go="normal"'+(cur==="o"?' aria-current="page"':'')+'>'+I.o+'Orphaned'+(n?'<span class="dot num">'+n+'</span>':'')+'</button></nav>'+
+    '<div class="homebar" aria-hidden="true"></div>';
+}
+function chipRows(sel,scope,locked){
+  function chips(row,tags){return tags.map(function(t){
+    var on=(sel[row]||[]).indexOf(t[0])>-1,cr=t[0].indexOf("cr_")===0;
+    var label=row==="postmark"&&t[2]?(S.pm==="zip3"?t[2]+"xx":t[1]):t[1];
+    return '<button type="button" class="chip'+(cr?" cr":"")+'" data-scope="'+scope+'" data-row="'+row+'" data-tag="'+t[0]+'" aria-pressed="'+on+'"'+(locked?" disabled":"")+'><span>'+label+'</span></button>'}).join("")}
+  return ROWS.map(function(r){
+    var inner=chips(r.k,r.tags);
+    if(r.q)inner+='<span class="vsep" aria-hidden="true"></span><span class="qlab">'+r.q.n+'</span>'+chips(r.q.k,r.q.tags);
+    return '<div class="crow" role="group" aria-label="'+r.n+'"><span class="rl">'+r.n+'</span><div class="chips" data-sk="'+scope+"-"+r.k+'">'+inner+'</div></div>';
+  }).join("");
+}
+function summary(sel,skipNames){
+  var parts=[];ROWKEYS.forEach(function(r){if(skipNames&&r==="names")return;(sel[r]||[]).forEach(function(t){if(t.indexOf("cr_")!==0)parts.push(tagName(t))})});
+  return parts.join(" · ")||"nothing readable";
+}
+
+/* Packages view */
+function cardRow(on,name,sub){return '<div class="row"><span class="circ'+(on?" on":"")+'">'+(on?CHECK:"")+'</span><div class="main"><div class="t">'+name+'</div><div class="s num">'+sub+'</div></div></div>'}
+function clueLine(fold){
+  if(S.line==="saved")return L("new","clue line",'<div class="clue saved"><span class="circ on">'+CHECK+'</span><div class="main"><div class="k">Clues saved</div><div class="v">'+summary(S.pk)+'</div></div></div>');
+  var open=S.line==="change";
+  var line='<div class="clue"><div class="main"><div class="k">Clues · same as last time?</div><div class="v">'+summary(LAST_GUT,true)+'</div></div>'+
+    '<button type="button" class="pillbtn sec" data-act="change" aria-expanded="'+open+'">Change</button>'+
+    '<button type="button" class="pillbtn pri" data-act="same">Same</button></div>';
+  if(open&&!fold)line+='<div class="drawer">'+chipRows(S.pk,"pk",false)+'<div class="acts"><button type="button" class="pillbtn ghost" data-act="skip">Skip</button><button type="button" class="pillbtn pri" data-act="savepk">Save clues</button></div></div>';
+  return L("new","clue line",line);
+}
+function corLine(){
+  if(S.cor==="skipped")return "";
+  return L("new","assumed first-package line",'<div class="clue"><div class="main"><div class="k">Clues · first package</div><div class="v">Add how it was packed? Optional.</div></div><button type="button" class="pillbtn ghost" data-act="corskip">Skip</button><button type="button" class="pillbtn sec" data-act="noop">Add</button></div>');
+}
+function packagesScreen(fold){
+  var h='<div class="nav"><div class="nav-top"></div><h1 class="largetitle">Packages</h1><p class="sub">Mail day · Sat</p></div><div class="scroll" data-sk="pk-scroll">';
+  h+='<div class="grp-h"><p class="sect">Gutterfold TCG · GT-30409</p><span class="cnt num">3 of 3 in</span></div>';
+  h+='<div class="list">'+L("today","package rows",cardRow(1,"Tidecaller Apprentice ×2","Saltmarch · $0.70")+cardRow(1,"Lantern Wyrm","Emberfall · $1.10")+cardRow(1,"Quiet Harbor","Saltmarch · $0.25"))+clueLine(fold)+'</div>';
+  h+='<div class="grp-h"><p class="sect">Corner Lot TCG · CL-0091</p><span class="cnt num">1 of 1 in</span></div>';
+  h+='<div class="list">'+cardRow(1,"Ashgrove Sentry","Emberfall · $0.30")+corLine()+'</div>';
+  h+='<div class="grp-h"><p class="sect">Brindle Box Games · BB-1188</p><span class="cnt num">0 of 2 in</span></div>';
+  h+='<div class="list">'+cardRow(0,"Mirelight Totem","Saltmarch · $0.45")+cardRow(0,"Gloomfen Heron","Emberfall · $0.20")+'</div>';
+  return h+'</div>';
+}
+function packagesRightPane(){
+  var h='<div class="nav"><div class="nav-top"></div></div><div class="pane-h"><h2>Clues</h2><p class="sub">Gutterfold TCG · GT-30409</p></div><div class="scroll" data-sk="pkr-scroll">';
+  if(S.line==="saved"){
+    h+='<div class="emptybox"><b>Saved with the check-in</b>'+summary(S.pk)+'<br><br>Undo in Recent checks removes the clues and the check-in together.</div>';
+  }else{
+    h+=L("new","clue rows, right pane",'<div class="sheetbox" style="height:auto"><div class="hd"><h3>How did it arrive?</h3></div>'+chipRows(S.pk,"pk",false)+
+      '<div class="drawer" style="border-top:0"><div class="acts"><button type="button" class="pillbtn ghost" data-act="skip">Skip</button><button type="button" class="pillbtn pri" data-act="savepk">Save clues</button></div></div></div>');
+    h+='<p class="fine">Unfolded, the rows open in this pane, so the list on the left never moves.</p>';
+  }
+  return h+'</div>';
+}
+
+/* Orphaned view */
+function orphanCard(){
+  if(S.s==="assigned"){var sp=SELLERS.filter(function(x){return x.id===S.pick})[0]||SELLERS[0];
+    return L("today","orphan",'<div class="orph done"><span class="cardglyph" aria-hidden="true">'+CHECK+'</span><div><div class="t">Tidecaller Apprentice ×2</div><div class="s">Assigned to '+sp.name+' · '+(S.pickOrder||sp.orders[0].id)+'</div></div></div>')}
+  return L("today","orphan",'<div class="orph"><span class="cardglyph" aria-hidden="true">?</span><div><div class="t">Tidecaller Apprentice ×2</div><div class="s">Arrived Sat · no sender on the envelope</div></div></div>');
+}
+function sheetMsg(){
+  if(S.s==="empty")return ["Clues build as you check in mail. 0 sellers so far.",""];
+  if(S.s==="error")return ["Clue history unavailable; list in due order.","quiet"];
+  if(S.s==="none")return ["Your taps stay with the orphan.","quiet"];
+  if(S.s==="assigned")return ["These clues now count for the seller you picked.",""];
+  if(allCantRead(S.sel))return ["Nothing readable on the envelope; list in due order.","quiet"];
+  var n=0;Object.keys(S.sel).forEach(function(k){n+=S.sel[k].length});
+  if(!n)return ["Tap what the envelope shows. The sellers below re-rank.",""];
+  return [S.rank==="annotate"?"Evidence shows beside each seller; the order stays by due date.":"Each tap re-ranks the sellers below. You still pick.",""];
+}
+function clueSheet(){
+  var m=sheetMsg(),locked=S.s==="assigned";
+  return L("new","clue sheet, fixed height",'<section class="sheetbox" aria-label="Clues on this envelope"><div class="hd"><h3>What does the envelope show?</h3>'+
+    '<button type="button" class="pillbtn ghost" data-act="clear"'+(locked?" disabled":"")+'>Clear</button></div>'+
+    '<div>'+chipRows(S.sel,"or",locked)+'</div><p class="msg '+m[1]+'" aria-live="polite">'+m[0]+'</p></section>');
+}
+function evLine(x,nohist){
+  if(!x.s.h)return '<div class="ev"><span class="none">No clues on record; listed last</span></div>';
+  if(nohist)return '<div class="ev"><span class="none">'+(S.s==="error"?"Clue history not loaded":"No clue history yet")+'</span></div>';
+  var p=x.e.pos.map(function(e){return tagName(e.t)+' <span class="num">'+e.c+" of "+e.m+"</span>"});
+  var q=x.e.miss.map(function(e){return '<span class="miss">'+tagName(e.t)+' <span class="num">0 of '+e.m+'</span></span>'});
+  var all=p.concat(q);
+  if(!all.length)return '<div class="ev"><span class="none">No tapped clue on record</span></div>';
+  return '<div class="ev">'+all.join(" · ")+(x.e.postOnly?' <span class="none">(postmark alone does not lift)</span>':'')+'</div>';
+}
+function candRow(x,dueOnly,nohist){
+  var s=x.s,tags="";
+  if(x.tie&&!dueOnly)tags+='<span class="tag tie">Tie · same evidence</span>';
+  if(x.e.capped&&!dueOnly)tags+='<span class="tag cap">under 3 packages, weight capped</span>';
+  var orders=S.s==="two"&&s.id==="gut"?GUT2:s.orders;
+  var meta=orders.length>1?orders.length+" open orders · 5 cards outstanding":s.cards+" card"+(s.cards===1?"":"s")+" outstanding · due "+s.due;
+  var btn='<button type="button" class="cand" data-cand="'+s.id+'" id="cand-'+s.id+'"'+(orders.length>1?' aria-expanded="true"':'')+'><div class="main"><div class="nm">'+s.name+tags+'</div>'+
+    evLine(x,nohist)+'<div class="meta num">'+meta+'</div></div><span class="chev">'+(orders.length>1?"":CHEV)+'</span></button>';
+  if(orders.length>1)btn='<div class="cwrap">'+btn+'<div class="sublist">'+orders.map(function(o){return '<button type="button" class="opt" data-cand="'+s.id+'" data-order="'+o.id+'"><span class="num">'+o.id+'</span><span class="m num">'+o.cards+' cards · due '+o.due+'</span></button>'}).join("")+'</div></div>';
+  return btn;
+}
+function candidates(){
+  if(S.s==="none")return '<div class="emptybox"><b>No open orders.</b>This may be from an order not yet imported. Import the latest export, and this orphan lists its sellers then.<br><button type="button" class="pillbtn sec" data-act="noop">Keep in Orphaned</button></div>';
+  var r=ranked();
+  var how=!r.dueOnly?"sorted by evidence":(S.rank==="annotate"&&!r.nohist&&!allCantRead(S.sel)?"annotate only · due order":"due order");
+  var h='<div class="cand-h"><p class="sect">Sold this card · '+r.sold.length+'</p><span class="how">'+how+'</span></div>';
+  h+=L("new","candidates with evidence",'<div class="list" id="soldlist">'+r.sold.map(function(x){return candRow(x,r.dueOnly,r.nohist)}).join("")+'</div>');
+  h+='<div class="cand-h"><p class="sect">Other open sellers · '+r.other.length+'</p><span class="how">due order</span></div>';
+  h+='<div class="list">'+r.other.map(function(x){return candRow(x,true,r.nohist)}).join("")+'</div>';
+  h+='<p class="fine">Every open seller stays listed. Clues never assign, mark received, or close a lost-mail warning.</p>';
+  return h;
+}
+function orphanNav(){return '<div class="nav"><div class="nav-top"><button type="button" class="navbtn" data-act="noop"><svg viewBox="0 0 10 18" width="10" height="18" aria-hidden="true"><path d="M9 1L1 9l8 8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>&nbsp;Orphaned</button><p class="navtitle">Orphan</p><span style="width:96px"></span></div></div>'}
+function confirmSheet(){
+  if(S.sheet!=="confirm")return "";
+  var s=SELLERS.filter(function(x){return x.id===S.pick})[0]||SELLERS[0];
+  var pool=S.s==="two"&&s.id==="gut"?GUT2:s.orders;
+  var o=pool.filter(function(x){return x.id===S.pickOrder})[0]||pool[0];
+  return '<div class="scrim" data-act="cancel"></div><div class="isheet" role="dialog" aria-modal="true" aria-labelledby="cfh"><div class="grabber"></div>'+
+    '<h3 id="cfh">Assign to '+s.name+'?</h3><p>Tidecaller Apprentice ×2 goes to this order, exactly as assigning by hand does today.</p>'+
+    '<div class="box"><span class="num">'+o.id+'</span><div class="m num">'+o.cards+' card'+(o.cards===1?'':'s')+' outstanding · due '+o.due+'</div></div>'+
+    '<p>After you assign, this envelope’s clues teach '+s.name+'. Undo in Recent checks removes both.</p>'+
+    '<div class="btns"><button type="button" class="pillbtn pri" data-act="assign">Assign</button><button type="button" class="pillbtn sec" data-act="cancel">Cancel</button></div></div>';
+}
+function toast(){return S.toast?'<div class="toast" role="status"><span>'+S.toast+'</span><button type="button" data-act="undo">Undo</button></div>':""}
+function orphanScreen(part){
+  if(part==="left")return orphanNav()+'<div class="scroll" data-sk="or-left">'+orphanCard()+clueSheet()+'<p class="fine">Unfolded, the sellers re-rank in the right pane as you tap.</p></div>';
+  if(part==="right")return '<div class="nav"><div class="nav-top"></div></div><div class="pane-h"><h2>Likely sellers</h2></div><div class="scroll" data-sk="or-right">'+candidates()+'</div>';
+  return orphanNav()+'<div class="scroll" data-sk="or-scroll">'+orphanCard()+clueSheet()+candidates()+'</div>';
+}
+
+/* Render. Scroll offsets survive a re-render, so a chip row never jumps under the finger. */
+function isPk(){return S.s==="learn"||S.s==="change"||S.s==="saved"}
+function skey(el){return el.getAttribute("data-sk")+(el.closest("#unfolded")?"U":"F")}
+function keepScroll(){var m={};document.querySelectorAll("[data-sk]").forEach(function(el){m[skey(el)]=[el.scrollLeft,el.scrollTop]});return m}
+function restoreScroll(m){document.querySelectorAll("[data-sk]").forEach(function(el){var v=m[skey(el)];if(v){el.scrollLeft=v[0];el.scrollTop=v[1]}})}
+/* On a state change only, scroll each chip row so its first pressed chip shows. Never after a chip tap. */
+function showPressed(){document.querySelectorAll(".chips").forEach(function(row){var on=row.querySelector('[aria-pressed="true"]');if(!on)return;
+  var x=on.offsetLeft-row.offsetLeft;if(x<row.scrollLeft||x+on.offsetWidth>row.scrollLeft+row.clientWidth)row.scrollLeft=Math.max(0,x-8)})}
+function soldOrder(){return Array.prototype.map.call(document.querySelectorAll("#soldlist .cand"),function(e){return e.getAttribute("data-cand")})}
+function render(flashMoved){
+  var sc=keepScroll(),fold=S.d==="fold",cur=isPk()?"p":"o";
+  document.getElementById("folded").hidden=fold;
+  document.getElementById("unfolded").hidden=!fold;
+  if(!fold){
+    document.getElementById("fscreen").innerHTML=status()+(isPk()?packagesScreen(false):orphanScreen())+tabbar(cur)+toast()+confirmSheet();
+    document.getElementById("uleft").innerHTML="";document.getElementById("uright").innerHTML="";
+  }else{
+    document.getElementById("fscreen").innerHTML="";
+    document.getElementById("uleft").innerHTML=status()+(isPk()?packagesScreen(true):orphanScreen("left"))+tabbar(cur)+toast();
+    document.getElementById("uright").innerHTML=status()+(isPk()?packagesRightPane():orphanScreen("right"))+confirmSheet()+'<div class="homebar" aria-hidden="true"></div>';
+  }
+  restoreScroll(sc);
+  if(!S.tap)showPressed();
+  S.tap=false;
+  var now=soldOrder();
+  if(flashMoved&&S.prevOrder.length)now.forEach(function(id,i){if(S.prevOrder[i]!==id){var el=document.getElementById("cand-"+id);if(el)el.classList.add("flash")}});
+  S.prevOrder=now;
+  var st=STATES.filter(function(x){return x.k===S.s})[0];
+  document.getElementById("caption").textContent=st.cap+(fold?" Two-screen fold: "+(isPk()?"the list stays left and the clue rows open right.":"the sheet stays left and the sellers re-rank right."):"");
+  segs();writeHash();
+}
+function segBtns(id,items,cur,attr){
+  document.getElementById(id).innerHTML=items.map(function(x){return '<button type="button" data-'+attr+'="'+x[0]+'" aria-pressed="'+(x[0]===cur)+'">'+x[1]+'</button>'}).join("");
+}
+function segs(){
+  segBtns("states",STATES.map(function(x){return [x.k,x.n]}),S.s,"state");
+  segBtns("devices",[["phone","Phone"],["fold","Two-screen fold"]],S.d,"device");
+  segBtns("themes",[["auto","System"],["light","Light"],["dark","Dark"]],S.t,"theme");
+  segBtns("sorts",[["sort","Sort + evidence"],["annotate","Annotate only"]],S.rank,"rank");
+  segBtns("pms",[["city","City"],["zip3","ZIP3"]],S.pm,"pm");
+  document.getElementById("lblBtn").setAttribute("aria-pressed",String(S.labels));
+}
+function applyTheme(){var r=document.documentElement;if(S.t==="auto")r.removeAttribute("data-theme");else r.setAttribute("data-theme",S.t);r.setAttribute("data-labels",S.labels?"on":"off")}
+function writeHash(){
+  var p=["s="+S.s];if(S.t!=="auto")p.push("t="+S.t);if(S.d!=="phone")p.push("d="+S.d);if(S.rank!=="sort")p.push("rank="+S.rank);if(S.pm!=="city")p.push("pm="+S.pm);if(!S.labels)p.push("labels=off");
+  var h="#"+p.join("&");if(location.hash!==h){try{history.replaceState(null,"",h)}catch(e){}}
+}
+function readHash(){
+  var q={};location.hash.replace(/^#/,"").split("&").forEach(function(kv){var a=kv.split("=");if(a[0])q[a[0]]=decodeURIComponent(a[1]||"")});
+  if(q.s&&STATES.some(function(x){return x.k===q.s}))S.s=q.s;
+  if(q.t==="dark"||q.t==="light"||q.t==="auto")S.t=q.t;
+  if(q.d==="fold"||q.d==="phone")S.d=q.d;
+  if(q.rank==="annotate"||q.rank==="sort")S.rank=q.rank;
+  if(q.pm==="zip3"||q.pm==="city")S.pm=q.pm;
+  S.labels=q.labels!=="off";
+}
+
+/* Events */
+function toggle(sel,row,tag){
+  var r=ROWS.filter(function(x){return x.k===row})[0],multi=r&&r.multi,cur=sel[row]||[],cr=tag.indexOf("cr_")===0;
+  if(cur.indexOf(tag)>-1)sel[row]=cur.filter(function(t){return t!==tag});
+  else if(multi&&!cr)sel[row]=cur.filter(function(t){return t.indexOf("cr_")!==0}).concat([tag]);
+  else sel[row]=[tag];
+}
+document.addEventListener("click",function(ev){
+  var b=ev.target.closest("button,[data-act]");if(!b||b.disabled)return;
+  var d=b.dataset,a=d.act;
+  if(d.state){S.s=d.state;preset(S.s);render();return}
+  if(d.device){S.d=d.device;render();return}
+  if(d.theme){S.t=d.theme;applyTheme();render();return}
+  if(d.rank){S.rank=d.rank;render(true);return}
+  if(d.pm){S.pm=d.pm;render();return}
+  if(b.id==="lblBtn"){S.labels=!S.labels;applyTheme();render();return}
+  if(d.go){S.s=d.go;preset(S.s);render();return}
+  if(d.tag){
+    S.tap=true;
+    if(d.scope==="or")toggle(S.sel,d.row,d.tag);else toggle(S.pk,d.row,d.tag);
+    render(d.scope==="or");return;
+  }
+  if(d.cand){
+    if(S.s==="assigned")return;
+    if(S.s==="two"&&d.cand==="gut"&&!d.order)return;
+    S.pick=d.cand;S.pickOrder=d.order||"";S.sheet="confirm";if(S.s!=="two")S.s="confirm";render();return;
+  }
+  if(a==="same"){S.pk=clone(LAST_GUT);S.line="saved";S.s="saved";S.toast="Clues saved with this check-in.";render();return}
+  if(a==="change"){S.line=S.line==="change"?"ask":"change";S.s=S.line==="change"?"change":"learn";render();return}
+  if(a==="savepk"){S.line="saved";S.s="saved";S.toast="Clues saved with this check-in.";render();return}
+  if(a==="skip"){S.line="ask";S.s="learn";render();return}
+  if(a==="corskip"){S.cor="skipped";render();return}
+  if(a==="clear"){S.tap=true;S.sel=blankSel();render(true);return}
+  if(a==="cancel"){S.sheet="";if(S.s==="confirm")S.s="normal";render();return}
+  if(a==="assign"){var sp=SELLERS.filter(function(x){return x.id===S.pick})[0];S.sheet="";S.s="assigned";
+    S.toast="Assigned to "+sp.name+", order "+(S.pickOrder||sp.orders[0].id)+".";render();return}
+  if(a==="undo"){
+    if(S.s==="assigned"){S.s="normal";S.toast="";render();return}
+    if(S.s==="saved"){S.s="learn";preset("learn");render();return}
+    S.toast="";render();return;
+  }
+});
+window.addEventListener("hashchange",function(){var old=S.s;readHash();if(S.s!==old)preset(S.s);applyTheme();render()});
+readHash();preset(S.s);applyTheme();render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>First Run Concepts</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light
+   (native/Manifest/Info.plist UIUserInterfaceStyle Light), so this page draws one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961;
+  --accent:#6F5CA6; --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9;
+  --manila:#EADBBA; --manilaInk:#695832;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  /* Status bar foot: unmeasured on the Duo inner screen; drawn at the UI test's 20 pt floor (DuoHandUITests.statusBarFloor). */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: env(safe-area-inset-bottom);
+  /* The open Duo bar: 64 pt pill, 12 pt lift, 24 pt in from the page edges (DuoSpine.swift DuoBarMetrics). */
+  --bar: 64px; --lift: 12px;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-6:24px; --space-8:32px;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.4; }
+main { max-width:1060px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:26px; margin:0; }
+h2 { font-family:var(--cochin); font-size:22px; margin:0; }
+.sub { color:var(--inkSoft); margin:0; max-width:72ch; }
+.toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.toolbar a, .toolbar button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+.toolbar [aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.toolbar button.hide { color:var(--red); border-style:dashed; }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.concept { display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--line); padding-top:16px; scroll-margin-top:8px; }
+.concept[hidden] { display:none; }
+.kind { font:12px var(--mono); color:var(--inkSoft); }
+.legend-line { display:flex; flex-wrap:wrap; gap:12px; font-size:13px; color:var(--inkSoft); }
+.tag { display:inline-block; border:1.5px dashed; border-radius:6px; padding:0 6px; font:11px var(--mono); }
+.tag.today { color:var(--red); } .tag.new { color:var(--green); }
+.frames { display:flex; flex-direction:column; gap:24px; }
+.frames figure { margin:0; }
+.frame-cap { font-family:var(--cochin); font-size:16px; font-weight:700; margin:0 0 6px; }
+.frame-note { font:12px var(--mono); color:var(--inkSoft); margin:6px 0 0; max-width:90ch; }
+.fit { width:100%; overflow-x:auto; padding-bottom:4px; }
+.restored { font-size:13px; color:var(--inkSoft); }
+
+/* ---- devices: 1 CSS px = 1 pt ---- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:14px; overflow:hidden; flex:none;
+  font-family:var(--cochin); line-height:1.25;
+  --rb:1; --rh:1; --rt:1; --rs:1; --rf:1; --rc:1; }
+.dev.folded { width:466px; height:678px; }
+.dev.open { width:951px; height:669px; }
+/* Phone: no size is written for it (layout.py devices: unknown; the brief names none). Drawn at the folded width, resizable. */
+.dev.phone { width:466px; height:678px; resize:both; min-width:320px; min-height:560px; max-width:600px; max-height:1000px; }
+/* AX5, the largest accessibility size. Ratios from HIG Typography, iOS Dynamic Type tables, read 2026-11-21:
+   Body 17 to 53, Headline 17 to 53, Title 2 22 to 56, Subhead 15 to 49, Footnote 13 to 44, Caption 1 12 to 43. */
+.dev.ax5 { --rb:calc(53 / 17); --rh:calc(53 / 17); --rt:calc(56 / 22); --rs:calc(49 / 15); --rf:calc(44 / 13); --rc:calc(43 / 12); }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 16px; font:600 12px -apple-system, system-ui, sans-serif; z-index:5; background:var(--paper); }
+.scroll { position:absolute; left:0; right:0; top:var(--sat); bottom:0; overflow-y:auto; overflow-x:hidden; }
+.pad { padding:24px 16px calc(var(--bar) + var(--lift) + 24px + var(--sab)); display:flex; flex-direction:column; gap:16px; }
+.page { position:absolute; top:0; bottom:0; width:455.5px; overflow:hidden; }
+.page.l { left:0; } .page.r { left:495.5px; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:4; }
+.fold span { position:absolute; top:300px; left:50%; transform:translateX(-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); white-space:nowrap; }
+
+/* tab bar: on the open Duo a paper pill under the right page (DuoBar); folded and phone draw the system bar at the same pill size, unmeasured */
+.bar { position:absolute; bottom:calc(var(--lift) + var(--sab)); left:24px; right:24px; height:var(--bar); border-radius:32px; z-index:6;
+  background:color-mix(in srgb, var(--paper) 82%, transparent); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  border:1px solid var(--line); display:flex; gap:4px; padding:4px; font-family:var(--cochin); }
+.bar button { flex:1; border:0; background:transparent; border-radius:28px; color:var(--inkSoft); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+  font:12px var(--cochin); cursor:pointer; min-height:44px; }
+.bar button[aria-selected="true"] { color:var(--accent); background:color-mix(in srgb, var(--card) 90%, transparent); }
+.bar svg { width:22px; height:22px; }
+
+/* ---- app content: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono) ---- */
+.letter { display:flex; flex-direction:column; gap:4px; border-bottom:1px solid var(--ink); padding-bottom:8px; }
+.letter .mast { font-size:calc(22px * var(--rt)); font-weight:700; letter-spacing:4px; }
+.letter .tallies { font:calc(12px * var(--rc)) var(--mono); color:var(--inkSoft); }
+.micro { font-family:var(--mono); font-size:calc(10.5px * var(--rc)); letter-spacing:1.2px; text-transform:uppercase; color:var(--inkSoft); }
+.t2 { font-size:calc(22px * var(--rt)); font-weight:700; margin:0; }
+.body { font-size:calc(15px * var(--rb)); margin:0; }
+.soft { color:var(--inkSoft); }
+.foot { font-size:calc(13px * var(--rf)); margin:0; }
+.stack { display:flex; flex-direction:column; gap:8px; }
+.stack-4 { display:flex; flex-direction:column; gap:4px; }
+.stack-12 { display:flex; flex-direction:column; gap:12px; }
+.marked { position:relative; outline:1.5px dashed var(--green); outline-offset:3px; border-radius:6px; }
+.marked.today { outline-color:var(--red); }
+.marked > .tag { position:absolute; top:-14px; right:4px; background:var(--paper); z-index:2; }
+/* ruled rows: hairline rules, label left, underlined value right (disclosure-cells-underline-value) */
+.ruled { display:flex; flex-direction:column; border-top:1px solid var(--line); }
+.row { display:flex; align-items:center; gap:12px; min-height:56px; padding:8px 0; border-bottom:1px solid var(--line); width:100%;
+  background:none; border-left:0; border-right:0; border-top:0; font:inherit; color:inherit; text-align:left; cursor:pointer; }
+.row:disabled { cursor:default; }
+.row .num { font:calc(12px * var(--rc)) var(--mono); color:var(--inkSoft); width:calc(22px * var(--rc)); flex:none; align-self:flex-start; padding-top:4px; }
+.row .txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.row .ti { font-size:calc(16px * var(--rb)); font-weight:700; }
+.row .su { font-size:calc(13px * var(--rf)); color:var(--inkSoft); }
+.row .val { font-size:calc(15px * var(--rb)); color:var(--accent); text-decoration:underline; text-underline-offset:3px; flex:none; }
+.row .val.fix { color:var(--manilaInk); }
+.row .val.off { color:var(--inkSoft); text-decoration:none; }
+.row.sel { box-shadow:inset 3px 0 0 var(--accent); padding-left:10px; }
+.done-mark { width:calc(22px * var(--rc)); flex:none; align-self:flex-start; padding-top:2px; }
+.done-mark svg { width:18px; height:18px; }
+.words { display:flex; flex-direction:column; gap:12px; }
+.words dl { margin:0; display:flex; flex-direction:column; gap:10px; }
+.words dt { font-size:calc(16px * var(--rb)); font-weight:700; }
+.words dd { margin:0; font-size:calc(14px * var(--rb)); color:var(--inkSoft); }
+.words .glyph { display:inline-block; width:12px; height:12px; margin-right:6px; vertical-align:baseline; border-radius:2px; }
+
+/* buttons inside the app: 44 pt hit regions */
+.btn { min-height:48px; border-radius:8px; border:1px solid var(--accent); background:var(--accent); color:var(--card); font:700 calc(16px * var(--rb)) var(--cochin);
+  padding:8px 16px; cursor:pointer; width:100%; }
+.btn.quiet { background:transparent; color:var(--accent); border-color:transparent; text-decoration:underline; text-underline-offset:3px; font-weight:400; }
+.btn.line { background:var(--card); color:var(--ink); border-color:var(--line); }
+.mini { min-height:44px; min-width:44px; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--line); background:var(--card);
+  border-radius:5px; padding:0 12px; font:calc(11.5px * var(--rc)) var(--mono); color:var(--ink); cursor:pointer; }
+.mock { min-height:44px; border:1.5px dashed var(--accent); background:transparent; color:var(--accent); border-radius:6px; font:12px var(--mono); padding:4px 10px; cursor:pointer; }
+
+/* package card (PackagesView: header, pill slot, item lines) */
+.pkg { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; position:relative; }
+.pkg .hd { display:flex; gap:8px; align-items:flex-start; padding:12px; }
+.pkg .who { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.pkg .who b { font-size:calc(15px * var(--rb)); }
+.pkg .meta { font:calc(11px * var(--rc)) var(--mono); color:var(--inkSoft); overflow-wrap:anywhere; }
+.pkg .pill { flex:none; font:calc(11.5px * var(--rc)) var(--mono); border:1px solid var(--line); border-radius:5px; padding:4px 8px; position:relative; }
+.pkg .pill .ghost { visibility:hidden; }
+.pkg .pill .face { position:absolute; inset:0; display:grid; place-items:center; padding:0 6px; white-space:nowrap; }
+.pkg .pill.got { border-color:var(--green); color:var(--green); font-weight:700; letter-spacing:1px; }
+.pkg .band { background:var(--manila); color:var(--manilaInk); font:calc(10.5px * var(--rc)) var(--mono); letter-spacing:1.2px; padding:6px 12px; text-transform:uppercase; }
+.line { display:flex; gap:8px; min-height:45px; padding-right:12px; border-top:1px solid var(--line); align-items:center; width:100%;
+  background:none; border-left:0; border-right:0; border-bottom:0; font:inherit; color:inherit; text-align:left; cursor:pointer; }
+.line.got { background:var(--greenSoft); }
+.line .box { flex:0 0 45px; height:45px; display:grid; place-items:center; }
+.line .box i { width:30px; height:30px; border:1.5px solid var(--inkSoft); border-radius:6px; display:grid; place-items:center; background:var(--card); }
+.line.got .box i { border-color:var(--green); background:var(--green); }
+.line .box svg { width:20px; height:20px; }
+.line .box path { stroke:var(--card); stroke-width:3; fill:none; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:24; stroke-dashoffset:0; }
+.line.just .box path { animation:write 260ms ease-out both; }
+@keyframes write { from { stroke-dashoffset:24; } to { stroke-dashoffset:0; } }
+.line .nm { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.line .nm b { font-size:calc(14px * var(--rb)); font-weight:600; }
+.line .nm span { font:calc(11px * var(--rc)) var(--mono); color:var(--inkSoft); }
+.line .qty { font:calc(11px * var(--rc)) var(--mono); color:var(--inkSoft); flex:none; }
+.pkg.collapsed .line { display:none; }
+.pkg .sel { box-shadow:inset 3px 0 0 var(--accent); }
+/* The stamp lands in the pill's reserved slot, so the head keeps its size (card-the-action-row-is-reserved). */
+.pkg .pill.stamped { border-color:transparent; }
+.stamp { border:2px solid var(--green); color:var(--green); font:700 calc(13px * var(--rc)) var(--mono); letter-spacing:2px;
+  padding:4px 10px; border-radius:4px; transform:rotate(-6deg); background:color-mix(in srgb, var(--card) 70%, transparent); pointer-events:none; }
+.stamp.lands { animation:land 320ms cubic-bezier(.2,.9,.3,1.2) both; }
+@keyframes land { from { transform:rotate(-6deg) scale(1.5); opacity:0; } to { transform:rotate(-6deg) scale(1); opacity:1; } }
+
+/* reserved slot: fixed height, so a change of text moves nothing (no-layout-shift-under-pointer) */
+/* Every message of a slot is laid in one grid cell, the others hidden, so the slot takes its tallest message's height at
+   every text size, and a new message never grows it. */
+.slot { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:10px 12px; font-size:calc(13px * var(--rf)); display:grid; }
+.slot > span { grid-area:1 / 1; align-self:center; }
+.slot > span.ghost-msg { visibility:hidden; }
+.slot.plain { background:transparent; border:1px dashed var(--line); color:var(--inkSoft); }
+.slot.good { background:var(--greenSoft); color:var(--green); }
+.notice { border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px; }
+.notice.ok { background:var(--greenSoft); color:var(--ink); }
+.notice.bad { background:var(--redSoft); color:var(--ink); }
+.notice.bad b { color:var(--red); }
+.notice b { font-size:calc(15px * var(--rb)); }
+.notice p { margin:0; font-size:calc(13px * var(--rf)); }
+details { font-size:calc(13px * var(--rf)); }
+details summary { min-height:44px; display:flex; align-items:center; cursor:pointer; color:var(--accent); }
+details pre { margin:0; font:calc(11px * var(--rc)) var(--mono); white-space:pre-wrap; color:var(--inkSoft); }
+.running { height:3px; background:var(--line); border-radius:2px; overflow:hidden; position:relative; }
+.running::after { content:""; position:absolute; top:0; bottom:0; width:30%; background:var(--accent); animation:run 1.2s linear infinite; }
+@keyframes run { from { left:-30%; } to { left:100%; } }
+.qr { width:132px; height:132px; align-self:center; display:grid; grid-template-columns:repeat(11,1fr); gap:1px; padding:8px; background:var(--card); border:1px solid var(--line); border-radius:8px; }
+.qr i { background:var(--ink); border-radius:1px; } .qr i.o { background:transparent; }
+.qrcap { font:11px var(--mono); color:var(--inkSoft); text-align:center; }
+.field { min-height:48px; border:1px solid var(--line); background:var(--card); border-radius:8px; padding:0 12px; display:flex; align-items:center; gap:8px;
+  font-size:16px; font-family:var(--cochin); color:var(--ink); width:100%; }
+.field.big { font-size:calc(16px * var(--rb)); }
+.field .caret { width:2px; height:1.1em; background:var(--accent); }
+/* The bring-in block sits in the flow under the practice slot. A sticky dock covered the slot, which is the teaching text. */
+.dock { display:flex; flex-direction:column; gap:8px; }
+/* At AX5 a row and a package head wrap, so the value and the pill go under the title rather than over it. */
+.dev.ax5 .row { flex-wrap:wrap; }
+.dev.ax5 .row .txt { flex-basis:calc(100% - 40px); }
+.dev.ax5 .row .val { margin-left:calc(22px * var(--rc) + 12px); }
+.dev.ax5 .pkg .hd { flex-wrap:wrap; }
+.dev.ax5 .pkg .who { flex-basis:100%; }
+.dev.ax5 .listrow { flex-wrap:wrap; }
+.dev.ax5 .listrow .w { flex-basis:100%; }
+
+/* system sheet (HIG Sheets: Cancel on the leading edge of the top toolbar) */
+.sheet { position:absolute; left:0; right:0; bottom:0; top:calc(var(--sat) + 28px); background:var(--card); border-radius:14px 14px 0 0; z-index:8;
+  box-shadow:0 -2px 12px rgba(28,43,36,0.12); display:flex; flex-direction:column; font-family:-apple-system, system-ui, sans-serif; }
+.scrim { position:absolute; inset:0; background:rgba(28,43,36,0.25); z-index:7; }
+.sheet .tb { display:flex; align-items:center; min-height:52px; padding:0 8px; border-bottom:1px solid var(--line); }
+.sheet .tb button { min-height:44px; min-width:44px; border:0; background:none; color:var(--accent); font:17px -apple-system, system-ui, sans-serif; cursor:pointer; padding:0 8px; }
+.sheet .tb .ttl { flex:1; text-align:center; font:600 17px -apple-system, system-ui, sans-serif; }
+.sheet .tb .spacer { min-width:60px; }
+.sheet .in { overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:16px; font-family:var(--cochin); }
+.files { display:flex; flex-direction:column; border-top:1px solid var(--line); font-family:-apple-system, system-ui, sans-serif; }
+.files button { display:flex; align-items:center; gap:12px; min-height:56px; border:0; border-bottom:1px solid var(--line); background:none; text-align:left; font:inherit; color:var(--ink); cursor:pointer; padding:0 4px; }
+.files button:disabled { color:var(--inkSoft); cursor:default; }
+.files .ic { width:28px; height:34px; border:1.5px solid currentColor; border-radius:3px; flex:none; position:relative; }
+.files small { display:block; color:var(--inkSoft); font-size:13px; }
+ol.how { margin:0; padding-left:calc(24px * var(--rb)); display:flex; flex-direction:column; gap:8px; font-size:calc(15px * var(--rb)); }
+.listrow { display:flex; gap:8px; align-items:center; min-height:56px; border-bottom:1px solid var(--line); padding:6px 4px; cursor:pointer; background:none; border-top:0; border-left:0; border-right:0; width:100%; text-align:left; font:inherit; color:inherit; }
+.listrow .w { flex:1; min-width:0; display:flex; flex-direction:column; }
+.listrow b { font-size:calc(15px * var(--rb)); }
+.listrow .w > span { font:calc(11px * var(--rc)) var(--mono); color:var(--inkSoft); }
+.listrow .p { font:calc(11.5px * var(--rc)) var(--mono); border:1px solid var(--line); border-radius:5px; padding:4px 8px; flex:none; }
+.listrow.sel { box-shadow:inset 3px 0 0 var(--accent); padding-left:10px; }
+.offer { background:color-mix(in srgb, var(--manila) 50%, transparent); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px; }
+.offer p { margin:0; font-size:calc(13px * var(--rf)); }
+@media (prefers-reduced-motion: reduce) { .line.just .box path, .stamp.lands, .running::after { animation:none; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="banner" role="note">Sample: no figure, order, seller or key on this page is real. The code drawn is a pattern, not a key.</div>
+  <header class="stack">
+    <h1>First run: two concepts</h1>
+    <p class="kind">Designer kind: informed &middot; first-run-informed-1</p>
+    <p class="sub">A person opens MANIFEST for the first time with an OrderWand CSV on their computer and the app on their phone. Each concept gets their orders in, names a package, a card and an envelope, and gets one card ticked, with nothing erased on the way. Every frame below takes taps. Each concept draws the folded Duo, the open Duo, the large phone and the folded Duo at AX5.</p>
+    <div class="legend-line"><span><span class="tag today">Today: part</span> exists now</span><span><span class="tag new">New: part</span> what the concept adds</span><span>Dashed purple buttons are mockup controls, not app controls.</span></div>
+    <nav class="toolbar" aria-label="Concepts">
+      <a href="#c=steps" id="nav-steps">Ruled steps</a>
+      <button type="button" class="hide" data-hide="steps">Hide Ruled steps</button>
+      <a href="#c=practice" id="nav-practice">Practice package</a>
+      <button type="button" class="hide" data-hide="practice">Hide Practice package</button>
+      <span class="restored" id="restored"></span>
+    </nav>
+  </header>
+
+  <section class="concept" id="concept-steps" data-concept="steps">
+    <h2>Ruled steps</h2>
+    <p class="sub">The quiet one. Keeps every ruling but one new web control. The app still opens on the Ledger tab. Three ruled rows sit at its top, in the masthead's own vocabulary, with the three words under them. Orders arrive by the sync link the app already reads: the Camera scans a code the computer shows.</p>
+    <nav class="toolbar" aria-label="Ruled steps states" data-states="steps"></nav>
+    <div class="frames" data-frames="steps">
+      <figure><p class="frame-cap">iPhone Duo, folded: 466 × 678 pt</p><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-pose="folded" id="choice-steps"></div></div></figure>
+      <figure><p class="frame-cap">iPhone Duo, open: 951 × 669 pt, fold 455.5 to 495.5</p><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-pose="open"></div></div></figure>
+      <figure><p class="frame-cap">Large phone: no size written, drawn at 466 × 678 pt; drag the corner to resize</p><div class="fit"><div class="dev phone" data-device="iphone-large" data-pose="phone"></div></div></figure>
+      <figure><p class="frame-cap">iPhone Duo, folded, AX5 (the largest accessibility text)</p><div class="fit"><div class="dev folded ax5" data-device="iphone-duo-folded-ax5" data-pose="folded"></div></div></figure>
+      <p class="frame-note">The folded frame carries the focus id choice-steps.</p>
+    </div>
+  </section>
+
+  <section class="concept" id="concept-practice" data-concept="practice">
+    <h2>Practice package</h2>
+    <p class="sub">The bold one. The app opens on Packages with a practice package that is never saved. The person ticks three sample cards in the first ten seconds, and each tick names a word. Then the phone opens the CSV itself, through the same parser the web runs, and goes straight to the mail in hand. Departs from two rulings: see the notes.</p>
+    <nav class="toolbar" aria-label="Practice package states" data-states="practice"></nav>
+    <div class="frames" data-frames="practice">
+      <figure><p class="frame-cap">iPhone Duo, folded: 466 × 678 pt</p><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-pose="folded" id="choice-practice"></div></div></figure>
+      <figure><p class="frame-cap">iPhone Duo, open: 951 × 669 pt, fold 455.5 to 495.5</p><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-pose="open"></div></div></figure>
+      <figure><p class="frame-cap">Large phone: no size written, drawn at 466 × 678 pt; drag the corner to resize</p><div class="fit"><div class="dev phone" data-device="iphone-large" data-pose="phone"></div></div></figure>
+      <figure><p class="frame-cap">iPhone Duo, folded, AX5 (the largest accessibility text)</p><div class="fit"><div class="dev folded ax5" data-device="iphone-duo-folded-ax5" data-pose="folded"></div></div></figure>
+      <p class="frame-note">The folded frame carries the focus id choice-practice.</p>
+    </div>
+    <p class="frame-note">Tab bar: the open Duo draws the app's own bar under the right page (DuoSpine.swift DuoBar). Folded and phone draw the system bar at the same pill size, which is not measured. Status bar: drawn at the 20 pt floor, not measured.</p>
+  </section>
+</main>
+
+<script>
+(() => {
+  const TICK = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10.5l4 4 8-9"/></svg>';
+  const GREEN_TICK = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10.5l4 4 8-9" style="stroke:var(--green);stroke-width:2.5;fill:none;stroke-linecap:round;stroke-linejoin:round"/></svg>';
+  const ICONS = {
+    ledger: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.2 5.2l2.1 2.1M16.7 16.7l2.1 2.1M5.2 18.8l2.1-2.1M16.7 7.3l2.1-2.1"/></svg>',
+    orphaned: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/></svg>',
+    tally: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 3.5l-2 17M17 3.5l-2 17M4 9h17M3 15h17"/></svg>',
+    packages: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5L12 12l8.5-4.5M12 12v9"/></svg>'
+  };
+  const TABS = [['ledger','Ledger'],['orphaned','Orphaned'],['tally','Tally'],['packages','Packages']];
+
+  /* Sample data. The names are card names; the sellers and order ids are made up and say so. */
+  const PRACTICE = { seller:'Practice seller', order:'PRACTICE', date:'not a real order',
+    cards:[{k:'p1', n:'Lightning Bolt', d:'Sample Set · Near Mint', q:1, p:1.10},
+           {k:'p2', n:'Counterspell', d:'×2 · Sample Set · Near Mint', q:2, p:0.85},
+           {k:'p3', n:'Llanowar Elves', d:'Sample Set · Lightly Played', q:1, p:0.30}] };
+  const REAL = [
+    { seller:'Sample Seller A', order:'SAMPLE-0412', date:'2026-11-12', cards:[
+      {k:'a1', n:'Lightning Bolt', d:'Sample Set · Near Mint', q:1, p:1.10},
+      {k:'a2', n:'Sol Ring', d:'Sample Set · Near Mint', q:1, p:1.75},
+      {k:'a3', n:'Brainstorm', d:'×3 · Sample Set · Near Mint', q:3, p:0.40}] },
+    { seller:'Sample Seller B', order:'SAMPLE-0398', date:'2026-11-10', cards:[
+      {k:'b1', n:'Swords to Plowshares', d:'Sample Set · Near Mint', q:1, p:2.40},
+      {k:'b2', n:'Dark Ritual', d:'Sample Set · Played', q:1, p:0.35}] },
+    { seller:'Sample Seller C', order:'SAMPLE-0391', date:'2026-11-09', cards:[
+      {k:'c1', n:'Counterspell', d:'×2 · Sample Set · Near Mint', q:2, p:0.85}] },
+  ];
+  const MORE = Array.from({length:14}, (_, i) => ({ seller:`Sample Seller ${String.fromCharCode(68 + i)}`, order:`SAMPLE-${String(380 - i * 7).padStart(4,'0')}`,
+    date:`2026-11-${String(8 - Math.floor(i / 3)).padStart(2,'0')}`, left:(i * 5) % 9 + 1, val:((i * 37) % 900 + 120) / 100 }));
+  const money = v => '$' + v.toFixed(2);
+  const leftOf = (pkg, got) => pkg.cards.reduce((n, c) => n + (got[c.k] ? 0 : c.q), 0);
+  const valOf = (pkg, got) => pkg.cards.reduce((n, c) => n + (got[c.k] ? 0 : c.q * c.p), 0);
+
+  /* ---------- state ---------- */
+  const STATES = {
+    steps: [['empty','First launch'],['link','Set up sheet'],['arriving','Orders coming'],['refused','Key refused'],['arrived','Orders in'],['pkgs','First package'],['ticked','First card ticked'],['later','A day later']],
+    practice: [['practice','Practice package'],['practice-done','Practice done'],['picking','Choose the file'],['reading','Reading'],['badfile','Wrong file'],['summary','Imported'],['hand','Card in hand'],['ticked','First card ticked'],['later','A day later']]
+  };
+  const st = { steps:{s:'empty', tab:'ledger', paste:false, steps:true}, practice:{s:'practice', got:{}, just:null, tab:'packages'} };
+  const defaultTab = { steps:{ empty:'ledger', link:'ledger', arriving:'ledger', refused:'ledger', arrived:'ledger', pkgs:'packages', ticked:'packages', later:'packages' } };
+
+  function setState(c, s, fromHash, keep) {
+    const o = st[c];
+    o.s = s; o.just = null;
+    if (c === 'steps') { o.tab = defaultTab.steps[s]; o.paste = false; o.got = s === 'ticked' ? { a1:true } : {}; }
+    if (c === 'practice') {
+      o.tab = 'packages';
+      if (s === 'practice' && !keep) o.got = {};
+      if (s === 'practice-done') o.got = { p1:true, p2:true, p3:true };
+      if (s === 'ticked') o.got = { a1:true };
+      if (s === 'hand' || s === 'summary' || s === 'later') o.got = {};
+    }
+    render(c);
+    if (!fromHash) writeHash(c);
+  }
+  function writeHash(c) { history.replaceState(null, '', `#c=${c}&s=${st[c].s}`); }
+
+  /* ---------- shared pieces ---------- */
+  const tag = (kind, text) => `<span class="tag ${kind}">${kind === 'today' ? 'Today' : 'New'}: ${text}</span>`;
+  const mark = (kind, text, inner, extra = '') => `<div class="marked ${kind === 'today' ? 'today' : ''} ${extra}">${tag(kind, text)}${inner}</div>`;
+  const status = () => `<div class="status" aria-hidden="true"><span>9:41</span><span>&#9679;&#9679;&#9679; &#9646;</span></div>`;
+  const bar = (c, active) => `<div class="bar" role="tablist" aria-label="Tabs">${TABS.map(([id, t]) =>
+    `<button role="tab" aria-selected="${id === active}" data-c="${c}" data-tab="${id}">${ICONS[id]}<span>${t}</span></button>`).join('')}</div>`;
+  const letter = (tallies) => `<div class="letter"><span class="mast">MANIFEST</span>${tallies ? `<span class="tallies">${tallies}</span>` : ''}</div>`;
+  const LOADED_TALLY = '412 cards · 63 packages · $318.40 out';
+
+  function pkgCard(c, pkg, got, opts = {}) {
+    const left = leftOf(pkg, got), done = left === 0;
+    const pill = done ? 'RECEIVED' : `${left} left · ${money(valOf(pkg, got))}`;
+    const widest = `${pkg.cards.reduce((n, x) => n + x.q, 0)} left · ${money(valOf(pkg, {}))}`;
+    const shown = opts.only ? pkg.cards.filter(x => opts.only.includes(x.k)) : pkg.cards;
+    const hiddenN = pkg.cards.length - shown.length;
+    const lines = shown.map(x => `<button class="line ${got[x.k] ? 'got' : ''} ${opts.just === x.k ? 'just' : ''}" data-c="${c}" data-line="${x.k}"
+        aria-pressed="${!!got[x.k]}" aria-label="${x.n}, ${got[x.k] ? 'checked in' : 'not checked in'}">
+        <span class="box"><i>${got[x.k] ? TICK : ''}</i></span>
+        <span class="nm"><b>${x.n}</b><span>${x.d}</span></span>
+        <span class="qty">${x.q > 1 ? (got[x.k] ? `${x.q}/${x.q}` : `0/${x.q}`) : ''}</span></button>`).join('')
+      + (hiddenN ? `<p class="meta" style="margin:0;padding:8px 12px;border-top:1px solid var(--line);font:calc(11px * var(--rc)) var(--mono);color:var(--inkSoft)">${hiddenN} more cards in this package, hidden by the search</p>` : '');
+    return `<article class="pkg ${opts.collapsed ? 'collapsed' : ''}" ${opts.id ? `id="${opts.id}"` : ''}>
+      ${opts.band ? `<div class="band">${opts.band}</div>` : ''}
+      <div class="hd"><div class="who"><b>${pkg.seller}</b><span class="meta">${pkg.order} · ordered ${pkg.date}</span></div>
+        <span class="pill ${done ? 'got' : ''} ${opts.stamp && done ? 'stamped' : ''}"><span class="ghost">${widest}</span><span class="face">${opts.stamp && done ? `<span class="stamp ${opts.landed ? 'lands' : ''}">RECEIVED</span>` : pill}</span></span></div>
+      ${lines}</article>`;
+  }
+  const summaryRow = (p, sel, got = {}) => `<button class="listrow ${sel ? 'sel' : ''}" aria-current="${sel}"><span class="w"><b>${p.seller}</b><span>${p.order} · ordered ${p.date}</span></span><span class="p">${p.left != null ? `${p.left} left · ${money(p.val)}` : `${leftOf(p, got)} left · ${money(valOf(p, got))}`}</span></button>`;
+  const words = (tagged) => {
+    const inner = `<div class="words"><span class="micro">Three words</span><dl>
+      <div><dt><span class="glyph" style="border:1.5px solid var(--ink)"></span>Package</dt><dd>What one seller sends for one order. It lists the cards in it.</dd></div>
+      <div><dt><span class="glyph" style="border:1.5px solid var(--green);background:var(--greenSoft)"></span>Card</dt><dd>One line in a package. Tick it when the card is in your hand.</dd></div>
+      <div><dt><span class="glyph" style="background:var(--manila)"></span>Envelope</dt><dd>The mail you open. If you can&rsquo;t tell who sent it, record it in Orphaned.</dd></div></dl></div>`;
+    return tagged ? mark('new', 'the three words', inner) : inner;
+  };
+
+  /* ---------- concept: Ruled steps ---------- */
+  function stepsRows(o, opts = {}) {
+    const s = o.s;
+    const in1 = ['arrived','pkgs','ticked','later'].includes(s), in3 = s === 'ticked';
+    const r = [];
+    // row 1
+    let su1 = 'Your orders file is on your computer. Link this phone to it.', v1 = 'Set up', cls1 = '';
+    if (s === 'arriving') { su1 = 'Bringing your orders in…'; v1 = 'Stop'; cls1 = 'off'; }
+    if (s === 'refused') { su1 = 'This device’s sync key was refused. Scan a fresh code.'; v1 = 'Check'; cls1 = 'fix'; }
+    if (in1) { su1 = '412 lines came in, in 63 packages.'; v1 = ''; }
+    r.push(`<button class="row ${opts.sel === 1 ? 'sel' : ''}" data-c="steps" data-go="${s === 'arriving' ? 'empty' : 'link'}" ${in1 ? 'disabled' : ''} id="step-1">
+      ${in1 ? `<span class="done-mark">${GREEN_TICK}</span>` : '<span class="num">1</span>'}
+      <span class="txt"><span class="ti">Bring your orders in</span><span class="su">${su1}</span>${s === 'arriving' ? '<span class="running" aria-hidden="true"></span>' : ''}</span>
+      ${v1 ? `<span class="val ${cls1}">${v1}</span>` : ''}</button>`);
+    // row 2
+    const can2 = s === 'arrived', did2 = ['pkgs','ticked'].includes(s);
+    r.push(`<button class="row ${opts.sel === 2 ? 'sel' : ''}" data-c="steps" data-go="pkgs" ${can2 || did2 ? '' : 'disabled'}>
+      ${did2 ? `<span class="done-mark">${GREEN_TICK}</span>` : '<span class="num">2</span>'}
+      <span class="txt"><span class="ti">Open your packages</span><span class="su">${can2 || did2 ? 'Each package is one seller’s part of one order.' : 'Waits for step 1.'}</span></span>
+      <span class="val ${can2 ? '' : 'off'}">${did2 ? '' : 'Open'}</span></button>`);
+    // row 3
+    r.push(`<button class="row" data-c="steps" data-go="pkgs" ${did2 ? '' : 'disabled'}>
+      ${in3 ? `<span class="done-mark">${GREEN_TICK}</span>` : '<span class="num">3</span>'}
+      <span class="txt"><span class="ti">Tick a card you hold</span><span class="su">${in3 ? 'Done. Every tick saves itself.' : did2 ? 'Tap the box beside the card.' : 'Waits for step 2.'}</span></span>
+      <span class="val off"></span></button>`);
+    return `<div class="ruled">${r.join('')}</div>`;
+  }
+  function stepsBlock(o, opts = {}) {
+    const all = o.s === 'ticked';
+    const inner = `<div class="stack-12">
+      <div class="stack-4"><p class="t2">Your first mail day</p><p class="foot soft">Three steps. None of them removes anything.</p></div>
+      ${stepsRows(o, opts)}
+      ${o.s === 'arriving' ? '<div style="display:flex;flex-wrap:wrap;gap:8px"><button class="mock" data-c="steps" data-go="arrived">Mockup: the read finished</button><button class="mock" data-c="steps" data-go="refused">Mockup: the key was refused</button></div>' : ''}
+      ${all ? `<button class="mini" data-c="steps" data-hidesteps="1">Hide these steps</button><p class="foot soft">They stay under Ledger &rsaquo; Help.</p>` : ''}
+    </div>`;
+    return mark('new', 'first mail day steps', inner);
+  }
+  function ledgerToday(o) {
+    const empty = !['arrived','pkgs','ticked','later'].includes(o.s);
+    const syncSub = o.s === 'refused' ? 'This device’s sync key was refused' : empty && o.s !== 'arriving' ? 'This device has no sync key' : 'Backed up 2026-11-21';
+    const syncVal = o.s === 'refused' ? 'Check' : empty && o.s !== 'arriving' ? 'Set up' : 'On';
+    const rows = `<div class="stack"><span class="micro">Data</span><div class="ruled">
+      <button class="row" data-c="steps" data-go="link"><span class="txt"><span class="ti">Sync</span><span class="su">${syncSub}</span></span><span class="val ${syncVal === 'On' ? '' : 'fix'}">${syncVal}</span></button>
+      <button class="row" disabled><span class="txt"><span class="ti">History</span></span><span class="val off">Saved versions</span></button>
+      <button class="row" disabled><span class="txt"><span class="ti">Backup</span></span><span class="val off">&rsaquo;</span></button>
+      ${empty ? '' : '<button class="row" disabled><span class="txt"><span class="ti">Reset</span></span><span class="val off">&rsaquo;</span></button>'}
+      ${o.s === 'later' || !o.steps ? '<button class="row" disabled><span class="txt"><span class="ti">Help</span><span class="su">First mail day steps</span></span><span class="val off">&rsaquo;</span></button>' : ''}
+    </div></div>`;
+    return mark('today', 'Ledger tab Data rows' + (empty ? '; New: Reset absent while empty' : ''), rows);
+  }
+  function linkGuide(o, inSheet) {
+    const refusedNote = o.prev === 'refused' ? `<div class="notice bad"><b>The last key was refused.</b><p>Show a fresh code on your computer and scan it. Nothing on this phone was changed.</p></div>` : '';
+    const qr = Array.from({length:121}, (_, i) => { const x = i % 11, y = Math.floor(i / 11);
+      const finder = (x < 3 && y < 3) || (x > 7 && y < 3) || (x < 3 && y > 7);
+      return `<i class="${finder || ((x * 7 + y * 3 + x * y) % 3 === 0) ? '' : 'o'}"></i>`; }).join('');
+    return `<div class="stack-12">${refusedNote}
+      <span class="micro">On your computer</span>
+      <ol class="how"><li>Open MANIFEST in a browser.</li><li>Drop your OrderWand CSV on the page. It adds orders and removes none.</li>
+        <li>${mark('new', 'web control, owner grant', '<span>Press <b>Show phone code</b>.</span>')}</li></ol>
+      <span class="micro">Then on this phone</span>
+      <p class="body">Open the Camera and point it at the code. MANIFEST opens and your orders come in.</p>
+      <div class="qr" aria-label="Sample pattern, not a code">${qr}</div><span class="qrcap">Sample pattern. A real code holds this phone&rsquo;s key.</span>
+      <button class="mock" data-c="steps" data-go="arriving">Mockup: the Camera opened the link</button>
+      ${o.paste ? `<div class="stack"><label class="foot" for="k-${inSheet ? 's' : 'p'}">Sync key</label>
+          <div class="field" id="k-${inSheet ? 's' : 'p'}">&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;<span class="caret"></span></div>
+          <button class="btn" data-c="steps" data-go="arriving">Save key</button></div>`
+        : `<button class="btn quiet" data-c="steps" data-paste="1">No camera? Paste the key</button>`}
+    </div>`;
+  }
+  function stepsPackages(o, pose) {
+    const got = o.got || {};
+    const first = REAL[0];
+    const hint = slot(HINT, o.s === 'ticked' ? 1 : 0, o.s === 'ticked', 'hint-slot');
+    if (o.s === 'later') {
+      return `${letter(LOADED_TALLY)}<div class="stack">${[...REAL, ...MORE].map(p => summaryRow(p, false)).join('')}</div>`;
+    }
+    if (pose === 'list') return `${letter(LOADED_TALLY)}<div class="stack">${REAL.map((p, i) => summaryRow(p, i === 0, got)).join('')}${MORE.slice(0,4).map(p => summaryRow(p,false)).join('')}</div>`;
+    if (pose === 'detail') return `<div class="stack-12">${mark('new', 'first-day hint, reserved slot', hint)}${pkgCard('steps', first, got, { just:o.just, id:'first-package' })}</div>`;
+    return `${letter(LOADED_TALLY)}${mark('new', 'first-day hint, reserved slot', hint)}
+      ${pkgCard('steps', first, got, { just:o.just, id:'first-package' })}
+      ${REAL.slice(1).map(p => pkgCard('steps', p, {}, { collapsed:true })).join('')}`;
+  }
+  function stepsLedger(o) {
+    const showSteps = o.s !== 'later' && o.steps;
+    const empty = !['arrived','pkgs','ticked','later'].includes(o.s);
+    return `${letter(empty ? '' : LOADED_TALLY)}${showSteps ? stepsBlock(o) : ''}${showSteps ? words(true) : ''}${ledgerToday(o)}`;
+  }
+  function stepsCompact(o) {
+    const sheet = o.s === 'link' ? `<div class="scrim"></div><div class="sheet" role="dialog" aria-label="Set up sync">
+        <div class="tb"><button data-c="steps" data-go="${o.prev === 'refused' ? 'refused' : 'empty'}">Cancel</button><span class="ttl">Set up sync</span><span class="spacer"></span></div>
+        <div class="in">${linkGuide(o, true)}</div></div>` : '';
+    const content = o.tab === 'packages' ? stepsPackages(o, 'one') : o.tab === 'ledger' ? stepsLedger(o) : otherTab(o.tab);
+    return `${status()}<div class="scroll"><div class="pad">${content}</div></div>${bar('steps', o.tab)}${sheet}`;
+  }
+  function stepsOpen(o) {
+    let L, R;
+    if (o.tab === 'packages') {
+      L = stepsPackages(o, o.s === 'later' ? 'one' : 'list');
+      R = o.s === 'later' ? `<p class="body soft">Pick a package to see its cards.</p>` : stepsPackages(o, 'detail');
+    } else if (o.tab === 'ledger') {
+      const sel = ['empty','link','arriving','refused'].includes(o.s) ? 1 : o.s === 'arrived' ? 2 : 0;
+      L = `${letter(['arrived','pkgs','ticked','later'].includes(o.s) ? LOADED_TALLY : '')}${o.s !== 'later' && o.steps ? stepsBlock(o, { sel }) : ''}${ledgerToday(o)}`;
+      if (sel === 1 && o.s !== 'arriving') R = `<div class="stack-12"><p class="t2">Bring your orders in</p>${linkGuide(o, false)}</div>`;
+      else if (o.s === 'arriving') R = `<div class="stack-12"><p class="t2">Bringing your orders in</p><div class="running"></div><p class="body soft">This phone is reading the ledger your computer saved. Nothing here is replaced.</p><button class="mini" data-c="steps" data-go="empty">Stop</button><button class="mock" data-c="steps" data-go="arrived">Mockup: the read finished</button><button class="mock" data-c="steps" data-go="refused">Mockup: the key was refused</button></div>`;
+      else R = words(true);
+    } else { L = otherTab(o.tab); R = `<p class="body soft">The first mail day steps live on the Ledger tab.</p>`; }
+    return openFrame('steps', o.tab, L, R);
+  }
+  function otherTab(tab, o) {
+    if (tab === 'ledger') {
+      // Practice package's Ledger tab: today's Data rows, and the practice package kept under Help once orders are in.
+      const loaded = ['summary','hand','ticked','later'].includes(o.s);
+      return `${letter(loaded ? LOADED_TALLY : '')}${mark('today', 'Ledger tab Data rows', `<div class="stack"><span class="micro">Data</span><div class="ruled">
+        <button class="row" disabled><span class="txt"><span class="ti">Sync</span><span class="su">${loaded ? 'Not synced yet' : 'This device has no sync key'}</span></span><span class="val ${loaded ? '' : 'fix'}">${loaded ? 'On' : 'Set up'}</span></button>
+        <button class="row" disabled><span class="txt"><span class="ti">History</span></span><span class="val off">Saved versions</span></button>
+        <button class="row" disabled><span class="txt"><span class="ti">Backup</span></span><span class="val off">&rsaquo;</span></button></div></div>`)}
+        ${loaded ? mark('new', 'practice kept under Help', `<div class="ruled"><button class="row" data-c="practice" data-go="practice"><span class="txt"><span class="ti">Help</span><span class="su">Practice package</span></span><span class="val">Open</span></button></div>`) : ''}`;
+    }
+    const line = tab === 'orphaned' ? 'Nothing waiting: record a package here when you can’t tell who sent it.' : 'Nothing to show.';
+    return `${letter('')}${mark('today', tab === 'orphaned' ? 'Orphaned empty line' : 'Tally empty line', `<p class="body soft" style="text-align:center;padding:32px 8px">${line}</p>`)}`;
+  }
+  function openFrame(c, tab, L, R) {
+    return `${status()}<div class="page l"><div class="scroll"><div class="pad" style="padding-bottom:24px">${L}</div></div></div>
+      <div class="fold" aria-hidden="true"><span>fold: nothing crosses</span></div>
+      <div class="page r"><div class="scroll"><div class="pad">${R}</div></div>${bar(c, tab)}</div>`;
+  }
+
+  /* ---------- concept: Practice package ---------- */
+  function practiceSlot(o) {
+    const n = PRACTICE.cards.filter(x => o.got[x.k]).length;
+    return slot([
+      'Each line is a card. Tap the box beside one.',
+      'That card is in. Tap it again to take the tick back.',
+      'Every tick saves itself. There is no Save button.',
+      'Package received. The mail it came in is an envelope. An envelope with no sender goes to Orphaned.'], n, n === 3, 'practice-slot');
+  }
+  function slot(msgs, idx, good, id) {
+    return `<div class="slot ${good ? 'good' : ''}" ${id ? `id="${id}"` : ''} aria-live="polite">${msgs.map((m, i) =>
+      `<span ${i === idx ? '' : 'class="ghost-msg" aria-hidden="true"'}>${m}</span>`).join('')}</div>`;
+  }
+  const HINT = ['Hold an envelope? Tick each card in it as you take it out.', 'First card in. Tap it again to take the tick back.'];
+  const HAND_HINT = ['One package holds Lightning Bolt. Tick it when it is out of the envelope.', 'First card in. Tap it again to take the tick back.'];
+  const HAND_OPEN_HINT = ['Type the first card you take out of the envelope. Its package shows on the right.', 'First card in. The next card from this envelope goes in the same field.'];
+  function practiceIntro(o) {
+    return mark('new', 'practice package, never saved', `<div class="stack-12" id="practice-root">
+      <div class="stack-4"><p class="t2">This is a package</p><p class="foot soft">What one seller sends for one order. Tick a card as if it were in your hand.</p></div>
+      ${pkgCard('practice', PRACTICE, o.got, { band:'Practice · not saved', stamp:true, landed:o.just === 'stamp', just:o.just })}
+      ${practiceSlot(o)}</div>`);
+  }
+  function bringIn(o, inPage) {
+    let body;
+    if (o.s === 'reading') body = `<div class="stack"><p class="body">Reading OrderWand-export.csv…</p><div class="running"></div>
+        <div style="display:flex;gap:8px"><button class="mini" data-c="practice" data-go="practice" data-keep="1">Stop</button><button class="mock" data-c="practice" data-go="summary">Mockup: reading finished</button></div></div>`;
+    else if (o.s === 'badfile') body = `<div class="notice bad"><b>budget.csv is not an OrderWand CSV.</b><p>Nothing was added or changed.</p>
+        <details><summary>What the file held</summary><pre>No "Product Name" column. Columns: Date, Amount, Note</pre></details>
+        <button class="btn" data-c="practice" data-go="picking">Choose another file</button></div>`;
+    else if (o.s === 'summary') body = `<div class="notice ok" id="import-summary"><b>Imported 412 lines across your orders.</b>
+        <p>Nothing was removed. Importing again only adds and updates.</p>
+        <button class="btn" data-c="practice" data-go="hand">Start with the mail in hand</button></div>`;
+    else body = `<div class="stack"><button class="btn" data-c="practice" data-go="picking" id="open-file">Open your orders file</button>
+        <p class="foot soft">The OrderWand CSV. It adds orders and never removes any.</p>
+        <a class="btn quiet" href="#c=steps&s=link" style="display:grid;place-items:center;text-decoration:underline">Link from your computer instead</a>
+        <p class="foot soft">Opens the Set up sync sheet that Ruled steps draws.</p></div>`;
+    return `<div class="dock ${inPage ? 'inpage' : ''}">${mark('new', o.s === 'summary' ? 'summary at the press (today’s text on web)' : 'bring-in, phone file import, owner grant', body)}</div>`;
+  }
+  function picker() {
+    return `<div class="scrim"></div><div class="sheet" role="dialog" aria-label="Choose a file">
+      <div class="tb"><button data-c="practice" data-go="practice" data-keep="1">Cancel</button><span class="ttl">Recents</span><span class="spacer"></span></div>
+      <div class="in" style="font-family:-apple-system,system-ui,sans-serif">
+        <div class="field" style="font-family:inherit;color:var(--inkSoft)">Search</div>
+        <div class="files">
+          <button data-c="practice" data-go="reading"><span class="ic"></span><span>OrderWand-export.csv<small>Today · 84 KB · Downloads</small></span></button>
+          <button data-c="practice" data-go="badfile"><span class="ic"></span><span>budget.csv<small>Yesterday · 6 KB · Documents</small></span></button>
+          <button disabled><span class="ic"></span><span>card-photos.zip<small>Not a CSV, so it cannot be picked</small></span></button>
+        </div>
+        <p class="foot soft" style="font-size:13px">${tag('today', 'the system file picker')}</p>
+      </div></div>`;
+  }
+  function handCompact(o) {
+    const got = o.got;
+    const ticked = o.s === 'ticked';
+    return `${letter(LOADED_TALLY)}
+      ${mark('today', 'Find pill as a field', `<div class="field big" id="hand-field">Lightning Bo<span class="caret"></span></div>`)}
+      ${mark('new', 'first-day hint, reserved slot', slot(HAND_HINT, ticked ? 1 : 0, ticked, 'hand-slot'))}
+      ${pkgCard('practice', REAL[0], got, { just:o.just, id:'hand-package', only:['a1'] })}`;
+  }
+  function handOpen(o) {
+    const ticked = o.s === 'ticked';
+    const L = `${letter(LOADED_TALLY)}${mark('today', 'Mail day, left page', `<div class="stack-12">
+        <div style="display:flex;align-items:baseline;gap:8px"><b class="body" style="font-weight:700">Mail day</b><span class="tallies" style="margin-left:auto;font:calc(12px * var(--rc)) var(--mono);color:var(--inkSoft)">${ticked ? '1 in · 411 out' : '0 in · 412 out'}</span></div>
+        <div class="field big" id="hand-field">Lightning Bo<span class="caret"></span></div>
+        <div style="display:flex;align-items:center;gap:8px"><span class="foot soft" style="margin-right:auto">This envelope</span><button class="mini">New envelope</button></div>
+        <div class="listrow sel" style="cursor:default"><span class="w"><b>Lightning Bolt</b><span>Sample Seller A</span></span></div></div>`)}
+      ${mark('new', 'first-day hint', slot(HAND_OPEN_HINT, ticked ? 1 : 0, ticked))}`;
+    const R = `${mark('today', 'Mail day, right page', `<div class="stack-12" id="hand-answer">
+        <p class="t2">Sample Seller A</p><span class="meta" style="font:calc(11px * var(--rc)) var(--mono);color:var(--inkSoft)">ordered 2026-11-12 · ${ticked ? 4 : 5} cards out</span>
+        ${ticked ? `<div class="notice ok"><b>Posted: 1 card in.</b><p>Lightning Bolt is checked in.</p></div>`
+                 : `<div class="offer"><p>Post Lightning Bolt from this envelope.</p><button class="btn" data-c="practice" data-go="ticked">Post 1 card</button></div>`}
+        ${pkgCard('practice', REAL[0], o.got, { just:o.just })}</div>`)}`;
+    return openFrame('practice', 'packages', L, R);
+  }
+  function practiceCompact(o) {
+    let content, dock = '', sheet = '';
+    if (o.tab !== 'packages') content = otherTab(o.tab, o);
+    else if (['practice','practice-done','picking','reading','badfile'].includes(o.s)) { content = `${letter('')}${practiceIntro(o)}`; dock = bringIn(o); }
+    else if (o.s === 'summary') { content = `${letter(LOADED_TALLY)}${REAL.map(p => pkgCard('practice', p, {}, { collapsed:true })).join('')}`; dock = bringIn(o); }
+    else if (o.s === 'hand' || o.s === 'ticked') content = handCompact(o);
+    else content = `${letter(LOADED_TALLY)}<div class="stack">${[...REAL, ...MORE].map(p => summaryRow(p, false)).join('')}</div>`;
+    if (o.s === 'picking') sheet = picker();
+    return `${status()}<div class="scroll"><div class="pad">${content}${dock}</div></div>${bar('practice', o.tab)}${sheet}`;
+  }
+  function practiceOpen(o) {
+    if (o.tab !== 'packages') return openFrame('practice', o.tab, otherTab(o.tab, o), '<p class="body soft">Packages holds the practice package.</p>');
+    if (o.s === 'hand' || o.s === 'ticked') return handOpen(o);
+    if (o.s === 'later') return openFrame('practice', 'packages', `${letter(LOADED_TALLY)}<div class="stack">${[...REAL, ...MORE].map(p => summaryRow(p, false)).join('')}</div>`, '<p class="body soft">Pick a package to see its cards.</p>');
+    if (o.s === 'summary') return openFrame('practice', 'packages', `${letter(LOADED_TALLY)}${REAL.map(p => pkgCard('practice', p, {}, { collapsed:true })).join('')}`, `<div class="stack-12">${bringIn(o, true)}</div>`);
+    const L = `${letter('')}${practiceIntro(o)}`;
+    const R = `<div class="stack-12">${words(true)}${bringIn(o, true)}</div>`;
+    return openFrame('practice', 'packages', L, R);
+  }
+
+  /* ---------- frames ---------- */
+  function render(c) {
+    const o = st[c];
+    const host = document.querySelector(`[data-frames="${c}"]`);
+    host.querySelectorAll('.dev').forEach(dev => {
+      const pose = dev.dataset.pose;
+      let inner;
+      if (c === 'steps') inner = pose === 'open' ? stepsOpen(o) : stepsCompact(o);
+      else inner = pose === 'open' ? practiceOpen(o) : practiceCompact(o);
+      if (c === 'practice' && pose === 'open' && o.s === 'picking') inner += `<div style="position:absolute;top:0;bottom:0;left:495.5px;right:0;overflow:hidden">${picker()}</div>`;
+      dev.innerHTML = inner;
+    });
+    // The answer shows where the press was (ux-answer-at-press): a compact frame keeps the bring-in block in view.
+    if (c === 'practice' && ['picking','reading','badfile','summary'].includes(o.s)) {
+      host.querySelectorAll('.dev:not(.open) .dock').forEach(d => { const sc = d.closest('.scroll'); sc.scrollTop = Math.max(0, d.offsetTop - 120); });
+    }
+    document.querySelectorAll(`[data-states="${c}"] a`).forEach(a => a.setAttribute('aria-current', a.dataset.s === o.s));
+  }
+  function buildStateNav(c) {
+    document.querySelector(`[data-states="${c}"]`).innerHTML = STATES[c].map(([s, t]) => `<a href="#c=${c}&s=${s}" data-s="${s}">${t}</a>`).join('');
+  }
+
+  /* ---------- taps ---------- */
+  document.addEventListener('click', e => {
+    const hide = e.target.closest('[data-hide]');
+    if (hide) { hideConcept(hide.dataset.hide); return; }
+    const t = e.target.closest('[data-c]');
+    if (!t) return;
+    const c = t.dataset.c, o = st[c];
+    if (t.dataset.tab) { o.tab = t.dataset.tab; render(c); return; }
+    if (t.dataset.paste) { o.paste = true; render(c); return; }
+    if (t.dataset.hidesteps) { o.steps = false; o.tab = 'ledger'; render(c); return; }
+    if (t.dataset.line) {
+      const k = t.dataset.line;
+      o.got = { ...(o.got || {}) };
+      if (o.got[k]) delete o.got[k]; else o.got[k] = true;
+      o.just = o.got[k] ? k : null;
+      if (c === 'practice' && k.startsWith('p')) {
+        const n = PRACTICE.cards.filter(x => o.got[x.k]).length;
+        if (n === 3) { o.s = 'practice-done'; o.just = 'stamp'; } else if (o.s === 'practice-done') o.s = 'practice';
+      } else {
+        const any = Object.keys(o.got).length > 0;
+        if (c === 'steps' && ['pkgs','ticked'].includes(o.s)) o.s = any ? 'ticked' : 'pkgs';
+        if (c === 'practice' && ['hand','ticked'].includes(o.s)) o.s = any ? 'ticked' : 'hand';
+      }
+      render(c); writeHash(c); return;
+    }
+    if (t.dataset.go) {
+      e.preventDefault();
+      const prev = o.s;
+      setState(c, t.dataset.go, false, !!t.dataset.keep);
+      if (c === 'steps') { o.prev = prev; render(c); }
+    }
+  });
+
+  function hideConcept(c) {
+    const sec = document.getElementById(`concept-${c}`);
+    sec.hidden = true;
+    document.getElementById(`nav-${c}`).hidden = true;
+    document.querySelector(`[data-hide="${c}"]`).hidden = true;
+    const r = document.getElementById('restored');
+    r.innerHTML = `<button type="button" data-show="${c}" style="min-height:44px">Show ${c === 'steps' ? 'Ruled steps' : 'Practice package'} again</button>`;
+    r.querySelector('button').onclick = () => { sec.hidden = false; document.getElementById(`nav-${c}`).hidden = false; document.querySelector(`[data-hide="${c}"]`).hidden = false; r.innerHTML = ''; };
+  }
+
+  /* ---------- deep links: #c=steps|practice&s=<state> ---------- */
+  function readHash() {
+    const h = new URLSearchParams(location.hash.slice(1));
+    const c = h.get('c'), s = h.get('s');
+    if (c && st[c]) {
+      if (s && STATES[c].some(([x]) => x === s)) setState(c, s, true);
+      document.getElementById(`concept-${c}`).scrollIntoView({ block:'start' });
+    }
+  }
+  buildStateNav('steps'); buildStateNav('practice');
+  render('steps'); render('practice');
+  readHash();
+  window.addEventListener('hashchange', readHash);
+})();
+</script>
+</body>
+</html>

@@ -33,7 +33,7 @@ targets:
       properties:
         UILaunchScreen: {}
         UIUserInterfaceStyle: Light
-        CFBundleDisplayName: MANIFEST
+        CFBundleDisplayName: CH Post
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
         CFBundleURLTypes:

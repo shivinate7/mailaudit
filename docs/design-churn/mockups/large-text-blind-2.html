@@ -1,0 +1,805 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Large text concepts</title>
+<style>
+/* Tokens. Spacing and radius follow the house step (tokens.md): 4 px steps, 8 px radius.
+   Colours are this designer's own picks: tokens.md gives roles, not values. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px;
+  --radius: 8px;
+  --safe-top: 40px;     /* placeholder status-bar inset: no read page gives a Duo value */
+  --safe-bottom: 20px;  /* placeholder home-indicator inset, same reason */
+  --surface: #EDF1EF;
+  --surface-raised: #FFFFFF;
+  --surface-sunk: #DFE6E2;
+  --text: #13201A;
+  --text-muted: #46544E;
+  --rule: #C2CCC7;
+  --accent: #1B5A45;
+  --on-accent: #FFFFFF;
+  --accent-soft: #D3E7DD;
+  --owed: #85460A;
+  --danger: #9E2328;
+  --focus: #2152BF;
+  --frame: #2B3530;
+  --hinge: #56625C;
+  --note: #6A3FA0;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface: #0E1512; --surface-raised: #17201C; --surface-sunk: #0A0F0D;
+    --text: #E4ECE8; --text-muted: #A3B2AB; --rule: #33423B;
+    --accent: #8DD3B4; --on-accent: #04241A; --accent-soft: #1C392E;
+    --owed: #F0B666; --danger: #FF8C84; --focus: #8FB2FF;
+    --frame: #000000; --hinge: #3A4540; --note: #C9A6F5;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --surface: #0E1512; --surface-raised: #17201C; --surface-sunk: #0A0F0D;
+  --text: #E4ECE8; --text-muted: #A3B2AB; --rule: #33423B;
+  --accent: #8DD3B4; --on-accent: #04241A; --accent-soft: #1C392E;
+  --owed: #F0B666; --danger: #FF8C84; --focus: #8FB2FF;
+  --frame: #000000; --hinge: #3A4540; --note: #C9A6F5;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+  background: var(--surface-sunk);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.4;
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+/* Mockup chrome (not part of the drawn app) */
+.sample {
+  background: var(--owed); color: var(--surface-raised);
+  padding: var(--space-2) var(--space-4); font-weight: 600; text-align: center;
+}
+.chrome { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); max-width: 72rem; margin-inline: auto; }
+.chrome h1 { font-size: 22px; line-height: 28px; margin: 0; }
+.kind { margin: 0; color: var(--text-muted); }
+.groups { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-6); }
+.group { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.group > span { color: var(--text-muted); font-size: 13px; min-width: 5.5rem; }
+.chip {
+  min-height: 36px; padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--rule); border-radius: var(--radius);
+  background: var(--surface-raised); cursor: pointer;
+}
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.opt { display: inline-flex; gap: 0; }
+.opt .chip:first-child { border-start-end-radius: 0; border-end-end-radius: 0; }
+.opt .hide { border-start-start-radius: 0; border-end-start-radius: 0; border-inline-start: 0; color: var(--text-muted); }
+.opt .chip[aria-pressed="true"] + .hide { color: var(--text); }
+.hidden-list { font-size: 13px; color: var(--text-muted); }
+.about { margin: 0; max-width: 60ch; }
+.stage { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); padding: 0 var(--space-4) var(--space-10); }
+.fit { position: relative; }
+.fit > .dev { transform-origin: top left; }
+.readout { font-size: 13px; color: var(--text-muted); margin: 0; }
+
+/* Device frames */
+.dev {
+  position: relative; overflow: hidden;
+  border: 6px solid var(--frame); border-radius: 28px;
+  background: var(--surface);
+}
+.dev[hidden] { display: none !important; }
+.dev[data-device="iphone-duo-folded"] { width: calc(466px + 12px); height: calc(678px + 12px); }
+.dev[data-device="iphone-duo-unfolded"] {
+  width: calc(951px + 12px); height: calc(669px + 12px);
+  display: grid; grid-template-columns: 455.5px 40px 455.5px;
+}
+.dev[data-device="iphone-large"] {
+  width: calc(466px + 12px); height: calc(678px + 12px);
+  resize: both; min-width: 252px; min-height: 420px; max-width: 760px; max-height: 1000px;
+}
+.hinge {
+  background: var(--hinge);
+}
+
+/* The drawn app. Dynamic Type sizes from the HIG typography page (read 2026-11-21). */
+.screen {
+  position: relative; height: 100%; overflow: hidden;
+  display: flex; flex-direction: column;
+  background: var(--surface); color: var(--text);
+  font-family: -apple-system, system-ui, sans-serif;
+  font-size: var(--bd); line-height: var(--bd-l);
+  padding-top: max(env(safe-area-inset-top), var(--safe-top));
+  padding-bottom: max(env(safe-area-inset-bottom), var(--safe-bottom));
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  overflow-wrap: break-word; word-break: normal; hyphens: manual;
+  font-variant-numeric: tabular-nums;
+  container-type: inline-size;
+}
+.screen::before {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: var(--safe-top);
+  background: var(--surface-sunk);
+  pointer-events: none;
+}
+.screen::after {
+  content: ""; position: absolute; left: 50%; bottom: 6px; width: 120px; height: 5px;
+  transform: translateX(-50%); border-radius: 3px; background: var(--text); opacity: .35;
+  pointer-events: none;
+}
+.screen[data-ts="large"] { --lt: 34px; --lt-l: 41px; --t1: 28px; --t1-l: 34px; --t2: 22px; --t2-l: 28px; --t3: 20px; --t3-l: 25px; --bd: 17px; --bd-l: 22px; --sb: 15px; --sb-l: 20px; --ft: 13px; --ft-l: 18px; }
+.screen[data-ts="xxxl"]  { --lt: 40px; --lt-l: 48px; --t1: 34px; --t1-l: 41px; --t2: 28px; --t2-l: 34px; --t3: 26px; --t3-l: 32px; --bd: 23px; --bd-l: 29px; --sb: 21px; --sb-l: 28px; --ft: 19px; --ft-l: 24px; }
+.screen[data-ts="ax3"]   { --lt: 52px; --lt-l: 61px; --t1: 48px; --t1-l: 57px; --t2: 44px; --t2-l: 52px; --t3: 43px; --t3-l: 51px; --bd: 40px; --bd-l: 48px; --sb: 36px; --sb-l: 43px; --ft: 33px; --ft-l: 40px; }
+.screen[data-ts="ax5"]   { --lt: 60px; --lt-l: 70px; --t1: 58px; --t1-l: 68px; --t2: 56px; --t2-l: 66px; --t3: 55px; --t3-l: 65px; --bd: 53px; --bd-l: 62px; --sb: 49px; --sb-l: 58px; --ft: 44px; --ft-l: 52px; }
+
+.col { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.nw { white-space: nowrap; }
+.muted { color: var(--text-muted); }
+.owed { color: var(--owed); }
+
+/* Top toolbar: Cancel leads, Save trails (HIG sheets page) */
+.bar {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--space-2);
+  padding: 0 var(--space-2); min-height: 44px;
+}
+.bar-title {
+  margin: 0; text-align: center; font-size: var(--bd); line-height: var(--bd-l); font-weight: 600;
+  opacity: 0; transition: opacity .15s;
+}
+.scrolled .bar-title, .bar.inline .bar-title { opacity: 1; }
+.large-title.ax-only { display: none; }
+.screen[data-ts^="ax"] .large-title.ax-only { display: block; }
+.screen[data-ts^="ax"] .bar-title { display: none; }
+.tbtn {
+  min-width: 44px; min-height: 44px; padding: 0 var(--space-2);
+  background: none; border: 0; color: var(--accent); cursor: pointer; text-align: start;
+  font-size: var(--bd); line-height: var(--bd-l);
+}
+.tbtn.strong { font-weight: 600; }
+.tbtn[aria-disabled="true"] { color: var(--text-muted); opacity: .7; cursor: default; }
+.bar > :last-child { justify-self: end; text-align: end; }
+
+.scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.large-title {
+  margin: 0; padding: 0 var(--space-4) var(--space-2);
+  font-size: var(--lt); line-height: var(--lt-l); font-weight: 700;
+}
+
+/* Facts */
+.facts { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-6); padding: var(--space-2) var(--space-4) var(--space-3); border-bottom: 1px solid var(--rule); background: var(--surface); }
+.fact { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--space-2); }
+.fig { font-size: var(--t2); line-height: var(--t2-l); font-weight: 700; }
+.lab { font-size: var(--ft); line-height: var(--ft-l); color: var(--text-muted); }
+.meter { flex-basis: 100%; height: 8px; border-radius: 4px; background: var(--surface-sunk); overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--accent); }
+.screen[data-ts^="ax"] .facts { flex-direction: column; align-items: stretch; }
+.screen[data-ts^="ax"] .fig { font-size: var(--t3); line-height: var(--t3-l); }
+/* At AX sizes the pinned strip drops "cards here": the meter under the count carries it, and the list gains a line. */
+.screen[data-ts^="ax"] .facts-strip .fact:first-child .lab { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.screen[data-ts^="ax"] .meter { flex: 0 0 8px; }
+.facts-big { border: 0; padding: var(--space-4); flex-direction: column; align-items: stretch; gap: var(--space-3); }
+.facts-big .fig { font-size: var(--t1); line-height: var(--t1-l); }
+.facts-line .fig, .screen[data-ts^="ax"] .facts-line .fig { font-size: var(--hd, var(--bd)); line-height: var(--bd-l); }
+
+/* Ledger rows */
+.rows { list-style: none; margin: 0; padding: 0; }
+.row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--space-1); padding-inline: var(--space-4) var(--space-2); border-bottom: 1px solid var(--rule); }
+.row-main {
+  display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: var(--space-1) var(--space-3);
+  min-height: 44px; padding: var(--space-3) 0; background: none; border: 0; text-align: start; cursor: pointer;
+}
+.row-main[aria-disabled="true"] { cursor: default; }
+.screen[data-ts^="ax"] .row-main, .screen[data-ts="xxxl"] .row-main { grid-template-columns: 1fr; }
+.count { display: inline-flex; gap: var(--space-2); align-items: baseline; color: var(--text-muted); }
+.full .count { color: var(--accent); }
+.has-new .count { color: var(--text); font-weight: 600; }
+.newmark { display: inline-block; min-width: 2.5ch; color: var(--accent); font-weight: 700; }
+.undo {
+  min-width: 44px; min-height: 44px; border: 1px solid var(--rule); border-radius: var(--radius);
+  background: var(--surface-raised); color: var(--accent); cursor: pointer; font-weight: 600;
+}
+.rest .name, .rest .count { padding-block: var(--space-3); color: var(--text-muted); }
+.rest { grid-template-columns: 1fr auto; }
+.screen[data-ts^="ax"] .rest, .screen[data-ts="xxxl"] .rest { grid-template-columns: 1fr; }
+
+/* Dock: reason line plus primary */
+.dock { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-4) var(--space-2); border-top: 1px solid var(--rule); background: var(--surface); }
+.reason { margin: 0; min-height: var(--ft-l); font-size: var(--ft); line-height: var(--ft-l); color: var(--text-muted); }
+.reason.done { color: var(--accent); font-weight: 600; }
+.primary {
+  width: 100%; min-height: 50px; padding: var(--space-3) var(--space-4);
+  border: 0; border-radius: var(--radius); background: var(--accent); color: var(--on-accent);
+  font-size: var(--bd); line-height: var(--bd-l); font-weight: 600; cursor: pointer;
+}
+/* A disabled primary says why in its own label: no separate reason line to cost a row at AX sizes. */
+.primary[aria-disabled="true"] { background: transparent; color: var(--text-muted); border: 2px dashed var(--rule); font-weight: 400; cursor: default; }
+.primary.done[aria-disabled="true"] { color: var(--accent); border-color: var(--accent); font-weight: 600; }
+.flash { color: var(--accent); font-weight: 600; }
+.pair { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.pair > * { flex: 1 1 0; }
+.second {
+  min-height: 44px; padding: var(--space-2) var(--space-3); border: 1px solid var(--rule); border-radius: var(--radius);
+  background: var(--surface-raised); color: var(--accent); font-size: var(--bd); line-height: var(--bd-l); font-weight: 600; cursor: pointer;
+}
+.second[aria-disabled="true"] { color: var(--text-muted); cursor: default; }
+
+/* Messages for loading, failed, empty, done */
+.msg { padding: var(--space-6) var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.msg p { margin: 0; }
+.msg details { font-size: var(--ft); line-height: var(--ft-l); color: var(--text-muted); }
+.msg summary { min-height: 44px; cursor: pointer; color: var(--accent); display: flex; align-items: center; }
+
+/* One at a time */
+.q { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); }
+.q p, .q h2 { margin: 0; }
+.pos { font-size: var(--ft); line-height: var(--ft-l); color: var(--text-muted); }
+button.pos { align-self: flex-start; min-height: 44px; padding: 0; background: none; border: 0; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; text-align: start; }
+.qname { font-size: var(--t1); line-height: var(--t1-l); font-weight: 700; }
+.qcount { font-size: var(--t3); line-height: var(--t3-l); font-weight: 600; display: flex; flex-wrap: wrap; column-gap: var(--space-3); }
+.qprice { color: var(--text-muted); }
+.qtools { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.qlist { list-style: none; margin: 0; padding: 0; }
+.qitem { display: grid; grid-template-columns: 1fr auto; gap: var(--space-1) var(--space-3); width: 100%; min-height: 44px; padding: var(--space-3) var(--space-4); background: none; border: 0; border-bottom: 1px solid var(--rule); text-align: start; cursor: pointer; }
+.screen[data-ts^="ax"] .qitem, .screen[data-ts="xxxl"] .qitem { grid-template-columns: 1fr; }
+.qitem[aria-current="true"] { background: var(--accent-soft); box-shadow: inset 4px 0 0 var(--accent); }
+.qitem .count { color: var(--text-muted); }
+.sheet-scrim { position: absolute; inset: 0; background: rgb(0 0 0 / .35); z-index: 4; }
+.sheet {
+  position: absolute; inset: var(--space-10) 0 0 0; z-index: 5;
+  display: flex; flex-direction: column; background: var(--surface-raised);
+  border-radius: 12px 12px 0 0; padding-bottom: max(env(safe-area-inset-bottom), var(--safe-bottom));
+}
+.sheet .bar { padding-top: var(--space-2); }
+.sheet-title { margin: 0; font-size: var(--bd); line-height: var(--bd-l); font-weight: 600; text-align: center; }
+
+/* Sentence dock */
+.prose { display: flex; flex-direction: column; gap: var(--space-3); padding: 0 var(--space-4) var(--space-4); }
+.prose p { margin: 0; }
+.word { display: inline; min-height: 44px; padding: var(--space-2) 0; background: none; border: 0; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; text-align: start; }
+/* The new-mark chip is also the undo: "+1 ✕" takes one back. It keeps its box when empty. */
+.nchip {
+  display: inline-flex; align-items: center; gap: var(--space-1); vertical-align: baseline;
+  min-height: 44px; min-width: 44px; padding: 0 var(--space-2);
+  border: 1px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft);
+  color: var(--accent); font-weight: 700; cursor: pointer;
+}
+/* The chip sits in a narrow end gutter, so it never wraps to a blank line and a row keeps its height when tapped. */
+.s-row { display: grid; grid-template-columns: 1fr auto; align-items: start; gap: var(--space-2); padding-block: var(--space-2); border-bottom: 1px solid var(--rule); }
+.s-row .nchip { font-size: var(--ft); line-height: var(--ft-l); margin-top: var(--space-2); }
+.s-add { display: inline; padding: var(--space-2) 0; background: none; border: 0; text-align: start; cursor: pointer; }
+.s-add[aria-disabled="true"] { cursor: default; color: var(--text-muted); }
+.s-name { font-weight: 600; }
+.s-dock {
+  display: flex; flex-direction: column; gap: var(--space-2); width: auto;
+  margin: var(--space-2) var(--space-3) 0; padding: var(--space-3) var(--space-4);
+  border: 2px solid var(--accent); border-radius: 12px; background: var(--surface-raised); color: var(--text); text-align: start;
+}
+button.s-dock { cursor: pointer; background: var(--accent); color: var(--on-accent); font: inherit; }
+button.s-dock .owed { color: inherit; }
+.s-facts { font-size: var(--bd); line-height: var(--bd-l); }
+.s-act { font-size: var(--bd); line-height: var(--bd-l); font-weight: 700; }
+.s-act.quiet { font-weight: 400; color: var(--text-muted); }
+.screen[data-ts^="ax"] .long { display: none; }
+.screen[data-ts^="ax"] .s-facts { font-size: var(--ft); line-height: var(--ft-l); }
+.owed-list { list-style: none; margin: 0; padding: 0; }
+.owed-list li { padding: var(--space-2) 0; border-bottom: 1px solid var(--rule); }
+.page-head { margin: 0; padding: 0 var(--space-4) var(--space-2); font-size: var(--t3); line-height: var(--t3-l); font-weight: 700; }
+
+/* "New:" labels, the mockup's own annotation layer */
+.labels [data-new] { outline: 2px dashed var(--note); outline-offset: -3px; position: relative; }
+.labels [data-new]::after {
+  content: "New: " attr(data-new);
+  position: absolute; top: 0; right: 8px; z-index: 3; transform: translateY(-50%);
+  font: 600 11px/14px -apple-system, system-ui, sans-serif;
+  color: var(--surface-raised); background: var(--note); padding: 1px 4px; border-radius: 4px;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) { .bar-title { transition: none; } }
+@media (forced-colors: active) { .primary, .s-dock, .undo, .second, .chip { border: 2px solid ButtonText; } .meter i { background: Highlight; } }
+</style>
+</head>
+<body>
+<div class="sample" role="note">Sample: no figure on this page is real. Every card, count and price is made up.</div>
+
+<header class="chrome">
+  <h1>Large text: three concepts</h1>
+  <p class="kind">Designer kind: blind. Designer: large-text-blind-2. Every tap works. The URL keeps each choice, so a link opens the same view.</p>
+  <div class="groups" id="controls"></div>
+  <p class="about" id="about"></p>
+</header>
+
+<main class="stage">
+  <div class="fit" id="fit">
+    <div class="dev" data-device="iphone-duo-folded" id="dev-folded" aria-label="Duo, folded, 466 by 678 points"></div>
+    <div class="dev" data-device="iphone-duo-unfolded" id="dev-open" aria-label="Duo, open, 951 by 669 points" hidden></div>
+    <div class="dev" data-device="iphone-large" id="dev-phone" aria-label="Large phone, size not written" hidden></div>
+  </div>
+  <p class="readout" id="readout"></p>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  var OTHERS = 1163;
+  var BASE = [
+    { n: "Thalia, Guardian of Thraben", o: 4, a: 2, p: 1.25 },
+    { n: "Lightning Bolt", o: 4, a: 4, p: 0.90 },
+    { n: "Elesh Norn, Grand Cenobite", o: 1, a: 0, p: 18.40 },
+    { n: "Kozilek, Butcher of Truth", o: 2, a: 1, p: 6.75 },
+    { n: "Sol Ring", o: 3, a: 3, p: 1.10 },
+    { n: "Swords to Plowshares", o: 4, a: 1, p: 1.60 },
+    { n: "Brainstorm", o: 4, a: 0, p: 0.45 },
+    { n: "Counterspell", o: 2, a: 2, p: 0.85 },
+    { n: "Llanowar Elves", o: 8, a: 5, p: 0.30 },
+    { n: "Dark Ritual", o: 4, a: 0, p: 0.55 },
+    { n: "Ponder", o: 4, a: 4, p: 0.40 },
+    { n: "Rhystic Study", o: 1, a: 0, p: 34.00 }
+  ];
+  var CONCEPTS = [
+    { k: "ledger", name: "Pinned ledger",
+      about: "Pinned ledger. The count and the money sit in a strip that never scrolls; the list scrolls under it. Save sits at the bottom, in thumb reach, and Cancel leads the top bar. From xxxLarge up, each row puts its count under its name, so no name is cut. Open: the list fills the left page, and the facts and Save fill the right page." },
+    { k: "queue", name: "One at a time",
+      about: "One at a time. One card fills the screen, in the largest type. Came in adds one copy and moves on when that card is done. Back and Next walk the cards still out; See all opens a sheet to jump. Save and Cancel sit in the top bar. Open: the card is on the left page, the list of cards still out on the right." },
+    { k: "sentence", name: "Sentence dock",
+      about: "Sentence dock (the bold one). The screen reads as plain sentences, which wrap at any size and never need a column. The count, the money and Save join in one dock at the bottom: when there is something to save, the whole dock is the button, the largest target on the screen. Words move you around: tap a phrase to show all cards or only those still out. Open: the sentences fill the left page; the right page says what is still owed, above the dock." }
+  ];
+  var DEVICES = [["folded", "Duo folded"], ["open", "Duo open"], ["phone", "Large phone"]];
+  var SIZES = [["large", "Large (default)"], ["xxxl", "xxxLarge"], ["ax3", "AX3"], ["ax5", "AX5 (largest)"]];
+  var THEMES = [["auto", "Auto"], ["light", "Light"], ["dark", "Dark"]];
+  var STATES = [["loaded", "Loaded"], ["editing", "Editing"], ["saved", "Saved"], ["done", "All here"], ["empty", "Empty"], ["loading", "Loading"], ["failed", "Failed"]];
+
+  var S = { c: "ledger", d: "folded", ts: "large", t: "auto", s: "loaded", h: [], l: true,
+            phase: "ready", cards: [], pend: [], flash: "", qi: 0, sheet: false, all: false };
+
+  function esc(x) { return String(x).replace(/[&<>"]/g, function (m) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]; }); }
+  function num(v) { return v.toLocaleString("en-US"); }
+  function money(v) { return "$" + v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+  function plural(n, w) { return n + " " + w + (n === 1 ? "" : "s"); }
+
+  function loadState(s) {
+    S.cards = BASE.map(function (c) { return { n: c.n, o: c.o, a: c.a, p: c.p }; });
+    S.pend = S.cards.map(function () { return 0; });
+    S.flash = ""; S.sheet = false; S.phase = "ready"; S.qi = firstOut();
+    if (s === "editing") { S.pend[0] = 1; S.pend[5] = 2; }
+    S.last = null;
+    if (s === "saved") { S.cards[0].a += 1; S.cards[5].a += 2; S.flash = "Saved 3 cards."; S.last = S.pend.slice(); S.last[0] = 1; S.last[5] = 2; }
+    if (s === "done") { S.cards.forEach(function (c) { c.a = c.o; }); }
+    if (s === "empty" || s === "loading" || s === "failed") { S.phase = s; }
+    S.qi = firstOut();
+  }
+  function totals() {
+    var here = OTHERS, tot = OTHERS, owed = 0, pend = 0;
+    S.cards.forEach(function (c, i) { var h = c.a + S.pend[i]; here += h; tot += c.o; owed += (c.o - h) * c.p; pend += S.pend[i]; });
+    return { here: here, tot: tot, owed: owed, pend: pend };
+  }
+  function outList() { var r = []; S.cards.forEach(function (c, i) { if (c.a < c.o) r.push(i); }); return r; }
+  function firstOut() { var q = outList(); return q.length ? q[0] : -1; }
+  function isFull(i) { return S.cards[i].a + S.pend[i] >= S.cards[i].o; }
+
+  /* ---------- shared pieces ---------- */
+  function factsHTML(kind, tag) {
+    var cls = "facts facts-" + kind;
+    var nw = ' data-new="' + tag + '"';
+    if (S.phase === "loading") return '<div class="' + cls + '"' + nw + ' aria-live="polite"><p class="fact"><span class="fig muted">Counting cards…</span></p><p class="fact"><span class="lab">Adding up what is owed…</span></p></div>';
+    if (S.phase === "failed") return '<div class="' + cls + '"' + nw + '><p class="fact"><span class="fig muted">Count unknown</span></p><p class="fact"><span class="lab">Money owed unknown</span></p></div>';
+    if (S.phase === "empty") return '<div class="' + cls + '"' + nw + '><p class="fact"><span class="fig muted">No orders yet</span></p></div>';
+    var t = totals(), pct = Math.round(t.here / t.tot * 1000) / 10;
+    return '<div class="' + cls + '"' + nw + ' aria-live="polite">' +
+      '<p class="fact"><span class="fig"><span class="nw">' + num(t.here) + '</span> <span class="nw">of ' + num(t.tot) + '</span></span>' + (kind === "line" ? "" : '<span class="lab">cards here</span>') + '</p>' +
+      '<p class="fact"><span class="fig owed">' + money(t.owed) + '</span><span class="lab">still owed</span></p>' +
+      (kind === "line" ? "" : '<div class="meter" aria-hidden="true"><i style="width:' + pct + '%"></i></div>') +
+      '</div>';
+  }
+  function phaseMsg() {
+    if (S.phase === "loading") return '<div class="msg"><p>Reading your orders…</p></div>';
+    if (S.phase === "failed") return '<div class="msg"><p>Your orders could not be read, so nothing is counted yet.</p><details><summary>What went wrong</summary><p>The export file stopped part way through. Try again, or import the file again.</p></details></div>';
+    if (S.phase === "empty") return '<div class="msg"><p>Import an order export to fill this list.</p></div>';
+    return "";
+  }
+  /* The one control for a phase that is not ready: it takes the primary slot. */
+  function phaseButton(cls) {
+    if (S.phase === "failed") return '<button class="' + cls + '" data-act="retry" data-k="retry">Try again</button>';
+    if (S.phase === "empty") return '<button class="' + cls + '" data-act="import" data-k="import">Import orders</button>';
+    return '<button class="' + cls + '" aria-disabled="true" data-k="wait" title="Wait until your orders are read">Save</button>';
+  }
+  function cancelBtn() {
+    var t = totals(), on = S.phase === "ready" && t.pend > 0;
+    var was = !on && S.flash.indexOf("Cancelled") === 0;
+    return '<button class="tbtn" data-act="cancel" data-k="cancel" aria-live="polite"' + (on ? "" : ' aria-disabled="true" title="Nothing to cancel: no card is marked yet"') + '>' + (was ? "Cancelled" : "Cancel") + '</button>';
+  }
+  function reasonText() {
+    var t = totals();
+    if (S.phase === "loading") return "Reading your orders…";
+    if (S.phase !== "ready") return "";
+    if (S.flash) return S.flash;
+    if (t.pend) return plural(t.pend, "new card") + ", not saved yet.";
+    if (!outList().length) return "All is well. Every card is here.";
+    return "Tap each card that came in.";
+  }
+  function saveBtn(cls) {
+    var t = totals();
+    if (S.phase === "loading") return '<button class="' + cls + '" aria-disabled="true" data-k="save" title="Wait until your orders are read">Reading your orders…</button>';
+    if (S.phase !== "ready") return phaseButton(cls);
+    if (t.pend) return '<button class="' + cls + '" data-act="save" data-k="save">Save ' + plural(t.pend, "card") + '</button>';
+    var r = reasonText();
+    return '<button class="' + cls + (S.flash ? " done" : "") + '" data-k="save" aria-disabled="true" title="' + esc(r) + '" aria-live="polite">' + esc(r) + '</button>';
+  }
+
+  /* ---------- Pinned ledger ---------- */
+  function ledgerRows() {
+    var out = S.cards.map(function (c, i) {
+      var p = S.pend[i], h = c.a + p, full = h >= c.o, w = String(c.o).length * 2 + 4;
+      var label = c.n + ", " + h + " of " + c.o + " here" + (p ? ", " + p + " new" : "") + (full ? ". All here." : ". Tap to add one.");
+      return '<li class="row' + (full ? " full" : "") + (p ? " has-new" : "") + '">' +
+        '<button class="row-main" data-act="add" data-i="' + i + '" data-k="add' + i + '"' + (full ? ' aria-disabled="true"' : "") + ' aria-label="' + esc(label) + '">' +
+        '<span class="name">' + esc(c.n) + '</span>' +
+        '<span class="count" style="min-width:' + w + 'ch"><span class="nw">' + (full ? "✓ " : "") + h + " of " + c.o + '</span><span class="newmark">' + (p ? "+" + p : "") + '</span></span>' +
+        '</button>' + undoBtn(i, "undo", "−") + '</li>';
+    }).join("");
+    return out + '<li class="row rest"><span class="name">' + num(OTHERS) + ' more cards</span><span class="count">✓ every one</span></li>';
+  }
+  function undoBtn(i, cls, text) {
+    var p = S.pend[i];
+    var name = S.cards[i].n;
+    return '<button class="' + cls + '" data-act="undo" data-i="' + i + '" data-k="undo' + i + '"' +
+      (p ? "" : ' tabindex="-1" aria-hidden="true" style="visibility:hidden"') + ' aria-label="Take one ' + esc(name) + ' back">' + text + '</button>';
+  }
+  function ledgerCompact() {
+    return '<div class="col" id="pick-ledger">' +
+      '<div class="bar inline">' + cancelBtn() + '<h1 class="bar-title">Check in</h1><span></span></div>' +
+      factsHTML("strip", "pinned facts") +
+      '<div class="scroll" data-scroll="ledger-list"><h1 class="large-title ax-only">Check in</h1>' +
+      (S.phase === "ready" ? '<ul class="rows" data-new="count under name at large sizes">' + ledgerRows() + '</ul>' : phaseMsg()) +
+      '</div>' +
+      '<div class="dock" data-new="bottom Save">' + saveBtn("primary") + '</div>' +
+      '</div>';
+  }
+  function ledgerOpen() {
+    var left = '<div class="col" id="pick-ledger">' +
+      '<div class="bar"><span></span><h2 class="bar-title">Check in</h2><span></span></div>' +
+      '<div class="scroll" data-scroll="ledger-list"><h1 class="large-title">Check in</h1>' +
+      (S.phase === "ready" ? '<ul class="rows" data-new="list page">' + ledgerRows() + '</ul>' : phaseMsg()) +
+      '</div></div>';
+    var changes = "";
+    if (S.phase === "ready") {
+      var items = S.cards.map(function (c, i) { return S.pend[i] ? '<li><span class="s-name">' + esc(c.n) + '</span> <span class="newmark">+' + S.pend[i] + '</span></li>' : ""; }).join("");
+      changes = '<h2 class="page-head">This check-in</h2><div class="prose">' + (items ? '<ul class="owed-list">' + items + '</ul>' : '<p class="muted">Nothing marked yet.</p>') + '</div>';
+    }
+    var right = '<div class="col">' +
+      '<div class="bar">' + cancelBtn() + '<span></span><span></span></div>' +
+      '<div class="scroll" data-scroll="ledger-right">' + factsHTML("big", "facts page") + changes + '</div>' +
+      '<div class="dock" data-new="Save on the facts page">' + saveBtn("primary") + '</div>' +
+      '</div>';
+    return [left, right];
+  }
+
+  /* ---------- One at a time ---------- */
+  function queueBar() {
+    var t = totals(), right;
+    if (S.phase !== "ready") right = '<button class="tbtn strong" aria-disabled="true" data-k="qsave" title="Nothing to save yet">Save</button>';
+    else if (t.pend) right = '<button class="tbtn strong" data-act="save" data-k="qsave">Save ' + t.pend + '</button>';
+    else right = '<button class="tbtn strong" aria-disabled="true" data-k="qsave" title="Mark a card that came in first">' + (S.flash ? "Saved" : "Save") + '</button>';
+    return '<div class="bar" data-new="Save and Cancel up top">' + cancelBtn() + '<h2 class="bar-title" style="opacity:1">Check in</h2>' + right + '</div>';
+  }
+  function queueCard(withSheet) {
+    if (S.phase !== "ready") return phaseMsg();
+    var q = outList();
+    if (!q.length) return '<div class="msg"><p>All is well. Every card you ordered is here.</p></div>';
+    var i = S.qi, c = S.cards[i], p = S.pend[i], h = c.a + p, pos = q.indexOf(i);
+    var where = 'Card ' + (pos + 1) + ' of ' + q.length + ' still out';
+    return '<div class="q" data-new="one card at full size">' +
+      (S.flash ? '<p class="flash" aria-live="polite">' + esc(S.flash) + '</p>' : "") +
+      (withSheet ? '<button class="pos" data-act="sheet" data-k="sheet" aria-haspopup="dialog">' + where + '. See all.</button>' : '<p class="pos">' + where + '</p>') +
+      '<h2 class="qname">' + esc(c.n) + '</h2>' +
+      '<p class="qcount"><span class="nw">' + h + ' of ' + c.o + ' here</span><span class="newmark">' + (p ? "+" + p + " new" : "") + '</span></p>' +
+      '<p class="qprice">' + money(c.p) + ' each</p>' +
+      '<div class="qtools">' + undoBtn(i, "second", "Take one back") + '</div>' +
+      '</div>';
+  }
+  function queueDock() {
+    var q = outList();
+    var ready = S.phase === "ready" && q.length;
+    var main;
+    if (S.phase === "loading") main = saveBtn("primary");
+    else if (S.phase !== "ready") main = phaseButton("primary");
+    else if (!q.length) main = '<button class="primary done" aria-disabled="true" data-k="came" title="Every card is here">All is well. Every card is here.</button>';
+    else if (isFull(S.qi)) main = '<button class="primary" aria-disabled="true" data-k="came" title="Every copy of this card is marked">All marked. Next card, or Save.</button>';
+    else main = '<button class="primary" data-act="came" data-k="came">Came in</button>';
+    var nav = "";
+    if (ready) {
+      var pos = q.indexOf(S.qi);
+      nav = '<div class="pair">' +
+        '<button class="second" data-act="back" data-k="back"' + (pos <= 0 ? ' aria-disabled="true" title="This is the first card"' : "") + '>Back</button>' +
+        '<button class="second" data-act="next" data-k="next"' + (pos >= q.length - 1 ? ' aria-disabled="true" title="This is the last card"' : "") + '>Next</button>' +
+        '</div>';
+    }
+    return '<div class="dock" data-new="Came in in thumb reach">' + main + nav + '</div>';
+  }
+  function queueList() {
+    return '<ul class="qlist">' + outList().map(function (i) {
+      var c = S.cards[i], h = c.a + S.pend[i];
+      return '<li><button class="qitem" data-act="jump" data-i="' + i + '" data-k="jump' + i + '"' + (i === S.qi ? ' aria-current="true"' : "") + '><span class="s-name">' + esc(c.n) + '</span><span class="count"><span class="nw">' + h + ' of ' + c.o + '</span><span class="newmark">' + (S.pend[i] ? "+" + S.pend[i] : "") + '</span></span></button></li>';
+    }).join("") + '</ul>';
+  }
+  function queueCompact() {
+    var sheet = "";
+    if (S.sheet) {
+      sheet = '<div class="sheet-scrim" data-act="sheetclose"></div><div class="sheet" role="dialog" aria-label="Cards still out" data-new="jump sheet">' +
+        '<div class="bar"><span></span><h2 class="sheet-title">Still out</h2><button class="tbtn strong" data-act="sheetclose" data-k="sheetclose">Done</button></div>' +
+        '<div class="scroll" data-scroll="queue-sheet">' + queueList() + '</div></div>';
+    }
+    return '<div class="col" id="pick-queue">' + queueBar() + factsHTML("line", "facts line") +
+      '<div class="scroll" data-scroll="queue-card">' + queueCard(true) + '</div>' + queueDock() + '</div>' + sheet;
+  }
+  function queueOpen() {
+    var left = '<div class="col" id="pick-queue">' + queueBar() + factsHTML("line", "facts line") +
+      '<div class="scroll" data-scroll="queue-card">' + queueCard(false) + '</div>' + queueDock() + '</div>';
+    var right = '<div class="col"><div class="bar"><span></span><span></span><span></span></div>' +
+      '<div class="scroll" data-scroll="queue-list"><h1 class="large-title">Still out</h1>' +
+      (S.phase === "ready" ? (outList().length ? queueList() : '<div class="msg"><p class="muted">None.</p></div>') : "") + '</div></div>';
+    return [left, right];
+  }
+
+  /* ---------- Sentence dock ---------- */
+  function sentenceRows() {
+    var q = outList(), show = S.all ? S.cards.map(function (_, i) { return i; }) : q;
+    var intro = S.all
+      ? '<p>All ' + S.cards.length + ' cards. <button class="word" data-act="filter" data-k="filter">Show only the ' + q.length + ' still out.</button></p>'
+      : '<p>' + (q.length ? '<span class="long">These </span>' + q.length + '<span class="long"> cards are</span> still out. ' : 'No card is still out. ') + '<button class="word" data-act="filter" data-k="filter">Show all ' + S.cards.length + '.</button></p>';
+    var rows = show.map(function (i) {
+      var c = S.cards[i], p = S.pend[i], h = c.a + p, full = h >= c.o;
+      var label = c.n + ": " + h + " of " + c.o + " here" + (p ? ", " + p + " new" : "") + (full ? "." : ". Tap to add one.");
+      return '<p class="s-row"><button class="s-add" data-act="add" data-i="' + i + '" data-k="add' + i + '"' + (full ? ' aria-disabled="true"' : "") + ' aria-label="' + esc(label) + '"><span class="s-name">' + esc(c.n) + '</span>: <span class="nw">' + h + ' of ' + c.o + '</span> here.</button> ' + undoBtn(i, "nchip", "+" + (p || 1) + ' <span aria-hidden="true">✕</span>') + '</p>';
+    }).join("");
+    return '<div class="prose" data-new="sentences, words to move around">' + intro + rows + '</div>';
+  }
+  function sentenceDock() {
+    var t = totals();
+    if (S.phase !== "ready") {
+      var facts = S.phase === "loading" ? "Counting your cards…" : S.phase === "failed" ? "The count and the money are unknown." : "No orders yet.";
+      var ctl = S.phase === "loading" ? '<span class="s-act quiet">Wait a moment.</span>' : phaseButton("primary");
+      return '<div class="s-dock" data-new="facts and Save in one dock"><span class="s-facts">' + facts + '</span>' + ctl + '</div>';
+    }
+    var f = '<span class="s-facts"><span class="nw">' + num(t.here) + '</span> <span class="nw">of ' + num(t.tot) + '</span><span class="long"> cards are</span> here. <span class="owed nw">' + money(t.owed) + '</span><span class="long"> is still</span> owed.</span>';
+    if (t.pend) return '<button class="s-dock" data-act="save" data-k="save" data-new="the whole dock is Save">' + f + '<span class="s-act">Save ' + plural(t.pend, "card") + '</span></button>';
+    /* The whole dock is a large target, so a save made by mistake gets an Undo right where it was pressed. */
+    var undo = S.last && S.flash.indexOf("Saved") === 0 ? ' <button class="word" data-act="undosave" data-k="undosave">Undo.</button>' : "";
+    return '<div class="s-dock" role="group" aria-label="Totals" data-new="facts and Save in one dock" data-k="save">' + f + '<span class="s-act' + (S.flash ? "" : " quiet") + '" aria-live="polite">' + esc(reasonText()) + undo + '</span></div>';
+  }
+  function sentenceCompact() {
+    return '<div class="col" id="pick-sentence"><div class="bar">' + cancelBtn() + '<h2 class="bar-title">Check in</h2><span></span></div>' +
+      '<div class="scroll" data-scroll="sentence-list"><h1 class="large-title">Check in</h1>' + (S.phase === "ready" ? sentenceRows() : phaseMsg()) + '</div>' +
+      sentenceDock() + '</div>';
+  }
+  function sentenceOpen() {
+    var left = '<div class="col" id="pick-sentence"><div class="bar"><span></span><h2 class="bar-title">Check in</h2><span></span></div>' +
+      '<div class="scroll" data-scroll="sentence-list"><h1 class="large-title">Check in</h1>' + (S.phase === "ready" ? sentenceRows() : phaseMsg()) + '</div></div>';
+    var owed = "";
+    if (S.phase === "ready") {
+      var items = S.cards.map(function (c, i) {
+        var left = c.o - c.a - S.pend[i];
+        return left > 0 ? '<li><span class="s-name">' + esc(c.n) + '</span>: <span class="owed nw">' + money(left * c.p) + '</span> for ' + plural(left, "card") + '.</li>' : "";
+      }).join("");
+      owed = '<div class="prose">' + (items ? '<ul class="owed-list">' + items + '</ul>' : '<p>All is well. Nothing is owed.</p>') + '</div>';
+    }
+    var right = '<div class="col"><div class="bar">' + cancelBtn() + '<span></span><span></span></div>' +
+      '<div class="scroll" data-scroll="sentence-right"><h1 class="large-title">Still owed</h1>' + owed + '</div>' + sentenceDock() + '</div>';
+    return [left, right];
+  }
+
+  var R = {
+    ledger: [ledgerCompact, ledgerOpen],
+    queue: [queueCompact, queueOpen],
+    sentence: [sentenceCompact, sentenceOpen]
+  };
+
+  /* ---------- render with scroll and focus kept ---------- */
+  function keep() {
+    var sc = {};
+    document.querySelectorAll("[data-scroll]").forEach(function (el) { sc[el.getAttribute("data-scroll")] = el.scrollTop; });
+    var a = document.activeElement, k = a && a.getAttribute && a.getAttribute("data-k");
+    return { sc: sc, k: k };
+  }
+  function restore(st) {
+    document.querySelectorAll("[data-scroll]").forEach(function (el) {
+      var v = st.sc[el.getAttribute("data-scroll")];
+      if (v) el.scrollTop = v;
+      markScrolled(el);
+    });
+    if (st.k) { var el = document.querySelector('.dev:not([hidden]) [data-k="' + st.k + '"]'); if (el) el.focus({ preventScroll: true }); }
+  }
+  function markScrolled(el) {
+    var col = el.closest(".col");
+    if (col) col.classList.toggle("scrolled", el.scrollTop > 24);
+  }
+  function screen(inner) { return '<div class="screen" data-ts="' + S.ts + '">' + inner + '</div>'; }
+
+  function render() {
+    var st = keep();
+    var f = document.getElementById("dev-folded"), o = document.getElementById("dev-open"), ph = document.getElementById("dev-phone");
+    f.hidden = S.d !== "folded"; o.hidden = S.d !== "open"; ph.hidden = S.d !== "phone";
+    f.innerHTML = ""; o.innerHTML = ""; ph.innerHTML = "";
+    var r = R[S.c];
+    if (S.d === "open") {
+      var pages = r[1]();
+      o.innerHTML = screen(pages[0]) + '<div class="hinge" aria-hidden="true" title="Hinge gap: nothing sits here"></div>' + screen(pages[1]);
+    } else {
+      (S.d === "folded" ? f : ph).innerHTML = screen(r[0]());
+    }
+    document.body.classList.toggle("labels", S.l);
+    renderControls();
+    restore(st);
+    fit();
+  }
+
+  /* ---------- mockup controls ---------- */
+  function chip(act, v, label, on, extra) {
+    return '<button class="chip" data-ctl="' + act + '" data-v="' + v + '" aria-pressed="' + (on ? "true" : "false") + '"' + (extra || "") + '>' + esc(label) + '</button>';
+  }
+  function renderControls() {
+    var vis = CONCEPTS.filter(function (c) { return S.h.indexOf(c.k) < 0; });
+    var html = '<div class="group" role="group" aria-label="Concept"><span>Concept</span>' +
+      vis.map(function (c) {
+        return '<span class="opt">' + chip("c", c.k, c.name, S.c === c.k) + '<button class="chip hide" data-ctl="hide" data-v="' + c.k + '" aria-label="Hide ' + esc(c.name) + '" title="Hide this concept">Hide</button></span>';
+      }).join("") +
+      (S.h.length ? '<span class="hidden-list">Hidden: ' + S.h.map(function (k) { return CONCEPTS.filter(function (c) { return c.k === k; })[0].name; }).join(", ") + '. <button class="chip" data-ctl="unhide" data-v="">Show all</button></span>' : "") +
+      '</div>';
+    html += group("Device", "d", DEVICES) + group("Text size", "ts", SIZES) + group("Theme", "t", THEMES) + group("State", "s", STATES);
+    html += '<div class="group"><span>Labels</span>' + chip("l", S.l ? "0" : "1", S.l ? "New: labels shown" : "New: labels hidden", S.l) + '</div>';
+    document.getElementById("controls").innerHTML = html;
+    var c = CONCEPTS.filter(function (x) { return x.k === S.c; })[0];
+    document.getElementById("about").textContent = c ? c.about : "";
+  }
+  function group(label, act, list) {
+    return '<div class="group" role="group" aria-label="' + label + '"><span>' + label + '</span>' + list.map(function (x) { return chip(act, x[0], x[1], S[act] === x[0]); }).join("") + '</div>';
+  }
+
+  /* ---------- hash ---------- */
+  function readHash() {
+    var q = {};
+    location.hash.replace(/^#/, "").split("&").forEach(function (kv) { var p = kv.split("="); if (p[0]) q[p[0]] = decodeURIComponent(p[1] || ""); });
+    if (q.c && R[q.c]) S.c = q.c;
+    if (q.d && ["folded", "open", "phone"].indexOf(q.d) >= 0) S.d = q.d;
+    if (q.ts && ["large", "xxxl", "ax3", "ax5"].indexOf(q.ts) >= 0) S.ts = q.ts;
+    if (q.t && ["auto", "light", "dark"].indexOf(q.t) >= 0) S.t = q.t;
+    S.s = STATES.some(function (x) { return x[0] === q.s; }) ? q.s : "loaded";
+    S.h = (q.h || "").split(",").filter(function (k) { return R[k]; });
+    S.l = q.l !== "0";
+    if (S.h.indexOf(S.c) >= 0) { var v = CONCEPTS.filter(function (c) { return S.h.indexOf(c.k) < 0; }); if (v.length) S.c = v[0].k; }
+    applyTheme();
+    loadState(S.s);
+  }
+  function writeHash() {
+    var parts = ["c=" + S.c, "d=" + S.d, "ts=" + S.ts, "t=" + S.t, "s=" + S.s];
+    if (S.h.length) parts.push("h=" + S.h.join(","));
+    if (!S.l) parts.push("l=0");
+    history.replaceState(null, "", "#" + parts.join("&"));
+  }
+  function applyTheme() {
+    if (S.t === "auto") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", S.t);
+  }
+
+  /* ---------- acts ---------- */
+  var timer = 0;
+  function startLoad() {
+    S.phase = "loading"; S.flash = ""; render();
+    clearTimeout(timer);
+    timer = setTimeout(function () { loadState("loaded"); S.flash = ""; render(); }, 1200);
+  }
+  function advance(dir) {
+    var q = outList(), pos = q.indexOf(S.qi);
+    if (pos < 0) { S.qi = q.length ? q[0] : -1; return; }
+    var np = pos + dir;
+    if (np >= 0 && np < q.length) S.qi = q[np];
+  }
+  function nextOpen() {
+    var q = outList(), pos = q.indexOf(S.qi);
+    for (var k = 1; k <= q.length; k++) { var i = q[(pos + k) % q.length]; if (!isFull(i)) { S.qi = i; return true; } }
+    return false;
+  }
+  function act(a, i) {
+    var t;
+    if (a === "add" || a === "came") {
+      if (a === "came") i = S.qi;
+      if (i < 0 || isFull(i)) return;
+      S.pend[i] += 1; S.flash = "";
+      if (a === "came") {
+        var c = S.cards[i], h = c.a + S.pend[i];
+        if (h >= c.o) {
+          var moved = nextOpen();
+          S.flash = c.n + ": all " + c.o + " here." + (moved ? " Next card shown." : " Every card is marked. Save to keep them.");
+        }
+      }
+    } else if (a === "undo") {
+      if (S.pend[i] > 0) { S.pend[i] -= 1; S.flash = ""; }
+    } else if (a === "save") {
+      t = totals(); if (!t.pend) return;
+      S.last = S.pend.slice();
+      S.cards.forEach(function (c, j) { c.a += S.pend[j]; S.pend[j] = 0; });
+      S.flash = "Saved " + plural(t.pend, "card") + ".";
+      if (S.qi >= 0 && S.cards[S.qi].a >= S.cards[S.qi].o) S.qi = firstOut();
+    } else if (a === "undosave") {
+      if (!S.last) return;
+      S.cards.forEach(function (c, j) { c.a -= S.last[j]; S.pend[j] = S.last[j]; });
+      S.last = null; S.flash = "";
+    } else if (a === "cancel") {
+      t = totals(); if (!t.pend) return;
+      S.pend = S.pend.map(function () { return 0; });
+      S.flash = "Cancelled. Nothing saved.";
+    } else if (a === "retry" || a === "import") { startLoad(); return; }
+    else if (a === "next") { advance(1); S.flash = ""; }
+    else if (a === "back") { advance(-1); S.flash = ""; }
+    else if (a === "jump") { S.qi = i; S.sheet = false; S.flash = ""; }
+    else if (a === "sheet") { S.sheet = true; }
+    else if (a === "sheetclose") { S.sheet = false; }
+    else if (a === "filter") { S.all = !S.all; }
+    render();
+  }
+
+  document.addEventListener("click", function (e) {
+    var ctl = e.target.closest("[data-ctl]");
+    if (ctl) {
+      var k = ctl.getAttribute("data-ctl"), v = ctl.getAttribute("data-v");
+      if (k === "c") S.c = v;
+      else if (k === "d") S.d = v;
+      else if (k === "ts") S.ts = v;
+      else if (k === "t") { S.t = v; applyTheme(); }
+      else if (k === "s") { S.s = v; clearTimeout(timer); loadState(v); }
+      else if (k === "l") S.l = v === "1";
+      else if (k === "hide") {
+        if (S.h.indexOf(v) < 0) S.h.push(v);
+        var left = CONCEPTS.filter(function (c) { return S.h.indexOf(c.k) < 0; });
+        if (!left.length) S.h.pop();
+        else if (S.c === v) S.c = left[0].k;
+      } else if (k === "unhide") S.h = [];
+      writeHash(); render();
+      var again = document.querySelector('[data-ctl="' + k + '"][data-v="' + v + '"]');
+      if (again) again.focus({ preventScroll: true });
+      return;
+    }
+    var b = e.target.closest("[data-act]");
+    if (!b || b.getAttribute("aria-disabled") === "true") return;
+    act(b.getAttribute("data-act"), Number(b.getAttribute("data-i") || -1));
+  });
+  document.addEventListener("scroll", function (e) {
+    if (e.target && e.target.matches && e.target.matches("[data-scroll]")) markScrolled(e.target);
+  }, true);
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && S.sheet) { S.sheet = false; render(); }
+  });
+
+  /* ---------- fit the frame to the viewer's window ---------- */
+  function fit() {
+    var wrap = document.getElementById("fit"), dev = document.querySelector(".dev:not([hidden])");
+    if (!dev) return;
+    dev.style.transform = "";
+    var w = dev.offsetWidth, h = dev.offsetHeight, avail = document.querySelector(".stage").clientWidth - 32;
+    var s = Math.min(1, avail / w);
+    if (s < 1) { dev.style.transform = "scale(" + s + ")"; wrap.style.width = w * s + "px"; wrap.style.height = h * s + "px"; }
+    else { wrap.style.width = ""; wrap.style.height = ""; }
+    var label = S.d === "phone"
+      ? "Large phone: no size is written for it, so the frame starts at the folded Duo size. Drag its corner to try a narrower or taller phone. Now " + (w - 12) + " by " + (h - 12) + " points."
+      : S.d === "open" ? "Duo open, 951 by 669 points. The hinge gap runs from x 455.5 to x 495.5; nothing sits across it."
+      : "Duo folded, 466 by 678 points.";
+    document.getElementById("readout").textContent = label + (s < 1 ? " Shown at " + Math.round(s * 100) + "% to fit this window." : "");
+  }
+  window.addEventListener("resize", fit);
+  if (window.ResizeObserver) new ResizeObserver(function () { if (S.d === "phone") fit(); }).observe(document.getElementById("dev-phone"));
+  window.addEventListener("hashchange", function () { readHash(); render(); });
+
+  readHash();
+  render();
+})();
+</script>
+</body>
+</html>

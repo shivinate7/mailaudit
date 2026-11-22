@@ -1,0 +1,678 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Large Text Core</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light, so this page has one theme.
+   Type sizes: Apple HIG Typography, iOS Dynamic Type tables, read 2026-11-21 (see the TS table in the script). */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832;
+  --wax:#A8443C; --waxDeep:#66231D; --waxLit:#C86A5F;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, "DejaVu Sans Mono", monospace;
+  --system: -apple-system, system-ui, sans-serif;
+  /* Status bar foot: unmeasured on the Duo. Drawn at the 20 pt floor the earlier Duo mockups use. */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: env(safe-area-inset-bottom);
+  --new:#2E7A5E; --today:#A8443C;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-6:24px;
+}
+* { box-sizing:border-box; }
+html { background:var(--paper); }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--system); font-size:15px; line-height:1.45; }
+main { max-width:1040px; margin:0 auto; padding:var(--space-4); display:flex; flex-direction:column; gap:var(--space-4); }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:var(--space-2) var(--space-3); font-weight:600; }
+header.page { display:flex; flex-direction:column; gap:var(--space-1); }
+header.page h1 { font-family:var(--system); font-weight:700; font-size:28px; line-height:1.15; margin:0; }
+.kind { font-size:14px; color:var(--inkSoft); margin:0; max-width:70ch; }
+.kind b { color:var(--ink); }
+.controls { display:flex; flex-direction:column; gap:var(--space-2); border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:var(--space-3) 0; }
+.ctl { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-2); }
+.ctl > span { font-size:13px; color:var(--inkSoft); min-width:96px; }
+.ctl button, .ctl a { font:inherit; font-size:14px; min-height:44px; padding:0 var(--space-3); display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+.ctl [aria-pressed="true"], .ctl [aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.ctl button:focus-visible, .ctl a:focus-visible, .dev button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+section.concept { display:flex; flex-direction:column; gap:var(--space-3); }
+section.concept[hidden], figure[hidden] { display:none; }
+section.concept > h2 { font-family:var(--system); font-size:22px; margin:var(--space-4) 0 0; }
+section.concept > p { margin:0; max-width:72ch; }
+.row { display:flex; flex-wrap:wrap; gap:var(--space-6); align-items:flex-start; }
+figure { margin:0; display:flex; flex-direction:column; gap:var(--space-2); max-width:100%; }
+figcaption { font-size:14px; max-width:60ch; }
+figcaption b { font-size:15px; }
+.proof { font:12px/1.4 var(--mono); color:var(--inkSoft); max-width:466px; }
+figcaption { max-width:466px; }
+.proof.bad { color:var(--red); font-weight:700; }
+.fit { max-width:100%; overflow:hidden; }
+
+/* ---- device frames: 1 CSS px = 1 pt ---- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:12px; overflow:hidden; color:var(--ink);
+  font-family:var(--system); }
+.dev[data-device="iphone-duo-folded"] { width:466px; height:678px; }
+.dev[data-device="iphone-regular"] { width:320px; height:678px; }
+.dev[data-device="iphone-duo-unfolded"] { width:951px; height:669px; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 var(--space-4); font:600 12px var(--system); z-index:9; background:var(--paper); }
+.pg { position:absolute; top:0; bottom:0; overflow:hidden; }
+.dev[data-device="iphone-duo-unfolded"] .pg.l { left:0; width:455.5px; }
+.dev[data-device="iphone-duo-unfolded"] .pg.r { left:495.5px; width:455.5px; }
+.dev:not([data-device="iphone-duo-unfolded"]) .pg { left:0; right:0; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:8; }
+.fold span { position:absolute; top:300px; left:50%; transform:translateX(-50%) rotate(-90deg); font:10.5px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; }
+.scroll { position:absolute; left:0; right:0; top:var(--sat); bottom:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain;
+  scrollbar-width:none; }
+.scroll::-webkit-scrollbar { display:none; }
+.scroll-in { display:flex; flex-direction:column; gap:var(--space-3); padding:var(--space-3) var(--space-4) var(--pad-end, 16px); }
+
+/* the system tab bar: fixed size, as iOS draws it (it does not grow with Dynamic Type) */
+.bar { position:absolute; z-index:7; display:grid; grid-template-columns:repeat(4, 1fr); align-items:center; font:500 10px/12px var(--system);
+  background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  border-top:1px solid color-mix(in srgb, var(--line) 70%, transparent); color:var(--inkSoft); }
+.dev:not([data-device="iphone-duo-unfolded"]) .bar { left:0; right:0; top:595px; bottom:0; padding-bottom:var(--sab); }
+.dev[data-device="iphone-duo-unfolded"] .bar { left:520px; width:407px; top:593px; height:64px; border:1px solid color-mix(in srgb, var(--line) 70%, transparent); border-radius:32px; }
+.bar span { display:flex; flex-direction:column; align-items:center; gap:2px; min-height:44px; justify-content:center; }
+.bar span.on { color:var(--accent); }
+.bar svg { width:22px; height:22px; }
+
+/* ---- app content: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono) ---- */
+.lh { display:flex; flex-direction:column; align-items:center; gap:var(--space-2); padding-top:var(--space-2); }
+.lh .rules { display:flex; align-items:center; gap:var(--space-3); width:100%; max-width:270px; }
+.lh .rules i { flex:1; height:1px; background:var(--gold); opacity:.75; }
+.seal { width:36px; height:36px; flex:0 0 auto; }
+.lh .title { font:var(--f-title)/var(--l-title) var(--cochin); letter-spacing:.06em; text-transform:uppercase; text-align:center; overflow-wrap:normal; }
+.lh .house { font:var(--f-house)/1.3 var(--mono); color:var(--inkSoft); letter-spacing:.12em; text-transform:uppercase; text-align:center; }
+.sect { font:var(--f-lab)/1.3 var(--mono); color:var(--inkSoft); letter-spacing:.08em; text-transform:uppercase; }
+.list { display:flex; flex-direction:column; gap:var(--space-2); }
+.trow { background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 2px rgba(28,43,36,0.06); overflow:hidden; }
+.trow.done { border-color:color-mix(in srgb, var(--green) 45%, var(--line)); }
+.trow.sel { border-color:var(--accent); box-shadow:inset 3px 0 0 var(--accent); }
+.thead { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; column-gap:var(--space-3); row-gap:var(--space-1);
+  width:100%; min-height:44px; padding:var(--space-3); background:none; border:0; text-align:left; font:inherit; color:inherit; cursor:pointer; }
+.thead .nm { font:600 var(--f-name)/var(--l-name) var(--cochin); flex:1 1 12ch; min-width:0; overflow-wrap:normal; word-break:normal; hyphens:manual; }
+.thead .ct { font:var(--f-ct)/var(--l-ct) var(--mono); white-space:nowrap; }
+.thead .ct b { color:var(--accent); }
+.trow.done .thead .ct b { color:var(--green); }
+.thead .meta { flex:1 0 100%; font:var(--f-meta)/1.35 var(--mono); color:var(--inkSoft); overflow-wrap:normal; }
+.across { font:var(--f-meta)/1.35 var(--mono); color:var(--inkSoft); overflow-wrap:normal; }
+.detail-title { font:700 var(--f-h)/var(--l-h) var(--cochin); margin:0; overflow-wrap:normal; }
+.copies { display:flex; flex-direction:column; border-top:1px solid var(--line); }
+.copy { display:flex; align-items:center; gap:var(--space-2); min-height:56px; padding:var(--space-2) var(--space-3) var(--space-2) var(--space-1);
+  border-top:1px solid var(--line); background:var(--card); width:100%; border-left:0; border-right:0; border-bottom:0; font:inherit; color:inherit; text-align:left; cursor:pointer; }
+.copies .copy:first-child { border-top:0; }
+.copy .box { flex:0 0 44px; height:44px; display:grid; place-items:center; }
+.copy .box i { width:26px; height:26px; border:1.5px solid var(--inkSoft); border-radius:6px; display:block; position:relative; }
+.copy.in { background:var(--greenSoft); }
+.copy.in .box i { background:var(--green); border-color:var(--green); }
+.copy.in .box i::after { content:""; position:absolute; left:8px; top:3px; width:7px; height:13px; border:solid var(--card); border-width:0 3px 3px 0; transform:rotate(45deg); }
+.copy .t { flex:1; min-width:0; display:flex; flex-wrap:wrap; justify-content:space-between; column-gap:var(--space-2); }
+.copy .t b { font:var(--f-seller)/1.3 var(--cochin); font-weight:600; overflow-wrap:normal; }
+.copy .t span { font:var(--f-meta)/1.35 var(--mono); color:var(--inkSoft); white-space:nowrap; }
+
+/* ---- the band: one home, three placements (ux-variant-extends-home) ---- */
+.band { position:relative; z-index:6; background:var(--paper); display:flex; flex-direction:column; gap:var(--space-2);
+  padding:var(--space-3) var(--space-4); container-type:inline-size; }
+.band--foot { position:absolute; left:0; right:0; border-top:1px solid var(--line); box-shadow:0 -6px 12px -10px rgba(28,43,36,0.35); }
+.band--head { position:sticky; top:0; margin:0 calc(-1 * var(--space-4)); border-bottom:1px solid var(--line); }
+.band--page { position:absolute; left:0; right:0; top:var(--sat); bottom:0; background:var(--paper); justify-content:space-between; padding-bottom:max(var(--sab), 20px); }
+.prog { position:absolute; left:0; right:0; height:4px; background:color-mix(in srgb, var(--line) 80%, transparent); }
+.band--foot .prog { top:-1px; } .band--head .prog { bottom:-1px; } .band--page .prog { display:none; }
+.prog i { display:block; height:100%; background:var(--accent); }
+.prog.full i { background:var(--green); }
+.facts { display:flex; gap:var(--space-4); }
+.fact { display:flex; flex-direction:column; gap:0; min-width:0; }
+.lab { font:var(--b-lab)/var(--b-lab-l) var(--mono); color:var(--inkSoft); letter-spacing:.06em; white-space:nowrap; }
+.fig { font:var(--b-fig)/var(--b-fig-l) var(--mono); white-space:nowrap; font-variant-numeric:tabular-nums; }
+.fig .got { display:inline-block; text-align:right; font-weight:700; color:var(--accent); }
+.fig .tot { color:var(--inkSoft); }
+.fig.full .got { color:var(--green); }
+.fig.owed { color:var(--red); }
+.fig .seg { white-space:nowrap; }
+.act { display:grid; }
+.act > * { grid-area:1 / 1; }
+.face { visibility:hidden; font:700 var(--b-body)/var(--b-body-l) var(--cochin); min-height:52px; padding:var(--space-2) var(--space-4); border-radius:8px;
+  border:1.5px solid var(--accent); background:var(--accent); color:var(--card); cursor:pointer; text-align:center; overflow-wrap:normal; }
+.face.on { visibility:visible; }
+.face.undo { background:var(--card); color:var(--accent); }
+.face.clear { background:var(--redSoft); color:var(--red); border-color:var(--red); }
+.face.armed { background:var(--red); border-color:var(--red); color:var(--card); }
+.face.hint { background:none; border-color:transparent; color:var(--inkSoft); font-weight:400; cursor:default; }
+.face:focus-visible, .cancel:focus-visible, .copy:focus-visible, .thead:focus-visible { outline:3px solid var(--ink); outline-offset:2px; }
+.cancel { position:absolute; right:var(--space-4); z-index:7; font:var(--b-body)/var(--b-body-l) var(--cochin); min-height:52px; min-width:88px; padding:var(--space-2) var(--space-4);
+  border-radius:8px; border:1.5px solid var(--ink); background:var(--card); color:var(--ink); cursor:pointer; box-shadow:0 2px 8px rgba(28,43,36,0.2); }
+.band--foot .cancel, .band--page .cancel { bottom:calc(100% + var(--space-2)); }
+.band--head .cancel { top:calc(100% + var(--space-2)); }
+.band--page .cancel { position:static; align-self:stretch; box-shadow:none; }
+/* tiers, tried in order like ViewThatFits: row, pair, lines, stack */
+.band[data-tier="row"] { flex-direction:row; align-items:flex-end; gap:var(--space-4); }
+.band[data-tier="row"] .facts { flex:0 0 auto; }
+.band[data-tier="row"] .act { flex:1 1 auto; min-width:0; }
+.band[data-tier="row"] .face { white-space:nowrap; }
+.band[data-tier="pair"] .facts { justify-content:space-between; }
+.band[data-tier="lines"] .facts, .band[data-tier="stack"] .facts { flex-direction:column; gap:var(--space-1); }
+.band[data-tier="lines"] .fact { flex-direction:row; align-items:baseline; justify-content:space-between; gap:var(--space-3); }
+.band[data-tier="lines"] .fact .lab { flex:0 0 auto; }
+.band[data-tier="stack"] .fig, .band[data-tier="stack"] .lab { white-space:normal; }
+.band[data-tier="stack"] .fig .seg { white-space:nowrap; }
+.band--page .facts { flex-direction:column; gap:var(--space-4); }
+.band--page .fact { flex-direction:column; align-items:flex-start; }
+.band--page .core-top { display:flex; flex-direction:column; gap:var(--space-4); }
+.band--page .core-foot { display:flex; flex-direction:column; gap:var(--space-2); }
+.band--page .lh { align-items:flex-start; padding-top:0; }
+.band--page .lh .rules { display:none; }
+.band--page .core-name { font:600 var(--b-body)/var(--b-body-l) var(--cochin); overflow-wrap:normal; }
+.band--page .core-name small { display:block; font:var(--b-lab)/var(--b-lab-l) var(--mono); color:var(--inkSoft); font-weight:400; }
+
+.band.waiting .facts, .band.waiting .facts *, .band.waiting .act, .band.waiting .act .face { visibility:hidden; }
+.band.waiting .wait { position:absolute; inset:var(--space-3) var(--space-4); margin:0; display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-2);
+  font:var(--b-body)/var(--b-body-l) var(--cochin); color:var(--inkSoft); z-index:1; }
+.band.waiting .wait .face { visibility:visible; }
+.band--page.waiting .wait { top:40%; bottom:auto; }
+/* the large content viewer (Holds at AX3): press and hold the band */
+.lcv { position:absolute; inset:0; z-index:20; display:grid; place-items:center; background:color-mix(in srgb, var(--ink) 25%, transparent); }
+.lcv div { background:color-mix(in srgb, var(--card) 96%, transparent); border-radius:16px; padding:var(--space-4) var(--space-6); text-align:center; max-width:90%;
+  font:700 var(--lcv-f)/1.15 var(--mono); box-shadow:0 8px 32px rgba(28,43,36,0.35); }
+.lcv div small { display:block; font:400 calc(var(--lcv-f) * .5)/1.3 var(--mono); color:var(--inkSoft); }
+
+/* tags: dashed outline on what exists today, and on what an option adds */
+[data-tag]:not(.band):not(.rh) { position:relative; }
+.clip { display:block; overflow:hidden; white-space:nowrap; min-width:0; }
+[data-tag]::before { content:attr(data-tag); position:absolute; right:4px; top:-10px; font:600 10.5px/14px var(--system); padding:0 4px;
+  background:var(--paper); z-index:12; white-space:nowrap; letter-spacing:0; text-transform:none; }
+.tag-new { outline:2px dashed var(--new); outline-offset:-2px; } .tag-new::before { color:var(--new); }
+.tag-today { outline:2px dashed var(--today); outline-offset:-2px; } .tag-today::before { color:var(--today); }
+.band--foot.tag-new::before { top:auto; bottom:calc(100% + 2px); left:4px; right:auto; }
+.band--page.tag-new::before { top:auto; bottom:4px; }
+
+/* today and the rows strip: static drawings */
+.td { font-family:var(--cochin); }
+.td .rh { position:absolute; left:0; right:0; top:var(--sat); height:46px; display:flex; align-items:center; gap:8px; padding:0 16px; background:var(--paper);
+  border-bottom:1px solid var(--line); white-space:nowrap; z-index:5; }
+.td .rh .seal { width:22px; height:22px; }
+.strip { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(466px, 100%), 1fr)); gap:var(--space-4); }
+.pair { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:var(--space-3); display:flex; flex-direction:column; gap:var(--space-3);
+  width:min(466px, 100%); }
+.pair h3 { font:700 15px/1.2 var(--system); margin:0; }
+.cell { position:relative; border:1px solid var(--line); border-radius:8px; background:var(--paper); padding:var(--space-3); font-family:var(--cochin); }
+.ax5 { --a-body:53px; --a-lab:37.6px; --a-ct:47.7px; }
+</style>
+</head>
+<body>
+<main>
+<div class="banner" role="note">Sample. No figure, seller, card, price or count on this page is real. Sizes come from Apple's Dynamic Type tables; fonts fall back on machines without Cochin and Menlo.</div>
+
+<header class="page">
+  <h1>Large text: a fixed core that never clips</h1>
+  <p class="kind"><b>Designer kind:</b> directed. <b>Direction:</b> fixed core: pin the three core facts in a band that scales but never clips; the rest scrolls.</p>
+  <p class="kind">Sample screen: the Tally tab. The three core facts are cards in out of cards ordered, the money still missing, and the primary button for the open name. Light theme only: the native app is held to light. Folded first.</p>
+</header>
+
+<div class="controls" aria-label="Switches for every frame">
+  <div class="ctl" role="group" aria-label="Text size"><span>Text size</span>
+    <button type="button" data-ts="">Each frame's own</button>
+    <button type="button" data-ts="L">Large</button><button type="button" data-ts="xxxL">xxxLarge</button>
+    <button type="button" data-ts="ax1">AX1</button><button type="button" data-ts="ax3">AX3</button><button type="button" data-ts="ax5">AX5</button>
+  </div>
+  <div class="ctl" role="group" aria-label="Counts"><span>Counts</span>
+    <button type="button" data-n="4">4 digits</button><button type="button" data-n="2">2 digits</button>
+  </div>
+  <div class="ctl" role="group" aria-label="Show"><span>Show</span>
+    <a href="#">All</a><a href="#s=today">Today</a><a href="#s=foot-folded-ax5">Foot band, AX5</a><a href="#s=core-open-ax5">Core page, AX5</a>
+    <a href="#s=size-half">Holds at half</a><a href="#s=size-grows">Grows with the text</a><a href="#s=rows-ax5">Rows that scroll</a>
+  </div>
+  <div class="ctl" role="group" aria-label="States"><span>State</span>
+    <a href="#s=foot-folded-ax5&amp;k=armed">Clear asks</a><a href="#s=foot-folded-ax5&amp;k=undo">Undo held</a>
+    <a href="#s=foot-folded-ax5&amp;k=end">Scrolled to the end</a><a href="#s=foot-folded-ax5&amp;k=loading">Opening</a><a href="#s=foot-folded-ax5&amp;k=failed">Did not open</a>
+  </div>
+  <div class="ctl" role="group" aria-label="Hide an option"><span>Hide</span>
+    <button type="button" data-hide="foot">Hide Foot band</button><button type="button" data-hide="core">Hide Core page</button>
+    <button type="button" data-hide="half">Hide Holds at half</button><button type="button" data-hide="grows">Hide Grows with the text</button>
+  </div>
+</div>
+
+<!-- ===== Today ===== -->
+<section class="concept" data-opt="today" id="sec-today">
+  <h2>Today</h2>
+  <p>What the debts record at large sizes: <code>native-masthead-axl-clips</code>, <code>native-count-line-clips</code>, <code>hand-open-under-bar-at-l</code> and <code>native-axl-rows-break</code>. Drawn from the debts and the code, not from a screenshot.</p>
+  <div class="row">
+    <figure data-state="today" id="today-folded">
+      <div class="dev td" data-device="iphone-duo-folded">
+        <div class="status"><span>9:41</span><span>100%</span></div>
+        <div class="rh tag-today" data-tag="Today: RunningHead, title and figure clip">
+          <svg class="seal" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="17" fill="#A8443C"/><circle cx="18" cy="18" r="11" fill="none" stroke="#66231D" stroke-width="2"/></svg>
+          <span style="font:700 36px var(--cochin);letter-spacing:.06em">MANIF…</span>
+          <span style="margin-left:auto;font:24px var(--mono)">1205/1350 · $…</span>
+        </div>
+        <div style="position:absolute;left:16px;right:16px;top:calc(var(--sat) + 60px);display:flex;flex-direction:column;gap:8px">
+          <div style="height:8px;border-radius:4px;background:#DCCDB6"><i style="display:block;width:89%;height:100%;border-radius:4px;background:#6F5CA6"></i></div>
+          <div class="tag-today" data-tag="Today: count line, one line, no ellipsis" style="font:30px/1.2 var(--mono)"><span class="clip">1094 unique items in range</span></div>
+          <div class="tag-today" data-tag="Today: SaveSlot takes half the row" style="display:flex;gap:8px;align-items:flex-start">
+            <span style="flex:1;font:30px/1.2 var(--mono);color:#A8443C">145 still missing · $410.52</span>
+            <span style="flex:0 0 49%;height:36px;border:1px dashed #A8443C"></span>
+          </div>
+          <div class="trow tag-today" data-tag="Today: set name squeezed to 100 pt" style="padding:12px;display:flex;gap:8px">
+            <span style="flex:0 0 100px;font:600 53px/1.15 var(--cochin);word-break:break-all">Brainstorm</span>
+            <span style="flex:1;text-align:right;font:40px var(--mono)"><b style="color:#6F5CA6">2</b>/4</span>
+          </div>
+        </div>
+        <div class="bar" aria-hidden="true"><span>Ledger</span><span>Orphaned</span><span class="on">Tally</span><span>Packages</span></div>
+      </div>
+      <figcaption><b>Today, folded, AX5.</b> The pinned running head reads "MANIF… 1205/1350 · $…": the missing money is lost. The foot row wraps beside an empty 13-character slot. The Tally name breaks mid-word.</figcaption>
+    </figure>
+    <figure data-state="today" id="today-open">
+      <div class="fit"><div class="dev td" data-device="iphone-duo-unfolded">
+        <div class="status"><span>9:41</span><span>100%</span></div>
+        <div class="fold"><span>FOLD</span></div>
+        <div class="pg l"><div style="position:absolute;left:24px;right:24px;top:40px;display:flex;flex-direction:column;gap:12px;align-items:center">
+          <span style="font:47px var(--cochin);letter-spacing:.06em">MANIFEST</span>
+          <span style="font:26px var(--mono);color:#6E6379;text-align:center">cards<br>1205/1350<br>packages<br>146/180<br>value<br>$3,118/$3,531</span>
+        </div></div>
+        <div class="pg r"><div style="position:absolute;left:16px;right:16px;top:560px">
+          <span class="tag-today" data-tag="Today: hand-open at y 616 to 660, under the bar" style="display:inline-flex;min-height:44px;align-items:center;padding:0 12px;border:1px solid #DCCDB6;border-radius:8px;background:#FCF6EA;font:26px var(--mono);margin-top:56px">Card in Hand</span>
+        </div></div>
+        <div class="bar" aria-hidden="true"><span>Ledger</span><span>Orphaned</span><span>Tally</span><span class="on">Packages</span></div>
+      </div></div>
+      <figcaption><b>Today, open, AX2 (AccessibilityL).</b> The masthead pushes Card in Hand to y 616 to 660, inside the bar at y 593 to 657 (measured 2026-11-08). The tap does not open it.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ===== Foot band ===== -->
+<section class="concept" data-opt="foot" id="sec-foot">
+  <h2>Foot band</h2>
+  <p>The core sits in one band, docked on the tab bar, where the thumb is. The letterhead and the list scroll above it, and the list ends clear of the band. The band tries four shapes in order and takes the first that fits: one row, a pair, ledger lines, then a stack. A figure may break only after its slash.</p>
+  <div class="row">
+    <figure data-state="foot-folded-ax5" data-opt="foot"><div class="mount" data-concept="foot" data-device="iphone-duo-folded" data-ts="ax5" data-id="foot-folded-ax5" data-focus="1"></div>
+      <figcaption><b>Folded, AX5.</b> The band steps down until it fits in half the screen; the list keeps AX5. The line under the frame names the size and shape it took. Tap a copy, then Mark all received, then Undo. Tick every copy and the button becomes Clear check‑ins, which asks: Cancel hangs above the band.</figcaption></figure>
+    <figure data-state="foot-folded-l" data-opt="foot"><div class="mount" data-concept="foot" data-device="iphone-duo-folded" data-ts="L" data-id="foot-folded-l"></div>
+      <figcaption><b>Folded, Large (default).</b> Both facts on one line, the button under them.</figcaption></figure>
+    <figure data-state="foot-phone-ax5" data-opt="foot"><div class="mount" data-concept="foot" data-device="iphone-regular" data-ts="ax5" data-id="foot-phone-ax5"></div>
+      <figcaption><b>Phone at 320 pt, AX5.</b> Narrower, so the band steps down further than on the Duo. Grows with the text, below, shows a figure that breaks after its slash, never inside a number.</figcaption></figure>
+  </div>
+  <figure data-state="foot-open-ax5" data-opt="foot"><div class="fit"><div class="mount" data-concept="foot" data-device="iphone-duo-unfolded" data-ts="ax5" data-id="foot-open-ax5"></div></div>
+    <figcaption><b>Open, AX5.</b> Names on the left page, the open name on the right. The band sits at the foot of the right page, on the bar, and the right page ends clear of both.</figcaption></figure>
+</section>
+
+<!-- ===== Band size ===== -->
+<section class="concept" data-opt="size" id="sec-size">
+  <h2>Band size at the largest text</h2>
+  <p>Either concept. The band takes the reader's size, then steps down one size at a time until it fits in half the space between the status bar and the tab bar. The list keeps the reader's size. Press and hold the band to read its figures in the large content viewer at the reader's size. The other choice lets the band grow with the text, whatever it costs the list.</p>
+  <div class="row">
+    <figure data-state="size-half" data-opt="half"><div class="mount" data-concept="foot" data-device="iphone-duo-folded" data-ts="ax5" data-id="size-half" data-focus="1"></div>
+      <figcaption><b>Holds at half (pick).</b> Folded, reader at AX5. The band settles at the largest size that fits in half; the list keeps the rest.</figcaption></figure>
+    <figure data-state="size-grows" data-opt="grows"><div class="mount" data-concept="foot" data-device="iphone-duo-folded" data-ts="ax5" data-grow="1" data-id="size-grows" data-focus="1"></div>
+      <figcaption><b>Grows with the text.</b> Folded, reader at AX5. Nothing clips, but the list keeps a strip about one row tall.</figcaption></figure>
+    <figure data-state="size-grows-phone" data-opt="grows"><div class="mount" data-concept="foot" data-device="iphone-regular" data-ts="ax5" data-grow="1" data-id="size-grows-phone"></div>
+      <figcaption><b>Grows with the text, phone at 320 pt.</b> "1205/" breaks before "1350". The band takes most of the screen.</figcaption></figure>
+  </div>
+</section>
+
+<!-- ===== Core page ===== -->
+<section class="concept" data-opt="core" id="sec-core">
+  <h2>Core page</h2>
+  <p>Open, the left page becomes the core: the letterhead, both figures at full size and the button, and none of it scrolls. The names move to the right page and open in place. Folded and on the phone, the same core is a head band that pins under the letterhead as it scrolls away, where the running head pins today. Its height never changes, so pinning moves nothing.</p>
+  <div class="row">
+    <figure data-state="core-folded-ax5" data-opt="core"><div class="mount" data-concept="core" data-device="iphone-duo-folded" data-ts="ax5" data-id="core-folded-ax5"></div>
+      <figcaption><b>Folded, AX5.</b> Scroll: the letterhead leaves, the band pins at the top. Cancel hangs below the band.</figcaption></figure>
+    <figure data-state="core-phone-ax5" data-opt="core"><div class="mount" data-concept="core" data-device="iphone-regular" data-ts="ax5" data-id="core-phone-ax5"></div>
+      <figcaption><b>Phone at 320 pt, AX5.</b> The stack, as in Foot band.</figcaption></figure>
+  </div>
+  <figure data-state="core-open-ax5" data-opt="core"><div class="fit"><div class="mount" data-concept="core" data-device="iphone-duo-unfolded" data-ts="ax5" data-id="core-open-ax5" data-focus="1"></div></div>
+    <figcaption><b>Open, AX5.</b> The left page holds the core at full size, with nothing under it: the bar sits under the right page only. Tap a name on the right to open it; the core's button follows the open name.</figcaption></figure>
+  <figure data-state="core-open-l" data-opt="core"><div class="fit"><div class="mount" data-concept="core" data-device="iphone-duo-unfolded" data-ts="L" data-id="core-open-l"></div></div>
+    <figcaption><b>Open, Large (default).</b> The same page, with room to spare.</figcaption></figure>
+</section>
+
+<!-- ===== Rows that scroll ===== -->
+<section class="concept" data-opt="rows" id="sec-rows">
+  <h2>Rows that scroll, at AX5</h2>
+  <p>Both concepts. The rows outside the core wrap at word breaks and stack, so no word breaks inside itself (<code>native-axl-rows-break</code>). Drawn at the folded width, 466 pt, at AX5.</p>
+  <figure data-state="rows-ax5" id="rows-ax5">
+    <div class="strip">
+      <div class="pair"><h3>Orphaned envelope header</h3>
+        <div class="cell tag-today" data-tag="Today: one line, breaks mid-word" style="display:flex;gap:8px;white-space:nowrap">
+          <span style="flex:0 0 150px;font:37.6px/1.2 var(--mono);word-break:break-all;white-space:normal">ENVELOPE 3</span>
+          <span style="flex:0 0 140px;font:53px/1.1 var(--cochin);color:#A8443C;word-break:break-all;white-space:normal">Discard</span>
+        </div>
+        <div class="cell tag-new" data-tag="New: label wraps, Discard drops below" style="display:flex;flex-direction:column;gap:8px">
+          <span style="font:37.6px/1.25 var(--mono);color:#6E6379;letter-spacing:.06em">ENVELOPE 3</span>
+          <span style="align-self:flex-start;min-height:52px;display:inline-flex;align-items:center;padding:0 16px;border:1.5px solid #A8443C;border-radius:8px;font:53px/1.15 var(--cochin);color:#A8443C">Discard</span>
+        </div>
+      </div>
+      <div class="pair"><h3>Tally row with a long set name</h3>
+        <div class="cell tag-today" data-tag="Today: name squeezed to 100 pt" style="display:flex;gap:8px">
+          <span style="flex:0 0 100px;font:600 53px/1.15 var(--cochin);word-break:break-all">Brainstorm</span>
+          <span style="flex:1;text-align:right;font:44px var(--mono)">2/4</span>
+        </div>
+        <div class="cell tag-new" data-tag="New: name on its own lines, counts first" style="display:flex;flex-direction:column;gap:4px">
+          <span style="font:600 53px/1.15 var(--cochin)">Brainstorm</span>
+          <span style="font:47.7px/1.2 var(--mono)"><b style="color:#6F5CA6">2</b>/4</span>
+          <span style="font:37.6px/1.3 var(--mono);color:#6E6379">3 sellers · 3 orders · Sample Set Remastered</span>
+        </div>
+      </div>
+      <div class="pair"><h3>Armed Reset</h3>
+        <div class="cell tag-today" data-tag="Today: lineLimit 1, Cancel fixed 80 pt" style="display:flex;padding:0;white-space:nowrap">
+          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;padding:12px 16px;background:#A8443C;color:#FCF6EA;font:700 37px var(--cochin)">Tap again to clear 1350 cards</span>
+          <span style="flex:0 0 80px;overflow:hidden;text-overflow:ellipsis;padding:12px 4px;font:53px var(--cochin);border-left:1px solid #DCCDB6">Cancel</span>
+        </div>
+        <div class="cell tag-new" data-tag="New: ask wraps, Cancel after it, full width" style="display:flex;flex-direction:column;gap:8px;padding:0">
+          <span style="padding:12px 16px;background:#A8443C;color:#FCF6EA;font:700 53px/1.15 var(--cochin)">Tap again to clear 1350 cards</span>
+          <span style="margin:0 12px 12px;min-height:52px;display:flex;align-items:center;justify-content:center;border:1.5px solid #332E3F;border-radius:8px;font:53px/1.15 var(--cochin)">Cancel</span>
+        </div>
+      </div>
+    </div>
+    <figcaption><b>Rows that scroll.</b> Each pair: today on top, the new shape below. The armed Reset keeps its place, its count and Cancel after it (<code>armed-reset-takes-the-row</code>).</figcaption>
+  </figure>
+</section>
+</main>
+
+<script>
+// Apple HIG Typography, "iOS, iPadOS Dynamic Type sizes", read 2026-11-21: [size, leading] in points.
+const TS = {
+  L:    { lt:[34,41], t2:[22,28], body:[17,22], fn:[13,18], c1:[12,16] },
+  xxxL: { lt:[40,48], t2:[28,34], body:[23,29], fn:[19,24], c1:[18,23] },
+  ax1:  { lt:[44,52], t2:[34,41], body:[28,34], fn:[23,29], c1:[22,28] },
+  ax2:  { lt:[48,57], t2:[39,47], body:[33,40], fn:[27,33], c1:[26,32] },
+  ax3:  { lt:[52,61], t2:[44,52], body:[40,48], fn:[33,40], c1:[32,39] },
+  ax5:  { lt:[60,70], t2:[56,66], body:[53,62], fn:[44,52], c1:[43,51] },
+};
+const ORDER = ['L','xxxL','ax1','ax2','ax3','ax5'];
+const TSNAME = { L:'Large', xxxL:'xxxLarge', ax1:'AX1', ax2:'AX2', ax3:'AX3', ax5:'AX5' };
+// Font.custom(_:size:relativeTo:) scales a base size by its style's ratio to Large.
+const sz = (ts, st, base) => +(base * TS[ts][st][0] / TS.L[st][0]).toFixed(1);
+const ld = (ts, st, base) => +(base * TS[ts][st][1] / TS.L[st][0]).toFixed(1);
+
+const SEAL = '<svg class="seal" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="17" fill="var(--wax)"/><circle cx="18" cy="18" r="12" fill="var(--waxLit)" opacity=".35"/><circle cx="18" cy="18" r="11" fill="none" stroke="var(--waxDeep)" stroke-width="2"/></svg>';
+const ICON = {
+  Ledger: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="8"/></svg>',
+  Orphaned: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
+  Tally: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 4L7 20M17 4l-2 16M4 9h16M3 15h16"/></svg>',
+  Packages: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg>',
+};
+const bar = on => `<nav class="bar" aria-label="Tabs">${['Ledger','Orphaned','Tally','Packages'].map(t => `<span class="${t === on ? 'on' : ''}">${ICON[t]}${t}</span>`).join('')}</nav>`;
+
+// Sample ledger. "rest" holds the cards outside the names drawn here, so the totals reach 4 digits.
+function sample(n) {
+  const names = [
+    { name:'Brainstorm', set:'Sample Set Remastered', copies:[['Gamma Cards',0.42,1],['Mox Corner',0.38,1],['Delta Games',0.45,0],['North Bay Cards',0.40,0]] },
+    { name:'Swords to Plowshares', set:'Sample Set', copies:[['Gamma Cards',1.10,0],['Mox Corner',1.25,0],['Delta Games',0.95,1]] },
+    { name:'Counterspell', set:'Sample Set Classic', copies:[['North Bay Cards',0.55,1],['Gamma Cards',0.60,1]] },
+    { name:'Llanowar Elves', set:'Sample Set', copies:[['Delta Games',0.22,0],['Mox Corner',0.25,0],['Gamma Cards',0.20,1]] },
+    { name:'Path to Exile', set:'Sample Set Masters', copies:[['Mox Corner',2.10,0],['North Bay Cards',1.95,1]] },
+    { name:'Preordain', set:'Sample Set', copies:[['Gamma Cards',0.18,1],['Delta Games',0.20,1]] },
+  ].map(r => ({ ...r, copies: r.copies.map(([seller, price, got]) => ({ seller, price, got: !!got })) }));
+  const rest = n === 4 ? { got:1196, total:1334, owed:404.75 } : { got:0, total:0, owed:0 };
+  return { names, rest };
+}
+function totals(st) {
+  let got = st.rest.got, total = st.rest.total, owed = st.rest.owed;
+  st.names.forEach(r => r.copies.forEach(c => { total++; if (c.got) got++; else owed += c.price; }));
+  return { got, total, owed };
+}
+const money = v => '$' + v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+
+const insts = [];
+const params = () => Object.fromEntries(location.hash.replace(/^#/, '').split('&').filter(Boolean).map(p => p.split('=')));
+
+class Frame {
+  constructor(mount) {
+    this.m = mount; this.id = mount.dataset.id; this.concept = mount.dataset.concept; this.device = mount.dataset.device;
+    this.baseTs = mount.dataset.ts; this.grow = mount.dataset.grow === '1'; this.focus = mount.dataset.focus === '1';
+    this.k = 'rest'; this.undo = null; this.armTimer = null; this.n = 4; this.st = sample(4); this.open = 'Brainstorm';
+    this.bandTs = this.baseTs;
+    mount.addEventListener('click', e => this.click(e));
+    let t = null;
+    // The large content viewer: press and hold the band when it holds below the reader's size.
+    mount.addEventListener('pointerdown', e => { if (this.bandTs !== this.ts && e.target.closest('.band') && !e.target.closest('button')) t = setTimeout(() => this.lcv(true), 500); });
+    ['pointerup','pointerleave','pointercancel'].forEach(ev => mount.addEventListener(ev, () => { clearTimeout(t); this.lcv(false); }));
+  }
+  get ts() { return params().ts && TS[params().ts] ? params().ts : this.baseTs; }
+  get big() { return this.concept === 'core' && this.device === 'iphone-duo-unfolded'; }
+  bandVars(b) {
+    const big = this.big;
+    return { '--b-lab': sz(b,'c1',10.5)+'px', '--b-lab-l': ld(b,'c1',10.5)+'px',
+      '--b-fig': sz(b, big ? 'lt' : 't2', big ? 31 : 22)+'px', '--b-fig-l': ld(b, big ? 'lt' : 't2', big ? 31 : 22)+'px',
+      '--b-body': sz(b,'body',17)+'px', '--b-body-l': ld(b,'body',17)+'px' };
+  }
+  openRow() { return this.st.names.find(r => r.name === this.open); }
+  // The band's action: Mark all while a copy is owed; Clear check-ins once every copy is in; Undo after a Mark all.
+  faces() {
+    const r = this.openRow();
+    if (!r) return { rest: { cls:'hint', text:'Open a name to mark it' } };
+    const owed = r.copies.filter(c => !c.got).length, inN = r.copies.length - owed;
+    const ci = k => `${k} check-in${k === 1 ? '' : 's'}`;
+    return {
+      rest: owed ? { cls:'', text:'Mark all received', act:'mark' } : { cls:'clear', text:'Clear check‑ins', act:'arm' },
+      undo: { cls:'undo', text:`Undo ${ci(this.undo ? this.undo.length : owed)}`, act:'undo' },
+      armed: { cls:'armed', text:`Tap again to clear ${ci(inN || r.copies.length)}`, act:'clear' },
+    };
+  }
+  vars() {
+    const ts = this.ts;
+    const v = {
+      '--f-title': sz(ts,'lt',31)+'px', '--l-title': ld(ts,'lt',31)+'px', '--f-house': sz(ts,'c1',10)+'px',
+      '--f-name': sz(ts,'body',17)+'px', '--l-name': ld(ts,'body',17)+'px', '--f-ct': sz(ts,'fn',13)+'px', '--l-ct': ld(ts,'fn',13)+'px',
+      '--f-meta': sz(ts,'c1',10.5)+'px', '--f-lab': sz(ts,'c1',10.5)+'px', '--f-seller': sz(ts,'fn',14)+'px',
+      '--f-h': sz(ts,'t2',20)+'px', '--l-h': ld(ts,'t2',20)+'px',
+      '--lcv-f': sz(ts,'t2',22)+'px',
+    };
+    return Object.entries(v).map(([k, x]) => `${k}:${x}`).join(';');
+  }
+  bandHTML(place) {
+    const t = totals(this.st), f = this.faces(), full = t.got >= t.total, pct = t.total ? (100 * t.got / t.total) : 0;
+    const w = String(t.total).length;
+    const facts = `<div class="facts">
+      <div class="fact" role="group" aria-label="Cards in ${t.got} of ${t.total}"><span class="lab">cards</span>
+        <span class="fig${full ? ' full' : ''}"><span class="seg"><span class="got" style="min-width:${w}ch">${t.got}</span>/</span><wbr><span class="seg tot">${t.total}</span></span></div>
+      <div class="fact" role="group" aria-label="Still missing ${money(t.owed)}"><span class="lab">missing</span><span class="fig owed">${money(t.owed)}</span></div>
+    </div>`;
+    const cur = this.k === 'armed' && f.armed ? 'armed' : this.k === 'undo' && f.undo ? 'undo' : 'rest';
+    const act = `<div class="act">${Object.entries(f).map(([k, x]) => `<button type="button" class="face ${x.cls}${k === cur ? ' on' : ''}" ${x.act ? `data-act="${x.act}"` : 'disabled'} ${k === cur ? '' : 'tabindex="-1" aria-hidden="true"'}><span class="tx">${esc(x.text)}</span></button>`).join('')}</div>`;
+    const cancel = cur === 'armed' ? `<button type="button" class="cancel" data-act="cancel">Cancel</button>` : '';
+    const id = this.focus ? ` id="band-${this.id}"` : '';
+    const tag = place === 'foot' ? 'New: Foot band' : place === 'head' ? 'New: head band, pins' : 'New: Core page';
+    // Not read yet, or failed: a sentence in the figures' place, never a zero (ux-unknown-is-not-empty). The band keeps its size.
+    if (this.k === 'loading' || this.k === 'failed') {
+      const say = this.k === 'loading' ? '<p class="wait">Opening the ledger</p>'
+        : '<p class="wait">The ledger did not open. <button type="button" class="face on clear" data-act="ledger"><span class="tx">Open Ledger</span></button></p>';
+      return `<section class="band band--${place} tag-new waiting" data-tag="${tag}"${id} aria-label="Core" data-tier="${place === 'page' ? 'page' : 'row'}">${say}${facts}${act}</section>`;
+    }
+    if (place === 'page') {
+      const r = this.openRow();
+      return `<section class="band band--page tag-new" data-tag="${tag}"${id} aria-label="Core" data-tier="page">
+        <div class="core-top"><div class="lh">${SEAL}<div class="title">Manifest</div></div>${facts}</div>
+        <div class="core-foot"><div class="core-name">${r ? esc(r.name) + `<small>${r.copies.filter(c => c.got).length}/${r.copies.length} in</small>` : ''}</div>${act}${cancel}</div>
+      </section>`;
+    }
+    return `<section class="band band--${place} tag-new" data-tag="${tag}"${id} aria-label="Core" data-tier="row">
+      <div class="prog${full ? ' full' : ''}" aria-hidden="true"><i style="width:${pct.toFixed(1)}%"></i></div>${facts}${act}${cancel}</section>`;
+  }
+  rowHTML(r, mode) {
+    const g = r.copies.filter(c => c.got).length, q = r.copies.length, done = g >= q, open = r.name === this.open;
+    const sellers = new Set(r.copies.map(c => c.seller)).size;
+    const head = `<button type="button" class="thead" data-act="pick" data-name="${esc(r.name)}" aria-expanded="${mode === 'inline' ? open : 'false'}">
+      <span class="nm">${esc(r.name)}</span><span class="ct"><b>${g}</b>/${q}</span>
+      <span class="meta">${sellers} sellers · ${q} orders · ${esc(r.set)}</span></button>`;
+    const copies = open && mode === 'inline' ? this.copiesHTML(r) : '';
+    return `<div class="trow${done ? ' done' : ''}${open && mode === 'cell' ? ' sel' : ''}">${head}${copies}</div>`;
+  }
+  copiesHTML(r) {
+    return `<div class="copies">${r.copies.map((c, i) => `<button type="button" class="copy${c.got ? ' in' : ''}" data-act="tick" data-i="${i}" aria-pressed="${c.got}">
+      <span class="box"><i></i></span><span class="t"><b>${esc(c.seller)}</b><span>${money(c.price)}</span></span></button>`).join('')}</div>`;
+  }
+  letterhead() { return `<div class="lh"><div class="rules"><i></i>${SEAL}<i></i></div><div class="title">Manifest</div><div class="house">C.H Postal Company</div></div>`; }
+  html() {
+    const dev = this.device, open = dev === 'iphone-duo-unfolded', foot = this.concept === 'foot';
+    const list = mode => this.k === 'loading' || this.k === 'failed' ? '' : `<div class="list" aria-label="Tally">${this.st.names.map(r => this.rowHTML(r, mode)).join('')}</div>`;
+    let body;
+    if (!open && foot) {
+      body = `<div class="pg"><div class="scroll"><div class="scroll-in">${this.letterhead()}${list('inline')}</div></div>${this.bandHTML('foot')}</div>${bar('Tally')}`;
+    } else if (!open) {
+      body = `<div class="pg"><div class="scroll"><div class="scroll-in">${this.letterhead()}${this.bandHTML('head')}${list('inline')}</div></div></div>${bar('Tally')}`;
+    } else if (foot) {
+      const r = this.openRow();
+      body = `<div class="pg l"><div class="scroll"><div class="scroll-in">${this.letterhead()}${list('cell')}</div></div></div>
+        <div class="fold"><span>FOLD</span></div>
+        <div class="pg r"><div class="scroll"><div class="scroll-in">${r && this.k !== 'loading' && this.k !== 'failed' ? `<h2 class="detail-title">${esc(r.name)}</h2><div class="across">${new Set(r.copies.map(c => c.seller)).size} sellers · ${r.copies.length} orders · ${esc(r.set)}</div><div class="trow">${this.copiesHTML(r)}</div>` : ''}</div></div>${this.bandHTML('foot')}</div>${bar('Tally')}`;
+    } else {
+      body = `<div class="pg l">${this.bandHTML('page')}</div><div class="fold"><span>FOLD</span></div>
+        <div class="pg r"><div class="scroll"><div class="scroll-in">${list('inline')}</div></div></div>${bar('Tally')}`;
+    }
+    const label = `${this.concept === 'foot' ? 'Foot band' : 'Core page'}, ${TSNAME[this.ts]}${this.grow ? ', band grows with the text' : ''}`;
+    return `<div class="dev" data-device="${dev}" style="${this.vars()}" aria-label="${label}"><div class="status"><span>9:41</span><span>100%</span></div>${body}</div>
+      <div class="proof" aria-live="polite"></div>`;
+  }
+  render(keepScroll = true) {
+    const sc = [...this.m.querySelectorAll('.scroll')].map(s => s.scrollTop);
+    const p = params(), n = +(p.n || 4);
+    if (n !== this.n) { this.n = n; this.st = sample(n); this.undo = null; this.k = 'rest'; }
+    this.m.innerHTML = this.html();
+    this.fit();
+    if (keepScroll) this.m.querySelectorAll('.scroll').forEach((s, i) => { s.scrollTop = sc[i] || 0; });
+  }
+  // ViewThatFits, by measuring: the first tier where nothing overflows its box.
+  // The band takes the reader's size, then steps down one size at a time until it fits:
+  // a strip band in half the space between the status bar and the tab bar, the core page in its page.
+  fit() {
+    const band = this.m.querySelector('.band');
+    if (!band) return;
+    const open =this.device === 'iphone-duo-unfolded', barTop = open ? 593 : 595, barH = (open ? 669 : 678) - barTop;
+    this.limit = Math.floor((barTop - 20) / 2);
+    const page = band.classList.contains('band--page');
+    const sizes = ORDER.slice(0, ORDER.indexOf(this.ts) + 1).reverse();
+    for (const b of sizes) {
+      Object.entries(this.bandVars(b)).forEach(([k, v]) => band.style.setProperty(k, v));
+      if (!page) this.tier(band);
+      this.shrinkFaces(band);
+      this.bandTs = b;
+      if (this.grow) break;
+      if (page ? band.scrollHeight <= band.clientHeight + 1 : band.offsetHeight <= this.limit) break;
+    }
+    if (band.classList.contains('band--foot')) {
+      band.style.bottom = barH + 'px';
+      band.closest('.pg').querySelector('.scroll-in').style.setProperty('--pad-end', (band.offsetHeight + barH + 16) + 'px');
+    }
+    this.m.querySelectorAll('.pg .scroll-in').forEach(s => { if (!s.style.getPropertyValue('--pad-end')) s.style.setProperty('--pad-end', (barH + 16) + 'px'); });
+    this.proof();
+  }
+  // ViewThatFits, by measuring: the first tier where nothing overflows its box.
+  tier(band) {
+    for (const t of ['row','pair','lines','stack']) {
+      band.dataset.tier = t;
+      if (t === 'stack' || !this.overflow(band, t)) break;
+    }
+  }
+  // minimumScaleFactor(0.75): a face shrinks before it takes a second line.
+  shrinkFaces(band) {
+    band.querySelectorAll('.face').forEach(f => {
+      f.style.fontSize = ''; f.style.lineHeight = '';
+      const cs = getComputedStyle(f), fs = parseFloat(cs.fontSize), lh = parseFloat(cs.lineHeight), tx = f.querySelector('.tx');
+      for (const s of [1, 0.9, 0.8, 0.75]) {
+        f.style.fontSize = (fs * s) + 'px'; f.style.lineHeight = (lh * s) + 'px';
+        if (tx.getClientRects().length <= 1) break;
+      }
+    });
+  }
+  overflow(band, tier) {
+    const over = el => el.scrollWidth > el.clientWidth + 0.5;
+    const why = (r, el) => { if (params().debug) console.log('over', tier, r, el.className, el.scrollWidth, el.clientWidth); return true; };
+    if (over(band)) return why('band', band);
+    const facts = band.querySelector('.facts');
+    if (over(facts)) return why('facts', facts);
+    for (const el of band.querySelectorAll('.fact, .lab, .fig, .face.on')) if (over(el)) return why('el', el);
+    // one line per figure until the stack
+    for (const fig of band.querySelectorAll('.fig')) if (fig.offsetHeight > parseFloat(getComputedStyle(fig).lineHeight) * 1.4) return why('lines', fig);
+    if (tier === 'row') { const a = band.querySelector('.act'); if (a.offsetWidth < 120) return why('act', a); }
+    return false;
+  }
+  // The proof under each frame: what clipped, and the band's height in each state of its action.
+  proof() {
+    const out = this.m.querySelector('.proof'), band = this.m.querySelector('.band');
+    if (!band) return;
+    const clipped = [...band.querySelectorAll('.lab, .fig, .face, .cancel, .title, .core-name')].filter(el => el.scrollWidth > el.clientWidth + 0.5);
+    const page = band.closest('.pg').getBoundingClientRect(), b = band.getBoundingClientRect();
+    const outside = b.right > page.right + 1 || b.left < page.left - 1;
+    const tall = band.classList.contains('band--page') && band.scrollHeight > band.clientHeight + 1;
+    const h = Math.round(band.offsetHeight);
+    const act = band.querySelector('.act'), steady = [...band.querySelectorAll('.face')].every(f => f.offsetHeight <= act.offsetHeight);
+    const tier = band.dataset.tier, bad = clipped.length || outside || tall;
+    const held = this.bandTs !== this.ts;
+    out.classList.toggle('bad', !!bad);
+    out.textContent = `Band at ${TSNAME[this.bandTs]} for a reader at ${TSNAME[this.ts]}${held ? ' (hold for full size)' : ''}; `
+      + `${tier === 'page' ? 'whole page' : tier}, ${h}${tier === 'page' ? '' : ' of ' + this.limit + (this.grow ? ' (no limit)' : '')} pt. `
+      + (bad ? `CLIPS ${clipped.length}${outside ? ', leaves its page' : ''}${tall ? ', taller than its page' : ''}. ` : 'Nothing clipped. ')
+      + (steady ? 'Same height in every state.' : 'HEIGHT CHANGES between states.');
+  }
+  click(e) {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    const r = this.openRow(), a = b.dataset.act;
+    if (a === 'pick') { const nm = b.dataset.name; this.open = (this.open === nm && !(this.device === 'iphone-duo-unfolded' && this.concept === 'foot')) ? null : nm; this.k = 'rest'; this.undo = null; }
+    if (a === 'tick' && r) { const c = r.copies[+b.dataset.i]; c.got = !c.got; this.k = 'rest'; this.undo = null; }
+    if (a === 'mark' && r) { this.undo = r.copies.filter(c => !c.got); this.undo.forEach(c => { c.got = true; }); this.k = 'undo'; }
+    if (a === 'undo') { (this.undo || []).forEach(c => { c.got = false; }); this.undo = null; this.k = 'rest'; }
+    if (a === 'arm') { this.k = 'armed'; this.lapse(); }
+    if (a === 'clear' && r) { r.copies.forEach(c => { c.got = false; }); this.k = 'rest'; clearTimeout(this.armTimer); }
+    if (a === 'cancel') { this.k = 'rest'; clearTimeout(this.armTimer); }
+    if (a === 'ledger') this.k = 'loading';  // the Ledger tab holds recovery; here the press only shows the next read
+    this.render();
+    // Cancel takes first focus when the ask opens (armed-reset-takes-the-row); otherwise focus stays on the pressed control's place.
+    const focusSel = a === 'arm' ? '.cancel' : a === 'mark' ? '.face.undo' : a === 'undo' || a === 'cancel' ? '.face.on' : null;
+    if (focusSel) { const f = this.m.querySelector(focusSel); if (f) f.focus({ preventScroll:true }); }
+  }
+  lapse() { clearTimeout(this.armTimer); this.armTimer = setTimeout(() => { if (this.k === 'armed') { this.k = 'rest'; this.render(); } }, 4000); }
+  lcv(on) {
+    const dev = this.m.querySelector('.dev'); const old = dev.querySelector('.lcv'); if (old) old.remove();
+    if (!on) return;
+    const t = totals(this.st);
+    dev.insertAdjacentHTML('beforeend', `<div class="lcv" role="dialog" aria-label="Large content viewer"><div>${t.got}/${t.total}<small>cards</small>${money(t.owed)}<small>missing</small></div></div>`);
+  }
+  // Deep link state: k=armed|undo|end
+  applyK(k) {
+    const r = this.openRow();
+    if (k === 'armed' && r) { r.copies.forEach(c => { c.got = true; }); this.k = 'armed'; }
+    if (k === 'undo' && r) { this.undo = r.copies.filter(c => !c.got); this.undo.forEach(c => { c.got = true; }); this.k = 'undo'; }
+    if (k === 'loading' || k === 'failed') this.k = k;
+    this.render(false);
+    if (k === 'end') this.m.querySelectorAll('.scroll').forEach(s => { s.scrollTop = s.scrollHeight; });
+  }
+}
+
+document.querySelectorAll('.mount').forEach(m => insts.push(new Frame(m)));
+
+const hidden = new Set();
+function fitZoom() {
+  document.querySelectorAll('.fit').forEach(w => { const d = w.querySelector('.dev'); if (!d) return; d.style.zoom = Math.min(1, w.clientWidth / 951); });
+}
+function route() {
+  const p = params(), s = p.s;
+  document.querySelectorAll('figure').forEach(f => { f.hidden = !!(s && f.dataset.state !== s) || hidden.has(f.dataset.opt); });
+  document.querySelectorAll('section.concept').forEach(c => { c.hidden = hidden.has(c.dataset.opt) || [...c.querySelectorAll('figure')].every(f => f.hidden); });
+  document.querySelectorAll('[data-ts]').forEach(b => { if (b.tagName === 'BUTTON') b.setAttribute('aria-pressed', String((p.ts || '') === b.dataset.ts)); });
+  document.querySelectorAll('[data-n]').forEach(b => b.setAttribute('aria-pressed', String((p.n || '4') === b.dataset.n)));
+  document.querySelectorAll('.controls a').forEach(a => a.setAttribute('aria-current', String(a.getAttribute('href') === (location.hash || '#'))));
+  fitZoom();
+  insts.forEach(i => { i.k = 'rest'; i.undo = null; i.st = sample(+(p.n || 4)); i.n = +(p.n || 4); i.open = 'Brainstorm';
+    if (!i.m.closest('figure').hidden) i.applyK(p.k); });
+}
+function setParam(k, v) {
+  const p = params(); if (v) p[k] = v; else delete p[k];
+  location.hash = Object.entries(p).map(([a, b]) => `${a}=${b}`).join('&');
+}
+document.querySelectorAll('button[data-ts]').forEach(b => b.addEventListener('click', () => setParam('ts', b.dataset.ts)));
+document.querySelectorAll('button[data-n]').forEach(b => b.addEventListener('click', () => setParam('n', b.dataset.n === '4' ? '' : b.dataset.n)));
+const OPTNAME = { foot:'Foot band', core:'Core page', half:'Holds at half', grows:'Grows with the text' };
+document.querySelectorAll('[data-hide]').forEach(b => b.addEventListener('click', () => {
+  const o = b.dataset.hide; hidden.has(o) ? hidden.delete(o) : hidden.add(o);
+  b.textContent = (hidden.has(o) ? 'Show ' : 'Hide ') + OPTNAME[o]; b.setAttribute('aria-pressed', String(hidden.has(o))); route();
+}));
+addEventListener('hashchange', route);
+addEventListener('resize', () => { fitZoom(); insts.forEach(i => i.fit()); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(route); else route();
+route();
+</script>
+</body>
+</html>

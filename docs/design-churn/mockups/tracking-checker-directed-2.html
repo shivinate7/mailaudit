@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tracking Timeline</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The app and the native client are held to light, so this page
+   draws one theme. The dark keys in that file belong to the orders extension only. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961;
+  --accent:#6F5CA6; --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9;
+  --manila:#EADBBA; --manilaInk:#695832; --amber:#846008;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  /* Status bar foot: unmeasured on the Duo. Drawn at the UI tests' 20 pt floor (DuoHandUITests.statusBarFloor), as duo-hand-held-box does. */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: env(safe-area-inset-bottom);
+  /* The bar: the web bar's ruled box (phone-nav-is-bottom-bar: 64 tall, 12 above the bottom edge, inset 24).
+     The native system bar's own height is unmeasured. */
+  --bar-h:64px; --bar-low:12px;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.4; }
+main { max-width:1040px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-size:26px; margin:0; }
+h2.sec { font-size:22px; margin:16px 0 0; }
+.kind { font:13px var(--mono); color:var(--inkSoft); margin:0; }
+.sub { color:var(--inkSoft); margin:0; max-width:72ch; }
+.pick { border-left:3px solid var(--accent); padding:4px 12px; margin:0; max-width:80ch; }
+.controls { display:flex; flex-direction:column; gap:8px; }
+.cluster { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.cluster > span.lab { font-size:13px; color:var(--inkSoft); min-width:64px; }
+.controls a, .controls button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+.controls a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.controls button[aria-pressed="true"] { border-color:var(--red); color:var(--red); }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+section.opt { display:flex; flex-direction:column; gap:16px; }
+section.opt[hidden], figure[hidden] { display:none; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; }
+.scrollx { overflow-x:auto; padding:20px 2px 4px; }
+figcaption { max-width:80ch; }
+figcaption b { font-size:17px; }
+.why { margin:0; padding-left:20px; max-width:80ch; display:flex; flex-direction:column; gap:4px; }
+.poses { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+
+/* ---------- devices: 1 CSS px = 1 pt ---------- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:12px; overflow:hidden; flex:none;
+  --rb:1; --rh:1; --rc:1; --rf:1; --rs:1; --rt:1; }
+/* AX5, the biggest accessibility size, from the iOS Dynamic Type table (HIG Typography, read 2026-11-21):
+   Body 17 -> 53, Headline 17 -> 53, Caption 1 12 -> 43, Footnote 13 -> 44, Subhead 15 -> 49, Title 2 22 -> 56. */
+.dev.ax5 { --rb:calc(53 / 17); --rh:calc(53 / 17); --rc:calc(43 / 12); --rf:calc(44 / 13); --rs:calc(49 / 15); --rt:calc(56 / 22); }
+.folded { width:466px; height:678px; }
+.open { width:951px; height:669px; }
+/* The large phone has no written size (layout.py devices: size null; the brief names none). The frame takes the column
+   and can be dragged wider or narrower at its corner; its height follows the viewer's window. */
+.phone { width:min(100%, 30rem); min-width:20rem; height:80svh; resize:horizontal; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 16px; font-size:12px; font-weight:600; z-index:5; background:var(--paper); }
+.scroll { position:absolute; left:0; right:0; top:var(--sat); bottom:0; overflow-y:auto; overscroll-behavior:contain;
+  padding:12px 16px calc(var(--bar-h) + var(--bar-low) + var(--sab) + 16px); display:flex; flex-direction:column; gap:12px; font-family:var(--cochin); }
+.page { position:absolute; top:0; bottom:0; width:455.5px; overflow:hidden; }
+.page.l { left:0; } .page.r { left:495.5px; }
+.page.l .scroll { padding-bottom:calc(var(--sab) + 16px); }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:6; }
+.fold span { position:absolute; top:240px; left:50%; transform:translateX(-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); white-space:nowrap; }
+
+/* the system tab bar, floating (HIG Tab bars, read 2026-11-21). Labels stop growing at the default size (duo-card-in-hand, Tab bar text). */
+.tabbar { position:absolute; left:24px; right:24px; bottom:calc(var(--bar-low) + var(--sab)); height:var(--bar-h); z-index:7; display:flex; align-items:center;
+  justify-content:space-around; border-radius:32px; border:1px solid var(--line); padding:0 8px;
+  background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(12px) saturate(1.4); -webkit-backdrop-filter:blur(12px) saturate(1.4); }
+.tabbar span { min-width:64px; min-height:48px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  font:600 10px -apple-system, system-ui, sans-serif; color:var(--inkSoft); border-radius:24px; }
+.tabbar span.on { color:var(--accent); background:color-mix(in srgb, var(--card) 90%, transparent); }
+.tabbar svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.6; }
+
+/* ---------- Today: the masthead and the package card, drawn short ---------- */
+.mast { display:flex; flex-direction:column; align-items:center; gap:4px; padding:8px 0 4px; }
+.mast b { font-family:var(--cochin); font-size:calc(22px * var(--rt)); letter-spacing:4px; }
+.mast i { display:block; width:100%; height:1px; background:var(--gold); }
+.mast small { font:calc(11px * var(--rc)) var(--mono); color:var(--inkSoft); }
+.card { background:var(--card); border:1px solid var(--line); border-radius:8px; display:flex; flex-direction:column; box-shadow:0 1px 1px rgba(28,43,36,0.06); }
+.card.done { border-color:var(--green); }
+.card .hd { padding:12px 12px 0; display:flex; align-items:center; gap:8px; }
+.card .who { flex:1; min-width:0; display:flex; flex-direction:column; }
+.seller { font-weight:700; font-size:calc(15px * var(--rb)); overflow-wrap:anywhere; }
+.date, .oid { font:calc(11px * var(--rc)) var(--mono); color:var(--inkSoft); }
+.oid { padding:0 12px; min-height:44px; display:flex; align-items:center; text-decoration:underline; }
+.lpill { flex:none; font-weight:700; font-size:calc(12.5px * var(--rf)); color:var(--red); background:var(--redSoft); border-radius:999px; padding:4px 8px; }
+.rcvd { flex:none; font:700 calc(10.5px * var(--rc)) var(--mono); letter-spacing:1px; color:var(--green); border:2px solid var(--green); border-radius:4px; padding:4px 8px; transform:rotate(-4deg); }
+.stub { margin:0 12px 12px; min-height:44px; border-top:1px solid var(--line); display:flex; align-items:center; font-size:calc(13px * var(--rf)); color:var(--inkSoft); }
+
+/* ---------- tags: dashed outline on what exists today, and on what an option adds ---------- */
+[data-tag] { position:relative; }
+.tags [data-tag]::before { content:attr(data-tag); position:absolute; right:4px; top:-9px; font:600 11px/14px -apple-system, system-ui, sans-serif; padding:0 4px;
+  background:var(--paper); z-index:4; white-space:nowrap; letter-spacing:0; text-transform:none; font-style:normal; }
+.tags .tag-new { outline:2px dashed var(--green); outline-offset:2px; } .tags .tag-new::before { color:var(--green); }
+.tags .tag-today { outline:2px dashed var(--red); outline-offset:2px; } .tags .tag-today::before { color:var(--red); }
+
+/* ---------- verdict colours, by meaning (orphaned-colours-by-meaning): red needs you now, amber needs you soon,
+   accent on its way, green in hand, inkSoft unknown or stamped ---------- */
+.v-here, .v-returned { --v:var(--red); --vs:var(--redSoft); }
+.v-stuck { --v:var(--amber); --vs:var(--manila); }
+.v-onway { --v:var(--accent); --vs:color-mix(in srgb, var(--accent) 12%, var(--card)); }
+.v-inhand { --v:var(--green); --vs:var(--greenSoft); }
+.v-unread, .v-notfound, .stamped { --v:var(--inkSoft); --vs:var(--paper); }
+
+/* ---------- New, Route slip: one line and a track, under the card header ---------- */
+.slip { font:inherit; color:inherit; text-align:left; background:transparent; border:0; border-top:1px solid var(--line); margin:0 12px; padding:8px 0;
+  min-height:52px; display:flex; flex-direction:column; justify-content:center; gap:6px; cursor:pointer; }
+.slip.chosen { box-shadow:inset 3px 0 0 var(--accent); padding-left:10px; }
+.slip .top { display:flex; flex-wrap:wrap; align-items:baseline; column-gap:8px; row-gap:2px; }
+.carrier { font:700 calc(11px * var(--rc)) var(--mono); color:var(--inkSoft); }
+.say { font-weight:700; font-size:calc(14px * var(--rb)); color:var(--v); flex:1 1 12rem; min-width:0; }
+.age { font:calc(11px * var(--rc)) var(--mono); color:var(--inkSoft); }
+.chev { color:var(--inkSoft); font-size:calc(17px * var(--rb)); line-height:1; }
+/* the track: five carrier stages and your own, drawn as a ruled line with stations; out of the text flow, fixed height */
+.track { display:flex; align-items:center; height:10px; }
+.track i { flex:none; width:8px; height:8px; border-radius:50%; border:1.5px solid var(--line); background:var(--card); }
+.track i.on { border-color:var(--ink); background:var(--ink); }
+.track i.mine { width:10px; height:10px; border-color:var(--inkSoft); }
+.track i.mine.want { border-color:var(--v); border-width:2px; }
+.track i.mine.got { border-color:var(--green); background:var(--green); }
+.track i.ret { border-radius:1px; border-color:var(--v); background:var(--v); }
+.track b { flex:1; height:0; border-top:1.5px solid var(--line); }
+.track b.on { border-top-color:var(--ink); }
+.track b.wait { border-top:2px dashed var(--v); }
+
+/* ---------- New, Route board ---------- */
+.entry { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; align-items:center; gap:8px; }
+.entry .t { flex:1; display:flex; flex-direction:column; gap:2px; }
+.entry b { font-size:calc(14px * var(--rb)); font-weight:400; }
+.entry small { font-size:calc(12.5px * var(--rf)); color:var(--red); }
+.mini { font:calc(11.5px * var(--rc)) var(--mono); border:1px solid var(--line); background:var(--card); border-radius:5px; padding:8px 12px; color:var(--ink);
+  min-height:44px; min-width:44px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; flex:none; text-decoration:none; }
+.mini:disabled { color:var(--inkSoft); cursor:default; }
+.navback { font:calc(17px * var(--rb)) -apple-system, system-ui, sans-serif; color:var(--accent); background:transparent; border:0; min-height:44px; padding:0 4px 0 0;
+  display:inline-flex; align-items:center; gap:2px; cursor:pointer; align-self:flex-start; }
+.btitle { font-size:calc(22px * var(--rt)); font-weight:700; margin:0; }
+.bsum { font:calc(11px * var(--rc)) var(--mono); color:var(--inkSoft); margin:0; }
+.allwell { font-size:calc(17px * var(--rb)); color:var(--green); margin:0; }
+.axis { position:relative; height:16px; font:calc(10.5px * min(var(--rc), 1.5)) var(--mono); color:var(--inkSoft); }
+.axis span { position:absolute; top:0; white-space:nowrap; }
+.grp { display:flex; flex-direction:column; gap:8px; }
+.grp h3 { margin:0; display:flex; align-items:center; gap:8px; font-size:calc(13px * var(--rf)); color:var(--v); }
+.nw { white-space:nowrap; }
+.dev.ax5 .nw { white-space:normal; }
+.grp h3::before { content:""; width:calc(10px * var(--rf)); height:calc(10px * var(--rf)); border-radius:50%; background:var(--v); flex:none; }
+.grp h3 small { font:calc(11px * var(--rc)) var(--mono); color:var(--inkSoft); }
+.brow { font:inherit; color:inherit; text-align:left; background:var(--card); border:1px solid var(--line); border-left:3px solid var(--v); border-radius:8px;
+  padding:12px; display:flex; flex-direction:column; gap:6px; cursor:pointer; min-height:44px; }
+.brow.chosen { border-color:var(--accent); border-left-color:var(--v); box-shadow:0 0 0 1px var(--accent); }
+.brow .r1 { display:flex; flex-wrap:wrap; align-items:baseline; column-gap:8px; }
+.brow .r1 b { font-size:calc(15px * var(--rb)); flex:1 1 10rem; }
+.brow .r3 { font-size:calc(13px * var(--rf)); color:var(--inkSoft); }
+.brow .r3 em { font-style:normal; color:var(--v); }
+/* the strip: one time axis shared by every row, order day to tomorrow, so rows compare at a glance */
+.strip { position:relative; height:16px; }
+.strip > * { position:absolute; }
+.strip .base { left:0; right:0; top:7px; border-top:1px solid var(--line); }
+.strip .run { top:6px; height:0; border-top:2.5px solid var(--ink); }
+.strip .wait { top:6px; height:0; border-top:2.5px dashed var(--v); }
+.strip .scan { top:4px; width:7px; height:7px; margin-left:-3.5px; border-radius:50%; background:var(--ink); }
+.strip .end { top:3px; width:9px; height:9px; margin-left:-4.5px; border-radius:1px; background:var(--v); }
+.strip .ord { top:2px; height:11px; border-left:1.5px solid var(--inkSoft); }
+.strip .now { top:0; height:16px; border-left:1px solid var(--accent); }
+.strip .hand { top:2px; width:11px; height:11px; margin-left:-5.5px; border-radius:50%; border:2px solid var(--v); background:var(--card); }
+.empty { display:flex; flex-direction:column; gap:12px; align-items:flex-start; padding:24px 0; }
+.empty p { margin:0; font-size:calc(15px * var(--rb)); }
+.fail { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px; }
+.fail p { margin:0; font-size:calc(13px * var(--rf)); }
+.fail .cl { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+details { font-size:calc(12.5px * var(--rf)); color:var(--inkSoft); }
+details summary { min-height:44px; display:flex; align-items:center; cursor:pointer; }
+details pre { font:calc(11px * var(--rc)) var(--mono); white-space:pre-wrap; margin:0; }
+
+/* ---------- New, the timeline: the carrier's own steps, newest at the top, gaps drawn to the time between them ---------- */
+.tl { display:flex; flex-direction:column; gap:12px; }
+.tl .who2 { font-size:calc(22px * var(--rt)); font-weight:700; margin:0; }
+.verdict { margin:0; font-size:calc(17px * var(--rh)); font-weight:700; color:var(--v); }
+.tl .meta { margin:0; font:calc(11px * var(--rc)) var(--mono); color:var(--inkSoft); overflow-wrap:anywhere; }
+.checkrow { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.checkrow .when { font:calc(11px * var(--rc)) var(--mono); color:var(--inkSoft); flex:1 1 8rem; }
+.steps { list-style:none; margin:0; padding:0; position:relative; }
+/* the rail: one line down the left column, behind every dot */
+.steps::before { content:""; position:absolute; left:11px; top:8px; bottom:8px; border-left:2px solid var(--line); }
+.step { position:relative; display:grid; grid-template-columns:24px 1fr; column-gap:8px; }
+.step .dot { width:12px; height:12px; border-radius:50%; background:var(--ink); justify-self:center; margin-top:4px; position:relative; }
+.step.ret .dot { border-radius:2px; background:var(--v); }
+.step.del .dot { background:var(--v); }
+.step.mine .dot { width:16px; height:16px; margin-top:2px; background:var(--card); border:2px solid var(--inkSoft); }
+.step.mine.want .dot { border-color:var(--v); border-width:3px; }
+.step.mine.got .dot { background:var(--green); border-color:var(--green); }
+.step .tx { display:flex; flex-direction:column; gap:0; min-width:0; }
+.step .st { font-size:calc(15px * var(--rb)); }
+.step.mine .st { font-weight:700; color:var(--v); }
+.step .pl { font-size:calc(13px * var(--rf)); color:var(--inkSoft); }
+.step .tm { font:calc(11px * var(--rc)) var(--mono); color:var(--inkSoft); }
+.gap { position:relative; display:grid; grid-template-columns:24px 1fr; column-gap:8px; align-items:center; }
+.gap.long::before { content:""; position:absolute; left:10px; top:0; bottom:0; width:4px; background:var(--paper); border-left:2px dashed var(--v); }
+.gap span { grid-column:2; font:calc(11px * var(--rc)) var(--mono); color:var(--v); }
+.page.r .gap.long::before, .sheet .gap.long::before { background:var(--card); }
+.acts { display:flex; flex-direction:column; gap:4px; }
+.acts .lbl { font-size:calc(13px * var(--rf)); color:var(--inkSoft); margin:0; }
+.acts .cl { display:flex; flex-wrap:wrap; gap:8px; align-items:center; min-height:44px; }
+.acts .cl .s { font-size:calc(13px * var(--rf)); color:var(--inkSoft); flex:1; }
+.note { font-size:calc(12.5px * var(--rf)); color:var(--inkSoft); margin:0; }
+
+/* ---------- the sheet (HIG Sheets, read 2026-11-21: Close on the leading edge of the top toolbar) ---------- */
+.scrim { position:absolute; inset:0; background:color-mix(in srgb, var(--ink) 30%, transparent); z-index:8; }
+.sheet { position:absolute; left:0; right:0; top:calc(var(--sat) + 12px); bottom:0; z-index:9; background:var(--card); border-radius:12px 12px 0 0;
+  display:flex; flex-direction:column; }
+.sheet .grab { width:36px; height:5px; border-radius:3px; background:var(--line); align-self:center; margin-top:6px; flex:none; }
+.sheet .bar { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:0 12px; min-height:44px; flex:none; }
+.sheet .bar .close { justify-self:start; font:calc(17px * min(var(--rb), 1.6)) -apple-system, system-ui, sans-serif; color:var(--accent); background:transparent; border:0; min-height:44px; min-width:44px; cursor:pointer; padding:0; text-align:left; }
+.sheet .bar .t { font:600 calc(17px * min(var(--rh), 1.6)) -apple-system, system-ui, sans-serif; }
+.sheet .in { flex:1; overflow-y:auto; padding:8px 16px calc(var(--sab) + 24px); font-family:var(--cochin); }
+.page.r .scroll { background:var(--card); }
+
+/* ---------- New, Phone alert: the lock screen ---------- */
+.lock { background:var(--ink); color:var(--card); }
+.lock .status { background:transparent; color:var(--card); }
+.lock .clock { position:absolute; top:72px; left:0; right:0; text-align:center; font:300 80px -apple-system, system-ui, sans-serif; }
+.lock .day { position:absolute; top:52px; left:0; right:0; text-align:center; font:600 17px -apple-system, system-ui, sans-serif; }
+.lock .stack { position:absolute; left:12px; right:12px; top:220px; display:flex; flex-direction:column; gap:8px; }
+.notif { font:inherit; text-align:left; color:var(--ink); background:color-mix(in srgb, var(--card) 88%, transparent); border:0; border-radius:20px; padding:12px;
+  display:grid; grid-template-columns:36px 1fr; column-gap:12px; cursor:pointer; min-height:44px; }
+.notif .ic { width:36px; height:36px; border-radius:8px; background:var(--accent); color:var(--card); display:grid; place-items:center; font:700 15px var(--cochin); }
+.notif .hd2 { display:flex; justify-content:space-between; font:600 15px -apple-system, system-ui, sans-serif; }
+.notif .hd2 small { font-weight:400; color:var(--inkSoft); }
+.notif p { margin:0; font:15px -apple-system, system-ui, sans-serif; }
+.read { font:12px var(--mono); color:var(--inkSoft); }
+/* an answer to a press that leaves the app or the mockup: a bubble under the control, out of flow, so nothing moves */
+.anchor { position:relative; display:inline-flex; }
+.said { position:absolute; top:calc(100% + 4px); left:0; z-index:6; width:max-content; max-width:16rem; font:13px -apple-system, system-ui, sans-serif;
+  background:var(--ink); color:var(--card); border-radius:8px; padding:8px 12px; }
+/* the More menu: the system menu, drawn as a floating list over the content, anchored to its button */
+.menu { position:absolute; bottom:calc(100% + 4px); left:0; z-index:6; min-width:14rem; display:flex; flex-direction:column; background:var(--card);
+  border:1px solid var(--line); border-radius:12px; box-shadow:0 8px 24px color-mix(in srgb, var(--ink) 18%, transparent); overflow:hidden; }
+.menu button { font:calc(17px * min(var(--rb), 1.6)) -apple-system, system-ui, sans-serif; text-align:left; background:transparent; border:0; border-top:1px solid var(--line);
+  min-height:44px; padding:0 16px; color:var(--ink); cursor:pointer; }
+.menu button:first-child { border-top:0; }
+.menu button.x { color:var(--accent); }
+.lock .page.l, .lock .page.r { background:var(--ink); }
+.lock .fold { background:color-mix(in srgb, var(--paper) 18%, transparent); }
+@media (prefers-reduced-motion: no-preference) {
+  .sheet.rise { animation:rise 260ms cubic-bezier(.2,.7,.2,1) both; }
+  @keyframes rise { from { transform:translateY(40px); opacity:0; } to { transform:none; opacity:1; } }
+}
+</style>
+</head>
+<body class="tags">
+<main>
+<div class="banner">Sample. No seller, order, tracking number, place, date, count or price on this page is real.</div>
+<p class="kind">Designer kind: directed. Direction: timeline, the carrier's own steps as a readable timeline.</p>
+<h1>Tracking checker: where each tracked package is</h1>
+<p class="sub">For an order with a carrier tracking number: the carrier's latest step, a plain verdict (on its way, delivered, stuck, returned), and an early warning while the claim window is open. Sample clock: Saturday, November 21, 9:30 am. Light theme only, as the app ships. Duo folded (466 x 678 pt) first, then open (951 x 669 pt, fold from 455.5 to 495.5 pt), then the large phone, whose size is not written. AX5 text on the folded pose. Press any slip, row, button or alert: every frame works.</p>
+<p class="pick"><b>Pick: Route board.</b> One page lists only the tracked packages, grouped by verdict, so the ones that need you come first and each verdict word shows once. Each row draws its route on one shared time axis, so a stall is a long dashed stretch you see before you read. The timeline then has a whole page (or the right page) to itself. The package card does not change.</p>
+
+<div class="controls" role="group" aria-label="Mockup controls">
+  <div class="cluster"><span class="lab">Option</span>
+    <a href="#c=all" data-k="c" data-v="all">All</a>
+    <a href="#c=slip" data-k="c" data-v="slip">Route slip</a>
+    <a href="#c=board" data-k="c" data-v="board">Route board (pick)</a>
+    <a href="#c=alert" data-k="c" data-v="alert">Phone alert</a>
+  </div>
+  <div class="cluster"><span class="lab">State</span>
+    <a href="#s=loaded" data-k="s" data-v="loaded">Loaded</a>
+    <a href="#s=checking" data-k="s" data-v="checking">First read</a>
+    <a href="#s=unreachable" data-k="s" data-v="unreachable">Carrier did not answer</a>
+    <a href="#s=notfound" data-k="s" data-v="notfound">Number not found</a>
+    <a href="#s=allwell" data-k="s" data-v="allwell">All is well</a>
+    <a href="#s=empty" data-k="s" data-v="empty">Nothing tracked</a>
+  </div>
+  <div class="cluster"><span class="lab">Text</span>
+    <a href="#z=all" data-k="z" data-v="all">Both sizes</a>
+    <a href="#z=default" data-k="z" data-v="default">Default only</a>
+    <a href="#z=ax5" data-k="z" data-v="ax5">AX5 only</a>
+    <span class="lab">Steps</span>
+    <a href="#o=new" data-k="o" data-v="new">Newest first (pick)</a>
+    <a href="#o=old" data-k="o" data-v="old">Oldest first</a>
+  </div>
+  <div class="cluster"><span class="lab">Cull</span>
+    <button type="button" data-hide="slip" aria-pressed="false">Hide Route slip</button>
+    <button type="button" data-hide="board" aria-pressed="false">Hide Route board</button>
+    <button type="button" data-hide="alert" aria-pressed="false">Hide Phone alert</button>
+    <button type="button" id="tagbtn" aria-pressed="false">Hide Today and New tags</button>
+    <button type="button" id="reset">Reset every frame</button>
+  </div>
+</div>
+
+<!-- ======================= Route slip ======================= -->
+<section class="opt" data-opt="slip" aria-labelledby="h-slip">
+  <h2 class="sec" id="h-slip">Route slip</h2>
+  <p class="sub">A slip under each tracked card's header: the carrier, a one-line verdict, the time of the latest step, and a track of five carrier stations plus your own. Press the slip for the full timeline: a sheet on one page, the right page when the Duo is open.</p>
+  <ul class="why">
+    <li>Gain: the verdict sits on the card you check in, so a delivered package and its check boxes are one look apart. No new page.</li>
+    <li>Lose: the packages that need you are spread through the list in today's sort; you scroll to find them. Each tracked card grows by one 52 pt row, so the card's reserved geometry (measurement <code>card-reserved-geometry</code>) must be taken again. The open Duo must spread Packages over two pages.</li>
+    <li>Departs from: <code>PackagesView.PackageRow</code> (header, then <code>StampSection</code>); the slip goes between them. And from <code>DuoSpread.spreads(tab:)</code>, where <code>.packages</code> keeps one page.</li>
+  </ul>
+  <div class="scrollx"><div class="poses">
+    <figure><div class="dev folded" id="pick-slip" data-device="iphone-duo-folded" data-f="slip-folded"></div><figcaption><b>Folded.</b> Scroll to Lantern Cards and Copper Deck; press a slip.</figcaption></figure>
+    <figure data-z="ax5"><div class="dev folded ax5" data-device="iphone-duo-folded" data-f="slip-ax5"></div><figcaption><b>Folded, AX5.</b> The slip's line wraps; the track keeps its 10 pt.</figcaption></figure>
+  </div></div>
+  <div class="scrollx"><figure><div class="dev open" data-device="iphone-duo-unfolded" data-f="slip-open"></div><figcaption><b>Open.</b> Cards on the left page, the pressed card's timeline on the right page. The chosen slip carries an accent edge.</figcaption></figure></div>
+  <figure><div class="dev phone" data-device="iphone-regular" data-f="slip-phone"></div><figcaption><b>Large phone.</b> Compact width, so the folded layout. Size not written: drag the corner.</figcaption></figure>
+</section>
+
+<!-- ======================= Route board ======================= -->
+<section class="opt" data-opt="board" aria-labelledby="h-board">
+  <h2 class="sec" id="h-board">Route board (pick)</h2>
+  <p class="sub">A Tracked mail box on Packages, built like Card in Hand's Past 14 days box, opens a page of tracked packages that are not yet in hand. Groups run Delivered, not here; Returned; Stuck; then On its way. Each row draws its route on one time axis, shared by every row: order day (tick), scans (dots), the dashed wait since the last scan, today (accent line). Press a row for its timeline.</p>
+  <ul class="why">
+    <li>Gain: what needs you is at the top, counted on Packages before you open it. Each verdict word shows once, as its group's head. The shared axis makes "stuck" a shape: the longest dashed tail. The card and its reserved geometry stay as they are.</li>
+    <li>Lose: one press more than the slip, and the board is a second place that lists a package. A package's check-in still happens on its card, not here.</li>
+    <li>Departs from: <code>HandScreen.transitBox</code> and <code>PastTransitPage</code>, whose pattern it copies (a box with Open, then a page with Back); it adds a page and a <code>DuoTab</code> case that spreads.</li>
+  </ul>
+  <div class="scrollx"><div class="poses">
+    <figure><div class="dev folded" data-device="iphone-duo-folded" data-f="board-pk"></div><figcaption><b>Folded, Packages.</b> The new box at the top; press Open.</figcaption></figure>
+    <figure><div class="dev folded" id="pick-board" data-device="iphone-duo-folded" data-f="board-folded"></div><figcaption><b>Folded, the board.</b> Press a row, then Back.</figcaption></figure>
+    <figure data-z="ax5"><div class="dev folded ax5" data-device="iphone-duo-folded" data-f="board-ax5"></div><figcaption><b>Folded, AX5.</b> Rows wrap; the strip keeps its 16 pt.</figcaption></figure>
+  </div></div>
+  <div class="scrollx"><figure><div class="dev open" data-device="iphone-duo-unfolded" data-f="board-open"></div><figcaption><b>Open.</b> The board on the left page, the chosen row's timeline on the right page, the tab bar under the right page (duo-card-in-hand, item 23 a).</figcaption></figure></div>
+  <figure><div class="dev phone" data-device="iphone-regular" data-f="board-phone"></div><figcaption><b>Large phone.</b> Compact width, so the folded layout. Size not written: drag the corner.</figcaption></figure>
+</section>
+
+<!-- ======================= Phone alert ======================= -->
+<section class="opt" data-opt="alert" aria-labelledby="h-alert">
+  <h2 class="sec" id="h-alert">Phone alert</h2>
+  <p class="sub">An iOS notification when a package turns Stuck or Returned, and at 7 pm on a day the carrier said Delivered and nothing is checked in. It adds to either option above; the alert opens that package's timeline. "I want to know today" is met without opening the app.</p>
+  <ul class="why">
+    <li>Gain: the warning comes to the person; the claim window cannot close while the app sits shut.</li>
+    <li>Lose: it needs the checks to run with the app closed (the Worker, then a push), and a new permission ask. The 7 pm hour is a guess for the owner to set.</li>
+    <li>Departs from: the app sends no notification today.</li>
+  </ul>
+  <div class="scrollx"><div class="poses">
+    <figure><div class="dev folded lock" id="pick-alert" data-device="iphone-duo-folded" data-f="alert-folded"></div><figcaption><b>Folded, lock screen.</b> Press an alert: the app opens on its timeline.</figcaption></figure>
+  </div></div>
+  <div class="scrollx"><figure><div class="dev open lock" data-device="iphone-duo-unfolded" data-f="alert-open"></div><figcaption><b>Open, lock screen.</b> The alerts sit on the left page, clear of the fold. A press opens the board on the left page and that package's timeline on the right page.</figcaption></figure></div>
+  <figure><div class="dev phone lock" data-device="iphone-regular" data-f="alert-phone"></div><figcaption><b>Large phone, lock screen.</b> Size not written: drag the corner.</figcaption></figure>
+</section>
+
+</main>
+
+<script>
+// ---------------- the sample (Sample banner: nothing here is real) ----------------
+const D = (m, d, h = 0, mi = 0) => new Date(2026, m - 1, d, h, mi);
+const NOW = D(11, 21, 9, 30);
+const ASOF = D(11, 21, 3, 20);   // the last answer USPS gave, in the "did not answer" state
+// stage: 0 label, 1 accepted, 2 in transit, 3 out for delivery, 4 delivered, 'ret' returned to sender
+const PK = [
+  { seller:'Willow Box', oid:'SAMPLE-1049', ord:D(11,17), cards:1, left:1 },
+  { seller:'Mill Pond TCG', oid:'SAMPLE-1047', ord:D(11,15), cards:4, left:4, carrier:'UPS', num:'1Z00 0000 0000 0000 47', due:D(11,21),
+    steps:[[D(11,16,11,0),'Label created','',0],[D(11,17,18,30),'Picked up','Sample City, ST',1],[D(11,18,4,10),'Departed from facility','Sample City, ST',2],
+           [D(11,20,23,40),'Arrived at facility','Hub City, ST',2],[D(11,21,8,12),'Out for delivery today','Your town',3]] },
+  { seller:'Northside Games', oid:'SAMPLE-1045', ord:D(11,14), cards:2, left:2, carrier:'USPS', num:'9400 0000 0000 0000 1045 03', due:D(11,22),
+    steps:[[D(11,15,10,0),'Shipping label created, USPS awaiting item','Sample City, ST',0],[D(11,15,17,20),'Accepted at USPS origin facility','Sample City, ST',1],
+           [D(11,16,1,5),'Departed USPS regional facility','Sample City, ST',2],[D(11,19,15,0),'In transit, arriving late','',2]] },
+  { seller:'Ironleaf Gaming', oid:'SAMPLE-1044', ord:D(11,13), cards:6, left:6, carrier:'USPS', num:'9400 0000 0000 0000 1044 09',
+    steps:[[D(11,14,9,15),'Shipping label created, USPS awaiting item','Sample City, ST',0]] },
+  { seller:'Lantern Cards', oid:'SAMPLE-1041', ord:D(11,12), cards:3, left:3, carrier:'USPS', num:'9400 0000 0000 0000 1041 01',
+    steps:[[D(11,13,18,2),'Shipping label created, USPS awaiting item','Sample City, ST',0],[D(11,14,16,40),'Accepted at USPS origin facility','Sample City, ST',1],
+           [D(11,15,3,12),'Departed USPS regional facility','Sample City, ST',2],[D(11,17,22,5),'Arrived at USPS regional destination facility','Hub City, ST',2],
+           [D(11,20,6,45),'Out for delivery','Your post office',3],[D(11,20,14,41),'Delivered, in/at mailbox','Your address',4]] },
+  { seller:'Copper Deck', oid:'SAMPLE-1038', ord:D(11,10), cards:5, left:5, carrier:'USPS', num:'9400 0000 0000 0000 1038 07', due:D(11,18),
+    steps:[[D(11,11,15,30),'Shipping label created, USPS awaiting item','Sample City, ST',0],[D(11,12,17,5),'Accepted at USPS origin facility','Sample City, ST',1],
+           [D(11,13,2,48),'In transit to next facility','',2],[D(11,16,10,20),'Arrived at USPS regional facility','Hub City, ST',2]] },
+  { seller:'Harbor Lights Cards', oid:'SAMPLE-1036', ord:D(11,9), cards:2, left:0, carrier:'USPS', num:'9400 0000 0000 0000 1036 05',
+    steps:[[D(11,10,12,0),'Shipping label created, USPS awaiting item','Sample City, ST',0],[D(11,10,18,30),'Accepted at USPS origin facility','Sample City, ST',1],
+           [D(11,12,4,0),'Departed USPS regional facility','Sample City, ST',2],[D(11,19,7,10),'Out for delivery','Your post office',3],[D(11,19,13,5),'Delivered, in/at mailbox','Your address',4]] },
+  { seller:'Blue Fern Collectibles', oid:'SAMPLE-1029', ord:D(11,6), cards:2, left:2, carrier:'USPS', num:'9400 0000 0000 0000 1029 02',
+    steps:[[D(11,7,9,0),'Shipping label created, USPS awaiting item','Sample City, ST',0],[D(11,7,17,45),'Accepted at USPS origin facility','Sample City, ST',1],
+           [D(11,8,3,30),'Departed USPS regional facility','Sample City, ST',2],[D(11,10,20,15),'Arrived at USPS regional destination facility','Hub City, ST',2],
+           [D(11,12,11,40),'Notice left, no secure location available','Your post office',3],[D(11,18,8,5),'Return to sender processed','Your post office','ret']] },
+];
+const gk = (p) => `${p.oid}::${p.seller}`;
+const STAMP_KINDS = ['Claim filed','Refunded','Seller contacted','Reshipped','Partial refund','Other']; // STAMP_KINDS, src/view-rules.mjs
+const STALL_H = 72; // Stuck: no new step in 3 days (notes item 4, Owner grant)
+const BAR_SPAN = [D(11,6), D(11,22)];
+
+// ---------------- page state ----------------
+const S = { c:'all', s:'loaded', z:'all', o:'new', hide:new Set(), stamps:{}, frames:{} };
+const START = {
+  'slip-folded':{ concept:'slip', pose:'folded', view:'packages' }, 'slip-ax5':{ concept:'slip', pose:'folded', view:'packages', from:'SAMPLE-1041::Lantern Cards' },
+  'slip-open':{ concept:'slip', pose:'open', view:'packages', sel:'SAMPLE-1041::Lantern Cards' }, 'slip-phone':{ concept:'slip', pose:'phone', view:'packages' },
+  'board-pk':{ concept:'board', pose:'folded', view:'packages' }, 'board-folded':{ concept:'board', pose:'folded', view:'board' },
+  'board-ax5':{ concept:'board', pose:'folded', view:'board' }, 'board-open':{ concept:'board', pose:'open', view:'board', sel:'SAMPLE-1041::Lantern Cards' },
+  'board-phone':{ concept:'board', pose:'phone', view:'board' }, 'alert-folded':{ concept:'alert', pose:'lock', dev:'folded', view:'lock' },
+  'alert-open':{ concept:'alert', pose:'lock', dev:'open', view:'lock' }, 'alert-phone':{ concept:'alert', pose:'lock', dev:'phone', view:'lock' },
+};
+const resetFrames = () => { for (const k in START) S.frames[k] = { ...START[k], checking:false, checked:null }; };
+resetFrames();
+
+// ---------------- the rules the sample follows ----------------
+const hrs = (a, b) => (b - a) / 36e5;
+const last = (p) => p.steps[p.steps.length - 1];
+const visible = () => {
+  if (S.s === 'empty') return PK.filter((p) => !p.carrier || p.left === 0);
+  if (S.s === 'allwell') return PK.filter((p) => !p.carrier || ['onway','inhand'].includes(rawVerdict(p)));
+  return PK;
+};
+function rawVerdict(p) {
+  if (!p.carrier) return null;
+  if (p.left === 0) return 'inhand';
+  const l = last(p);
+  if (l[3] === 'ret') return 'returned';
+  if (l[3] === 4) return 'here';
+  if (hrs(l[0], NOW) >= STALL_H) return 'stuck';
+  return 'onway';
+}
+function verdict(p) {
+  if (!p.carrier) return null;
+  if (p.left === 0) return 'inhand';
+  if (S.s === 'checking') return 'unread';
+  if (S.s === 'notfound' && p.oid === 'SAMPLE-1045') return 'notfound';
+  return rawVerdict(p);
+}
+const failed = (p) => S.s === 'unreachable' && p.carrier === 'USPS';
+const WORD = { here:'Delivered, not here', returned:'Returned', stuck:'Stuck', notfound:'Not found', unread:'Not read yet', onway:'On its way', inhand:'In hand' };
+const ORDER = ['here','returned','stuck','notfound','unread','onway'];
+const NEEDS = ['here','returned','stuck'];
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const day = (t) => `${MON[t.getMonth()]} ${t.getDate()}`;
+const clock = (t) => { let h = t.getHours(), m = String(t.getMinutes()).padStart(2,'0'); const ap = h < 12 ? 'am' : 'pm'; h = h % 12 || 12; return `${h}:${m} ${ap}`; };
+const sameDay = (a, b) => a.toDateString() === b.toDateString();
+function when(t) {
+  if (sameDay(t, NOW)) return `today ${clock(t)}`;
+  const y = new Date(NOW); y.setDate(y.getDate() - 1);
+  if (sameDay(t, y)) return `yesterday ${clock(t)}`;
+  return `${day(t)}, ${clock(t)}`;
+}
+const span = (h) => h < 48 ? `${Math.round(h)} hours` : `${Math.round(h / 24)} days`;
+const claimBy = (p) => { const t = new Date(p.ord); t.setDate(t.getDate() + 30); return day(t); }; // lost-mail-flags-use-order-date
+function say(p, v) {
+  const l = p.steps && last(p);
+  switch (v) {
+    case 'here': return `Delivered ${when(l[0]).split(' ')[0]}, not checked in`;
+    case 'returned': return 'Going back to the seller';
+    case 'stuck': return l[3] === 0 ? `Not handed to ${p.carrier} in ${span(hrs(l[0], NOW))}` : `No new scan in ${span(hrs(l[0], NOW))}`;
+    case 'notfound': return `${p.carrier} has no record of this number yet`;
+    case 'unread': return `Not read from ${p.carrier} yet`;
+    case 'onway': return l[3] === 3 ? 'Out for delivery today' : `On its way, due ${day(p.due)}`;
+    case 'inhand': return 'Checked in';
+  }
+}
+function sentence(p, v) {
+  const l = p.steps && last(p);
+  switch (v) {
+    case 'here': return `${p.carrier} says it was delivered ${when(l[0])}. No card from it is checked in.`;
+    case 'returned': return `${p.carrier} is sending it back to the seller. Nothing more will arrive from this order.`;
+    case 'stuck': return l[3] === 0 ? `The seller made a label ${span(hrs(l[0], NOW))} ago, and ${p.carrier} has not scanned it since.` : `${p.carrier} has not scanned it in ${span(hrs(l[0], NOW))}.`;
+    case 'notfound': return `${p.carrier} has no record of this number yet. Numbers often show a day after the label is made.`;
+    case 'unread': return `This number has not been read from ${p.carrier} yet.`;
+    case 'onway': return l[3] === 3 ? `${p.carrier} has it out for delivery today.` : `${p.carrier} has it in transit. It is due ${day(p.due)}.`;
+    case 'inhand': return `Every card from it is checked in.`;
+  }
+}
+
+// ---------------- parts ----------------
+const ICON = {
+  Ledger:'<circle cx="11" cy="11" r="3"/><circle cx="11" cy="11" r="7.5"/>',
+  Orphaned:'<rect x="3" y="5" width="16" height="12" rx="1.5"/><path d="M3 6l8 6 8-6"/>',
+  Tally:'<path d="M8 3L6 19M15 3l-2 16M3.5 8h15M3 14h15"/>',
+  Packages:'<path d="M3 7l8-4 8 4v9l-8 4-8-4z"/><path d="M3 7l8 4 8-4M11 11v9"/>',
+};
+const tabbar = () => `<div class="tabbar" aria-hidden="true">${Object.keys(ICON).map((k) => `<span class="${k === 'Packages' ? 'on' : ''}"><svg viewBox="0 0 22 22">${ICON[k]}</svg>${k}</span>`).join('')}</div>`;
+const status = () => `<div class="status" aria-hidden="true"><span>9:30</span><span>&#9679;&#9679;&#9679; &#9646;</span></div>`;
+const mast = () => `<div class="mast tag-today" data-tag="Today: masthead, drawn short"><b>MANIFEST</b><i></i><small>Packages</small></div>`;
+
+function track(p, v) {
+  const st = last(p)[3];
+  const reached = st === 'ret' ? 3 : st;
+  const stalled = v === 'stuck' || v === 'here' || v === 'returned';
+  let h = '';
+  for (let i = 0; i <= 4; i++) {
+    const on = i <= reached && v !== 'unread' && v !== 'notfound';
+    h += `<i class="${on ? 'on' : ''}"></i>`;
+    if (i < 4) h += `<b class="${i < reached && on ? 'on' : (i === reached && stalled && v !== 'here' && on ? 'wait' : '')}"></b>`;
+  }
+  const mine = v === 'inhand' ? 'mine got' : (v === 'here' ? 'mine want' : 'mine');
+  h += `<b class="${v === 'here' ? 'wait' : (v === 'inhand' ? 'on' : '')}"></b><i class="${mine}${st === 'ret' && v === 'returned' ? ' ret' : ''}"></i>`;
+  return `<span class="track" aria-hidden="true">${h}</span>`;
+}
+function slip(p, f) {
+  const v = verdict(p), stamped = S.stamps[gk(p)];
+  const l = last(p);
+  const age = failed(p) ? `as of ${clock(ASOF)}` : when(l[0]).replace(/^(today|yesterday) /, '');
+  const txt = stamped ? `Stamped ${stamped}` : say(p, v);
+  const chosen = f.pose === 'open' && f.sel === gk(p) ? ' chosen' : '';
+  return `<button type="button" class="slip v-${v}${stamped ? ' stamped' : ''}${chosen} tag-new" data-tag="New: route slip" data-act="open" data-gk="${gk(p)}"
+    aria-label="${p.carrier}: ${txt}. Latest step ${when(l[0])}. Open the timeline.">
+    <span class="top"><span class="carrier">${p.carrier}</span><span class="say">${txt}</span><span class="age">${v === 'unread' ? '' : age}</span><span class="chev" aria-hidden="true">&rsaquo;</span></span>${track(p, v)}</button>`;
+}
+function card(p, f, withSlip) {
+  const done = p.left === 0;
+  return `<article class="card${done ? ' done' : ''}">
+    <div class="hd tag-today" data-tag="Today: card header"><div class="who"><span class="seller">${p.seller}</span><span class="date">Ordered ${day(p.ord)}</span></div>
+      ${done ? '<span class="rcvd">RECEIVED</span>' : `<span class="lpill">${p.left} left</span>`}</div>
+    <span class="oid">${p.oid}</span>
+    ${withSlip && p.carrier ? slip(p, f) : ''}
+    <div class="stub">Stamp slot, bulk row and ${p.cards} item line${p.cards === 1 ? '' : 's'}</div>
+  </article>`;
+}
+function packagesView(f) {
+  const list = visible();
+  let h = mast();
+  if (f.concept === 'board') {
+    const t = list.filter((p) => p.carrier && p.left > 0);
+    const need = t.filter((p) => NEEDS.includes(verdict(p))).length;
+    const second = S.s === 'checking' ? 'Reading the numbers now' : (failed(t[0] || {}) ? 'USPS did not answer' : (need ? `${need} need${need === 1 ? 's' : ''} you today` : 'All is well.'));
+    h += `<div class="entry tag-new" data-tag="New: Tracked mail box"><div class="t"><b>Tracked: ${t.length} package${t.length === 1 ? '' : 's'}</b>
+      <small style="${need ? '' : 'color:var(--inkSoft)'}">${second}</small></div>
+      <button type="button" class="mini" data-act="board" aria-label="Open tracked mail">Open</button></div>`;
+  }
+  h += list.map((p) => card(p, f, f.concept === 'slip')).join('');
+  return h;
+}
+
+function axis() {
+  const [a, b] = BAR_SPAN, w = b - a;
+  const x = (t) => `${((t - a) / w * 100).toFixed(2)}%`;
+  return { x, html:`<div class="axis" aria-hidden="true"><span style="left:0">${day(a)}</span><span style="left:${x(NOW)};transform:translateX(-50%);color:var(--accent)">today</span></div>` };
+}
+function strip(p, v, x) {
+  const s = p.steps, first = s[0][0], l = last(p);
+  let h = `<span class="base"></span><span class="ord" style="left:${x(p.ord)}"></span>`;
+  if (v !== 'unread' && v !== 'notfound') {
+    h += `<span class="run" style="left:${x(first)};width:calc(${x(l[0])} - ${x(first)})"></span>`;
+    if (v !== 'returned') h += `<span class="wait" style="left:${x(l[0])};width:calc(${x(NOW)} - ${x(l[0])})"></span>`;
+    h += s.map((st) => `<span class="${st[3] === 4 || st[3] === 'ret' ? 'end' : 'scan'}" style="left:${x(st[0])}"></span>`).join('');
+  }
+  h += `<span class="now" style="left:${x(NOW)}"></span>`;
+  if (v === 'here') h += `<span class="hand" style="left:${x(NOW)}"></span>`;
+  return `<span class="strip" aria-hidden="true">${h}</span>`;
+}
+function boardView(f) {
+  const t = visible().filter((p) => p.carrier && p.left > 0);
+  let h = `<button type="button" class="navback" data-act="tobox">&lsaquo; Packages</button><h2 class="btitle tag-new" data-tag="New: Tracked mail page">Tracked mail</h2>`;
+  if (!t.length) {
+    return h + `<div class="empty tag-new" data-tag="New: empty state"><p>No tracked package is on its way. A tracking number comes in with the order import.</p>
+      <span class="anchor"><button type="button" class="mini" data-act="noop" data-id="import" data-msg="Opens the Ledger tab at the import. Not in this sample.">Go to the import</button>${f.said === 'import' ? `<span class="said" role="status">${f.saidText}</span>` : ''}</span></div>`;
+  }
+  const need = t.filter((p) => NEEDS.includes(verdict(p))).length;
+  const fs = f.checking ? 'checking now' : (f.checked ? 'checked just now' : (S.s === 'checking' ? 'first read under way' : (S.s === 'unreachable' ? 'UPS checked 20 min ago' : 'checked 20 min ago')));
+  h += `<p class="bsum">${t.length} package${t.length === 1 ? '' : 's'} &middot; ${fs}</p>`;
+  if (!need && S.s !== 'checking' && S.s !== 'unreachable') h += `<p class="allwell">All is well.</p>`;
+  if (S.s === 'unreachable') h += `<div class="fail"><p>USPS did not answer at 9:10 am. Its rows show what it said at ${clock(ASOF)}.</p>
+     <div class="cl"><button type="button" class="mini" data-act="check">Try again</button></div>
+     <details><summary>What the server said</summary><pre>carrier=usps status=503 retry_after=900</pre></details></div>`;
+  const ax = axis();
+  h += ax.html;
+  for (const g of ORDER) {
+    const rows = t.filter((p) => verdict(p) === g);
+    if (!rows.length) continue;
+    h += `<div class="grp v-${g}"><h3>${WORD[g]} <small>${rows.length}</small></h3>`;
+    for (const p of rows) {
+      const stamped = S.stamps[gk(p)], l = last(p);
+      const chosen = f.pose === 'open' && f.sel === gk(p) ? ' chosen' : '';
+      const line = g === 'unread' ? `${p.carrier} &middot; reading` : (g === 'notfound' ? `${p.carrier} ${p.num}` : `${l[1]}${l[2] ? ', ' + l[2] : ''}`);
+      h += `<button type="button" class="brow v-${g}${stamped ? ' stamped' : ''}${chosen}" data-act="open" data-gk="${gk(p)}">
+        <span class="r1"><b>${p.seller}</b><span class="age">${g === 'unread' ? '' : (failed(p) ? 'as of ' + clock(ASOF) : when(l[0]))}</span></span>
+        ${strip(p, g, ax.x)}
+        <span class="r3">${stamped ? `<em>Stamped ${stamped}</em> &middot; ` : ''}${line}</span></button>`;
+    }
+    h += `</div>`;
+  }
+  return h;
+}
+
+function timeline(p, f, where) {
+  if (!p) return `<p class="note">Press a row to read its timeline here.</p>`;
+  const v = verdict(p), stamped = S.stamps[gk(p)], k = gk(p);
+  const vc = `v-${v}${stamped ? ' stamped' : ''}`;
+  let h = `<div class="tl ${vc} tag-new" data-tag="New: timeline">`;
+  h += `<h2 class="who2">${p.seller}</h2><p class="verdict">${sentence(p, v)}</p>`;
+  h += `<p class="meta"><span class="nw">${p.carrier} ${p.num}</span><br><span class="nw">Ordered ${day(p.ord)}</span> &middot; <span class="nw">claim by ${claimBy(p)}</span></p>`;
+  const cw = f.checking ? `Checking ${p.carrier}&hellip;` : (f.checked ? 'Checked just now' : (failed(p) ? `${p.carrier} did not answer; shown as of ${clock(ASOF)}` : (v === 'unread' ? 'First read under way' : 'Checked 20 min ago')));
+  h += `<div class="checkrow"><span class="when" aria-live="polite">${cw}</span>
+    <button type="button" class="mini" data-act="check" ${f.checking ? 'disabled aria-disabled="true" title="A check is running"' : ''}>Check now</button></div>`;
+  // the steps
+  let items = [];
+  const mineCls = v === 'inhand' ? 'got' : (v === 'here' ? 'want' : '');
+  const mineTxt = v === 'inhand' ? 'In your hands' : (v === 'here' ? 'Not in your hands' : (v === 'returned' ? 'Will not reach you' : 'Not in your hands yet'));
+  const mineSub = v === 'inhand' ? `All ${p.cards} cards checked in` : (v === 'here' ? 'Check the cards in on their card when you have them' : (p.due && v === 'onway' ? `Due ${day(p.due)}` : (NEEDS.includes(v) ? `Claim by ${claimBy(p)}` : '')));
+  const mine = `<li class="step mine ${mineCls}"><span class="dot"></span><span class="tx"><span class="st">${mineTxt}</span>${mineSub ? `<span class="pl">${mineSub}</span>` : ''}</span></li>`;
+  if (v === 'unread' || v === 'notfound') {
+    items = [mine, `<li class="gap" style="height:24px"></li>`, `<li class="step"><span class="dot" style="background:var(--line)"></span><span class="tx"><span class="st">${v === 'unread' ? 'No step read yet' : 'No step on record'}</span><span class="pl">${p.carrier} ${p.num}</span></span></li>`];
+  } else {
+    const st = p.steps.map((s) => `<li class="step${s[3] === 4 ? ' del' : ''}${s[3] === 'ret' ? ' ret' : ''}"><span class="dot"></span><span class="tx"><span class="st">${s[1]}</span>${s[2] ? `<span class="pl">${s[2]}</span>` : ''}<span class="tm">${when(s[0])}</span></span></li>`);
+    // gaps drawn to the time between steps, compressed; a wait past the stall line is dashed and labelled
+    const gap = (a, b, toNow) => {
+      const hh = hrs(a, b);
+      let px = Math.round((8 + 12 * Math.log2(1 + hh / 6)) / 4) * 4;
+      const long = toNow ? (v === 'here' || (v === 'stuck')) : hh >= STALL_H;
+      if (long) px += 32;
+      const lab = long ? (toNow && v === 'here' ? `${span(hh)} since delivery` : (toNow ? `${span(hh)}, no new scan` : `${span(hh)} between scans`)) : '';
+      return `<li class="gap${long ? ' long' : ''}" style="height:${px}px"><span>${lab}</span></li>`;
+    };
+    const seq = [];
+    for (let i = 0; i < st.length; i++) { seq.push(st[i]); if (i < st.length - 1) seq.push(gap(p.steps[i][0], p.steps[i + 1][0], false)); }
+    if (v !== 'returned') { seq.push(gap(last(p)[0], NOW, true)); seq.push(mine); } else { seq.push(`<li class="gap" style="height:16px"></li>`); seq.push(mine); }
+    items = S.o === 'new' ? seq.reverse() : seq;
+  }
+  h += `<ol class="steps" aria-label="${p.carrier} steps, ${S.o === 'new' ? 'newest first' : 'oldest first'}">${items.join('')}</ol>`;
+  // acts: the same stamp kinds and the same two-plus-More split as PastTransitRowView
+  if (v !== 'inhand') {
+    h += `<div class="acts"><p class="lbl">${NEEDS.includes(v) ? 'Act before the claim window closes' : 'If it goes wrong'}</p><div class="cl">`;
+    if (stamped) h += `<span class="s">Stamped ${stamped}</span><button type="button" class="mini" data-act="undo" data-gk="${k}">Undo</button>`;
+    else h += STAMP_KINDS.slice(0, 2).map((s) => `<button type="button" class="mini" data-act="stamp" data-kind="${s}" data-gk="${k}">${s}</button>`).join('')
+      + `<span class="anchor"><button type="button" class="mini" data-act="more" data-gk="${k}" aria-expanded="${f.menu === k}">More</button>${f.menu === k
+        ? `<span class="menu" role="menu">${STAMP_KINDS.slice(2).map((s) => `<button type="button" role="menuitem" data-act="stamp" data-kind="${s}" data-gk="${k}">${s}</button>`).join('')}<button type="button" class="x" data-act="nomenu">Cancel</button></span>` : ''}</span>`;
+    h += `</div></div>`;
+  }
+  h += `<details><summary>What ${p.carrier} said</summary><pre>${(p.steps || []).map((s) => `${s[0].toISOString().slice(0,16)}Z  ${s[3] === 'ret' ? 'RTS' : 'E' + s[3]}  ${s[1].toUpperCase()}`).join('\n') || 'no events'}</pre></details>`;
+  h += `<span class="anchor"><a class="mini" href="#" data-act="noop" data-id="site" data-msg="Opens the ${p.carrier} tracking page in Safari. Not in this sample.">Open on the ${p.carrier} site</a>${f.said === 'site' ? `<span class="said" role="status">${f.saidText}</span>` : ''}</span>`;
+  h += `<p class="note">Claim by counts 30 days from the order date, as the lost-mail flags do. TCGplayer counts from its delivery estimate, so its window can close later.</p>`;
+  return h + `</div>`;
+}
+
+// ---------------- frames ----------------
+const byGk = (k) => PK.find((p) => gk(p) === k);
+// Each scroll area carries a key (data-sk). A re-render keeps the scroll of every area whose key it saw before, so a press
+// never moves the pressed control or its answer (no-layout-shift-under-pointer); a new page or a new timeline starts at the top.
+function render(id) {
+  const el = document.querySelector(`[data-f="${id}"]`); if (!el) return;
+  const f = S.frames[id];
+  f.tops = f.tops || {};
+  el.querySelectorAll('[data-sk]').forEach((s) => { f.tops[s.dataset.sk] = s.scrollTop; });
+  build(el, f);
+  el.querySelectorAll('[data-sk]').forEach((s) => { if (f.tops[s.dataset.sk] != null) s.scrollTop = f.tops[s.dataset.sk]; });
+  // the AX5 slip frame opens scrolled to the first card that needs you, so the slip shows without a scroll
+  if (f.from && f.view === 'packages' && f.tops['list:packages'] == null) {
+    const sc = el.querySelector('[data-sk="list:packages"]'), c = el.querySelector(`[data-gk="${f.from}"]`);
+    if (sc && c) sc.scrollTop = c.closest('.card').offsetTop - 12;
+  }
+}
+function build(el, f) {
+  if (f.pose === 'lock') {
+    el.classList.add('lock');
+    el.innerHTML = f.dev === 'open'
+      ? `${status()}<div class="page l">${lockView(f)}</div><div class="fold"><span>fold 40 pt</span></div><div class="page r"></div>`
+      : `${status()}${lockView(f)}`;
+    return;
+  }
+  el.classList.remove('lock');
+  if (f.pose === 'open') {
+    let left, right;
+    if (f.concept === 'slip') { left = packagesView(f); right = timeline(byGk(f.sel), f, 'page'); }
+    else if (f.view === 'packages') { left = packagesView(f); right = `<p class="note">Open Tracked mail to read a timeline on this page.</p>`; }
+    else { left = boardView(f); right = timeline(byGk(f.sel), f, 'page'); }
+    if (f.concept === 'board' && !visible().some((p) => p.carrier && p.left > 0)) right = `<p class="note">Nothing to read here.</p>`;
+    el.innerHTML = `${status()}<div class="page l"><div class="scroll" data-sk="L:${f.view}">${left}</div></div><div class="fold"><span>fold 40 pt</span></div>
+      <div class="page r"><div class="scroll" data-sk="R:${f.sel}">${right}</div>${tabbar()}</div>`;
+    return;
+  }
+  // one page: folded or phone
+  let body, over = '', key = `list:${f.view === 'sheet' ? 'packages' : f.view}`;
+  if (f.view === 'board') body = boardView(f);
+  else if (f.view === 'detail') { body = `<button type="button" class="navback" data-act="back">&lsaquo; Tracked mail</button>${timeline(byGk(f.sel), f, 'push')}`; key = `detail:${f.sel}`; }
+  else body = packagesView(f);
+  if (f.view === 'sheet') {
+    over = `<div class="scrim" data-act="close"></div><div class="sheet${f.rise ? ' rise' : ''}" role="dialog" aria-label="Timeline"><span class="grab"></span>
+      <div class="bar"><button type="button" class="close" data-act="close">Close</button><span class="t">${byGk(f.sel).carrier}</span><span></span></div>
+      <div class="in" data-sk="sheet:${f.sel}">${timeline(byGk(f.sel), f, 'sheet')}</div></div>`;
+    f.rise = false;
+  }
+  el.innerHTML = `${status()}<div class="scroll" data-sk="${key}">${body}</div>${tabbar()}${over}`;
+}
+function lockView(f) {
+  const a = PK[4], b = PK[5];
+  return `<div class="day">Saturday, November 21</div><div class="clock">9:30</div>
+   <div class="stack tag-new" data-tag="New: alerts">
+    <button type="button" class="notif" data-act="notif" data-gk="${gk(a)}"><span class="ic">M</span><span><span class="hd2">MANIFEST <small>yesterday 7:00 pm</small></span>
+      <p><b>${a.seller}</b>: USPS said delivered at ${clock(last(a)[0])}. No card from it is checked in.</p></span></button>
+    <button type="button" class="notif" data-act="notif" data-gk="${gk(b)}"><span class="ic">M</span><span><span class="hd2">MANIFEST <small>8:00 am</small></span>
+      <p><b>${b.seller}</b>: no new USPS scan in ${span(hrs(last(b)[0], NOW))}. Claim by ${claimBy(b)}.</p></span></button>
+   </div>`;
+}
+function renderAll() { for (const id in S.frames) render(id); }
+
+// ---------------- presses ----------------
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-act]'); if (!t) return;
+  const host = t.closest('[data-f]'); if (!host) return;
+  e.preventDefault();
+  const id = host.dataset.f, f = S.frames[id], act = t.dataset.act;
+  f.said = null;
+  if (act !== 'more') f.menu = null;
+  if (act === 'nomenu') { render(id); return; }
+  if (act === 'open') {
+    f.sel = t.dataset.gk;
+    if (f.pose !== 'open') { f.view = f.concept === 'slip' ? 'sheet' : 'detail'; f.rise = true; }
+  } else if (act === 'close') f.view = 'packages';
+  else if (act === 'back') f.view = 'board';
+  else if (act === 'board') { f.view = 'board'; }
+  else if (act === 'tobox') f.view = 'packages';
+  else if (act === 'stamp') S.stamps[t.dataset.gk] = t.dataset.kind;
+  else if (act === 'more') { f.menu = f.menu === t.dataset.gk ? null : t.dataset.gk; render(id); return; }
+  else if (act === 'undo') delete S.stamps[t.dataset.gk];
+  else if (act === 'notif') {
+    // the alert opens the app on that package's timeline: a pushed page on one page, the right page when open
+    Object.assign(f, { pose:f.dev, concept:'board', view:f.dev === 'open' ? 'board' : 'detail', sel:t.dataset.gk });
+  } else if (act === 'check') {
+    f.checking = true; f.checked = null; render(id);
+    setTimeout(() => { f.checking = false; f.checked = true; render(id); }, 1400);
+    return;
+  } else if (act === 'noop') { f.said = t.dataset.id; f.saidText = t.dataset.msg; render(id); return; }
+  if (['stamp','undo'].includes(act)) renderAll(); else render(id);
+  // focus follows the press: the sheet's Close or the page's Back after an open, the answer's own control after a stamp
+  const next = act === 'open' && f.pose !== 'open' ? host.querySelector('.sheet .close, .navback')
+    : (act === 'stamp' ? host.querySelector(`[data-act="undo"][data-gk="${t.dataset.gk}"]`) : null);
+  if (next) next.focus({ preventScroll:true });
+});
+
+// ---------------- the controls and the hash ----------------
+function readHash() {
+  const q = new URLSearchParams(location.hash.slice(1));
+  S.c = q.get('c') || 'all'; S.s = q.get('s') || 'loaded'; S.z = q.get('z') || 'all'; S.o = q.get('o') || 'new';
+}
+function apply() {
+  document.querySelectorAll('.controls a[data-k]').forEach((a) => a.setAttribute('aria-current', String(S[a.dataset.k] === a.dataset.v)));
+  document.querySelectorAll('section.opt').forEach((s) => { s.hidden = S.hide.has(s.dataset.opt) || (S.c !== 'all' && S.c !== s.dataset.opt); });
+  document.querySelectorAll('figure[data-z]').forEach((fg) => { fg.hidden = S.z === 'default'; });
+  document.querySelectorAll('figure:not([data-z])').forEach((fg) => { if (fg.closest('section.opt')) fg.hidden = S.z === 'ax5'; });
+  resetFrames();
+  renderAll();
+}
+document.querySelectorAll('.controls a[data-k]').forEach((a) => a.addEventListener('click', (e) => {
+  e.preventDefault();
+  const q = new URLSearchParams(location.hash.slice(1)); q.set(a.dataset.k, a.dataset.v);
+  location.hash = q.toString();
+}));
+document.querySelectorAll('[data-hide]').forEach((b) => b.addEventListener('click', () => {
+  const k = b.dataset.hide; S.hide.has(k) ? S.hide.delete(k) : S.hide.add(k);
+  b.setAttribute('aria-pressed', String(S.hide.has(k))); b.textContent = (S.hide.has(k) ? 'Show ' : 'Hide ') + b.textContent.replace(/^(Show|Hide) /, '');
+  apply();
+}));
+document.getElementById('tagbtn').addEventListener('click', (e) => {
+  const on = document.body.classList.toggle('tags'); e.currentTarget.setAttribute('aria-pressed', String(!on));
+  e.currentTarget.textContent = on ? 'Hide Today and New tags' : 'Show Today and New tags';
+});
+document.getElementById('reset').addEventListener('click', () => { S.stamps = {}; apply(); });
+window.addEventListener('hashchange', () => { readHash(); apply(); });
+readHash(); apply();
+</script>
+</body>
+</html>

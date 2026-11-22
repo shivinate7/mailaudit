@@ -128,6 +128,14 @@
         drawn box, compared before and after in one run, so these states need no base file
         and sit outside claim 10. A tap on the subject text undoes nothing: only the Undo
         control is a tap target.
+    19. Head panels carry the paper fill (decision head-panels-carry-paper-fill; owner ruling,
+        page item 63 a, 2026-11-18 21:56 CST) at 375px and 760px: on the Ledger tab, each of
+        Sorted by and History, once tapped, opens exactly one panel, and that panel's computed
+        background is the `paper` token from shared/tokens.json. Pinned: the fill only. Not
+        pinned: the square edge with `paper` (the ruling leaves it unmeasured), any rule under
+        the panel, the overlay's geometry, and the Orders from, Sync and Recent panels, which
+        carry the fill as a default the owner did not confirm.
+        `SCREENS_ONLY=19 node test/screens.mjs` runs this claim alone.
 
    Reduced motion is on, so animation does not skew the numbers. Exit 0 when all
    checks pass; exit 1 with one `FAIL` line per failure and one summary line. */
@@ -1318,6 +1326,71 @@ async function syncPanelCheck(browser, width) {
     );
     if (overflow > TAP_TOLERANCE_PX)
       fail(name, `sideways overflow of ${overflow.toFixed(1)}px with the Sync panel open`);
+    for (const e of pageErrors) fail(name, `page error: ${e}`);
+  } finally {
+    await ctx.close();
+  }
+}
+
+/* ---------- claim 19: the head panels carry the paper fill (decision head-panels-carry-paper-fill) ----------
+   The ruling sets the fill: an overlay panel takes `paper`, an opaque fill, so the rows under it do not
+   show. Pinned for the two panels the owner confirmed (item 63 a, 2026-11-18 21:56 CST). The edge, the
+   rule and the geometry are left out, since the ruling leaves them open. */
+const PAPER_PANELS = [
+  { label: "Sorted by", row: /^Sorted by/ },
+  { label: "History", row: /^History/ },
+];
+/* The `paper` token from shared/tokens.json, the one home of the palette, in the form a computed style
+   prints. Null when the file cannot be read, so the check fails on its own line and never throws. */
+function paperRgb() {
+  try {
+    const hex = JSON.parse(readFileSync(path.join(ROOT, "shared", "tokens.json"), "utf8")).paper;
+    const n = parseInt(hex.slice(1), 16);
+    return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`;
+  } catch {
+    return null;
+  }
+}
+async function panelFillCheck(browser, width, { label, row: rowRe }) {
+  const name = `${label} panel fill ${width}px`;
+  checks++;
+  const want = paperRgb();
+  if (!want) {
+    fail(name, "shared/tokens.json has no readable paper token");
+    return;
+  }
+  const { ctx, page, pageErrors } = await openSeeded(browser, width);
+  try {
+    if (!(await loadedOk(page))) {
+      fail(name, "seeded ledger did not render");
+      return;
+    }
+    const tab = page.locator(BAR_SEL).getByRole("button", { name: /^Ledger/ });
+    if (!(await tab.click({ timeout: 3000 }).then(() => true, () => false))) {
+      fail(name, "no Ledger tab opens");
+      return;
+    }
+    const row = page.getByRole("button", { name: rowRe }).first();
+    if (!(await row.waitFor({ timeout: 4000 }).then(() => true, () => false))) {
+      fail(name, `no ${label} row on the Ledger tab`);
+      return;
+    }
+    await row.click();
+    await page.locator(".mdl-panel").first().waitFor({ timeout: 4000 }).catch(() => {});
+    /* scope first: the row reports its panel open, and exactly one panel is on the page */
+    const expanded = await row.getAttribute("aria-expanded");
+    if (expanded !== "true") {
+      fail(name, `the ${label} row reads aria-expanded="${expanded}" after the tap; want "true"`);
+      return;
+    }
+    const panels = page.locator(".mdl-panel");
+    const open = await panels.count();
+    if (open !== 1) {
+      fail(name, `${open} panels are open after the ${label} row opens; want one`);
+      return;
+    }
+    const fill = await panels.first().evaluate((el) => getComputedStyle(el).backgroundColor);
+    if (fill !== want) fail(name, `the ${label} panel's fill is ${fill}; want the paper token ${want}`);
     for (const e of pageErrors) fail(name, `page error: ${e}`);
   } finally {
     await ctx.close();
@@ -2651,8 +2724,13 @@ async function main() {
   }
   try {
     const syncApplyPhases = SYNC16_CASES.map((c) => () => syncApplyCheck(browser, c));
+    const paperPhases = PAPER_PANELS.flatMap((panel) =>
+      WIDTHS.map((width) => () => panelFillCheck(browser, width, panel))
+    );
     const phases = process.env.SCREENS_ONLY === "16"
       ? syncApplyPhases
+      : process.env.SCREENS_ONLY === "19"
+      ? paperPhases
       : RECORD
       ? [() => touchCheck(browser)]
       : [
@@ -2680,6 +2758,7 @@ async function main() {
       () => freshVisitorCheck(browser),
       ...WIDTHS.map((width) => () => recentUndoCheck(browser, width)),
       ...WIDTHS.map((width) => () => recentSubjectCheck(browser, width)),
+      ...paperPhases,
       ...syncApplyPhases,
     ];
     for (const phase of phases) {

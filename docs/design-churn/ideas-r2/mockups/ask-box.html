@@ -1,0 +1,694 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ask Box</title>
+<style>
+/* Tokens: the round 1 idea-mockup set (own neutral choices), on the house 4 px step. */
+:root{
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--radius:8px;
+  --page:#ebe9e3;--screen:#f5f4f0;--surface:#ffffff;--ink:#1d1c1a;--ink2:#5c5a55;--ink3:#6b685f;
+  --line:#dcd9d1;--accent:#a8402a;--accent-faint:#f8ece7;--ok:#256b41;--ok-bg:#e3f0e7;--ok-ink:#17462a;
+  --warn:#8a5200;--warn-bg:#f8ecd6;--muted-bg:#ecebe6;--tag-new:#2c5aa8;--tag-today:#5c5a55;
+  --chrome:#ffffff;--chrome-line:#d6d3cb;--scrim:rgba(20,18,15,.32);--hinge:#2a2926;--bezel:#151412;--toast:#2b2a27;--toast-ink:#f5f4f0;
+  --key:#ffffff;--kbd:#d3d1cb;--hl:#fbe3a6;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --page:#0d0d0c;--screen:#121210;--surface:#1f1e1b;--ink:#f2f0ea;--ink2:#b5b1a8;--ink3:#9a968d;
+    --line:#35332e;--accent:#e2795d;--accent-faint:#2e211c;--ok:#7cc898;--ok-bg:#1a3123;--ok-ink:#c9ecd5;
+    --warn:#e6aa52;--warn-bg:#3b2c13;--muted-bg:#25241f;--tag-new:#8fb2ef;--tag-today:#b5b1a8;
+    --chrome:#1a1917;--chrome-line:#34322d;--scrim:rgba(0,0,0,.55);--hinge:#000;--bezel:#2b2a27;--toast:#e9e6df;--toast-ink:#1d1c1a;
+    --key:#3a3935;--kbd:#262522;--hl:#4a3a12;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --page:#0d0d0c;--screen:#121210;--surface:#1f1e1b;--ink:#f2f0ea;--ink2:#b5b1a8;--ink3:#9a968d;
+  --line:#35332e;--accent:#e2795d;--accent-faint:#2e211c;--ok:#7cc898;--ok-bg:#1a3123;--ok-ink:#c9ecd5;
+  --warn:#e6aa52;--warn-bg:#3b2c13;--muted-bg:#25241f;--tag-new:#8fb2ef;--tag-today:#b5b1a8;
+  --chrome:#1a1917;--chrome-line:#34322d;--scrim:rgba(0,0,0,.55);--hinge:#000;--bezel:#2b2a27;--toast:#e9e6df;--toast-ink:#1d1c1a;
+  --key:#3a3935;--kbd:#262522;--hl:#4a3a12;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--ink);font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;font-size:17px;line-height:22px;
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+button,input{font:inherit;color:inherit}
+button{background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+button[disabled]{cursor:not-allowed}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--tag-new);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* Page chrome */
+.top{display:flex;flex-direction:column;gap:var(--space-3);max-width:1180px}
+.sample{background:var(--warn-bg);color:var(--warn);font-size:13px;line-height:18px;padding:var(--space-2) var(--space-3);border-radius:var(--radius);margin:0}
+.title h1{font-size:28px;line-height:34px;margin:0;font-weight:700;letter-spacing:-.01em}
+.title p{font-size:15px;line-height:20px;color:var(--ink2);margin:var(--space-1) 0 0}
+.title p b{color:var(--accent);font-weight:600}
+.controls{display:flex;flex-direction:column;gap:var(--space-2)}
+.ctl{display:flex;flex-wrap:wrap;gap:var(--space-2) var(--space-3);align-items:center}
+.ctl-label{font-size:13px;color:var(--ink3);min-width:64px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg a,.seg button,.seg span{display:inline-flex;align-items:center;min-height:36px;padding:0 var(--space-3);border-radius:18px;border:1px solid var(--line);background:var(--surface);
+  font-size:15px;text-decoration:none;color:var(--ink);white-space:nowrap}
+.seg a[aria-current="true"],.seg button[aria-pressed="true"],.seg span[aria-current="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
+.seg .off{opacity:.5;cursor:not-allowed}
+.caption{font-size:15px;line-height:20px;color:var(--ink2);max-width:780px;margin:var(--space-4) 0 0;min-height:60px}
+.stage{display:flex;gap:32px;align-items:flex-start;overflow-x:auto;padding:var(--space-2) 2px var(--space-3)}
+.note{font-size:13px;line-height:18px;color:var(--ink3);max-width:1100px;margin:var(--space-4) 0 0}
+.note ol{margin:var(--space-2) 0 0;padding-left:20px;display:flex;flex-direction:column;gap:var(--space-1)}
+
+/* Phone frames: illustrative size, about 390 x 844 */
+.phone{flex:none;background:var(--bezel);border-radius:54px;padding:10px;box-shadow:0 18px 40px rgba(0,0,0,.18)}
+.screen{position:relative;width:390px;height:844px;border-radius:44px;overflow:hidden;background:var(--screen);display:flex;flex-direction:column;--sat:54px;--sab:34px}
+.duo{display:flex}
+.duo .screen.left{border-top-right-radius:6px;border-bottom-right-radius:6px}
+.duo .screen.right{border-top-left-radius:6px;border-bottom-left-radius:6px}
+.hinge{width:14px;background:var(--hinge);margin:30px 0;border-radius:3px}
+.status{flex:none;height:var(--sat);padding:18px 32px 0;display:flex;justify-content:space-between;font-size:15px;font-weight:600}
+.status i{display:block;width:24px;height:11px;border-radius:3px;border:1.5px solid currentColor;opacity:.85;margin-top:5px}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:17px;background:#000}
+.homebar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--ink);opacity:.8;z-index:40}
+
+/* Desktop web frame */
+.web{flex:none;width:1180px;height:760px;border-radius:12px;overflow:hidden;background:var(--screen);border:1px solid var(--chrome-line);box-shadow:0 18px 40px rgba(0,0,0,.14);display:flex;flex-direction:column;position:relative}
+.webbar{flex:none;height:36px;background:var(--chrome);border-bottom:1px solid var(--chrome-line);display:flex;align-items:center;gap:var(--space-2);padding:0 var(--space-3)}
+.webbar i{width:12px;height:12px;border-radius:6px;background:var(--line)}
+.webbar span{margin-left:var(--space-4);font-size:12px;color:var(--ink3)}
+.webapp{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.webhead{flex:none;height:64px;display:flex;align-items:center;gap:var(--space-6);padding:0 var(--space-6);border-bottom:1px solid var(--line);background:var(--chrome)}
+.webhead h1{font-size:22px;line-height:28px;margin:0;font-weight:700}
+.webtabs{display:flex;gap:var(--space-1)}
+.webtabs span{padding:var(--space-2) var(--space-3);border-radius:var(--radius);font-size:15px;color:var(--ink2)}
+.webtabs span[aria-current]{background:var(--accent-faint);color:var(--accent);font-weight:600}
+.webhead .push{margin-left:auto}
+.webbody{flex:1;overflow:hidden;padding:var(--space-4) var(--space-6)}
+.webbody .center{max-width:640px}
+kbd{font:600 12px/16px ui-monospace,Menlo,monospace;border:1px solid currentColor;border-bottom-width:2px;border-radius:4px;padding:0 5px;opacity:.8}
+
+/* Packages view (today) */
+.nav{flex:none;padding:0 var(--space-4) var(--space-2)}
+.nav-top{height:44px;display:flex;justify-content:flex-end;align-items:center}
+.largetitle{font-size:34px;line-height:41px;font-weight:700;margin:0}
+.navbtn{min-width:44px;min-height:44px;font-size:17px;color:var(--accent);display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 var(--space-1)}
+.askbtn{min-height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 var(--space-3);border-radius:22px;background:var(--accent-faint);color:var(--accent);font-weight:600;font-size:17px}
+.scroll{flex:1;overflow:hidden;padding:var(--space-1) var(--space-4) calc(var(--sab) + 72px);display:flex;flex-direction:column;gap:var(--space-3)}
+.grp{display:flex;flex-direction:column;gap:var(--space-1)}
+.sect{font-size:13px;line-height:18px;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em;margin:0 0 0 var(--space-1)}
+.list{background:var(--surface);border-radius:12px;display:flex;flex-direction:column}
+.prow{height:60px;display:flex;align-items:center;gap:10px;padding:0 var(--space-3) 0 14px;border-top:.5px solid var(--line)}
+.prow:first-child{border-top:0}
+.prow .main{flex:1;min-width:0}
+.prow.hl{background:var(--hl);border-radius:12px;box-shadow:inset 0 0 0 2px var(--accent)}
+.t{font-size:17px;line-height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s{font-size:13px;line-height:18px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.circ{width:26px;height:26px;border-radius:13px;border:2px solid var(--ink3);flex:none;display:grid;place-items:center}
+.circ.on{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.badge{display:inline-flex;align-items:center;height:22px;padding:0 var(--space-2);border-radius:11px;font-size:12px;line-height:16px;font-weight:600;white-space:nowrap;background:var(--warn-bg);color:var(--warn);flex:none}
+.badge.ok{background:var(--ok-bg);color:var(--ok-ink)}
+.badge.mute{background:var(--muted-bg);color:var(--ink2)}
+.filterbar{display:flex;align-items:center;gap:var(--space-2);min-height:44px}
+.fchip{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 var(--space-3);border-radius:22px;background:var(--accent-faint);color:var(--accent);font-size:15px;font-weight:600}
+.emptyview{background:var(--surface);border-radius:12px;padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-3);align-items:flex-start}
+.emptyview p{margin:0}
+.tabbar{position:absolute;left:16px;right:16px;bottom:calc(var(--sab) - 8px);height:58px;border-radius:29px;background:var(--chrome);border:.5px solid var(--chrome-line);
+  box-shadow:0 6px 20px rgba(0,0,0,.12);display:grid;grid-template-columns:repeat(3,1fr);align-items:center;z-index:5}
+.tab{min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;line-height:13px;color:var(--ink2);gap:2px}
+.tab svg{width:24px;height:24px}
+.tab[aria-current="page"]{color:var(--accent)}
+
+/* The ask box: a fixed box over the view. Nothing under it moves. */
+.scrim{position:absolute;inset:0;background:var(--scrim);z-index:10}
+.ask{display:flex;flex-direction:column;background:var(--screen);position:relative;min-height:0}
+.ask.sheet{position:absolute;left:0;right:0;bottom:0;top:0;border-radius:24px 24px 0 0;box-shadow:0 -6px 24px rgba(0,0,0,.18)}
+.ask.pane{flex:1}
+.ask.side{position:absolute;inset:0;border-left:1px solid var(--line);box-shadow:-12px 0 32px rgba(0,0,0,.12)}
+.ask.bar{background:var(--surface);border-radius:14px;flex:none;height:380px;box-shadow:0 0 0 1px var(--line)}
+/* div. raises these over .lbl's position:relative */
+div.sheetwrap{position:absolute;left:0;right:0;bottom:0;top:62px;z-index:11}
+div.sidewrap{position:absolute;top:0;right:0;bottom:0;width:440px;z-index:11}
+div.panewrap{flex:1;display:flex;flex-direction:column;min-height:0}
+.sheetwrap.lbl,.sidewrap.lbl,.panewrap.lbl{outline-offset:-3px}
+.grabber{width:36px;height:5px;border-radius:3px;background:var(--ink3);opacity:.5;margin:6px auto 0;flex:none}
+.askbar{flex:none;height:52px;display:grid;grid-template-columns:88px 1fr 88px;align-items:center;padding:0 var(--space-2)}
+.askbar h2{margin:0;text-align:center;font-size:17px;line-height:22px;font-weight:600}
+.askbar .close{justify-self:start}
+.askbar .closeend{justify-self:end}
+.askbody{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:var(--space-1) var(--space-4) var(--space-4);display:flex;flex-direction:column;gap:var(--space-4);min-height:0}
+.ask.bar .askbody{padding-top:var(--space-3)}
+.dock{flex:none;display:flex;gap:var(--space-2);align-items:center;padding:var(--space-2) var(--space-3) calc(var(--sab) + 4px);border-top:.5px solid var(--line);background:var(--screen)}
+.ask.side .askbar{order:-2}
+.ask.side .askbody > .lbl:first-child,.ask .askbody > .lbl:first-child{margin-top:var(--space-3)}
+.ask.side .dock{order:-1;border-top:0;border-bottom:.5px solid var(--line);padding:var(--space-3) var(--space-4)}
+.ask.bar .dock{order:-1;border-top:0;border-bottom:.5px solid var(--line);background:var(--surface);border-radius:14px 14px 0 0;padding:var(--space-2) var(--space-3)}
+.ask.kb .dock{padding-bottom:var(--space-2)}
+.field{flex:1;min-width:0;height:44px;border-radius:22px;border:1px solid var(--line);background:var(--surface);padding:0 var(--space-4);font-size:17px}
+.field:focus{outline:none;border-color:var(--tag-new);box-shadow:0 0 0 3px color-mix(in srgb,var(--tag-new) 25%,transparent)}
+.field::placeholder{color:var(--ink3)}
+.field[disabled]{background:var(--muted-bg)}
+.go{flex:none;width:44px;height:44px;border-radius:22px;background:var(--accent);color:var(--surface);display:grid;place-items:center}
+.go[disabled]{background:var(--line);color:var(--ink3)}
+.kbd{flex:none;height:282px;background:var(--kbd);padding:10px 4px calc(var(--sab) + 6px);display:grid;grid-template-rows:repeat(4,1fr);gap:10px}
+.kbd div{display:flex;gap:6px;justify-content:center}
+.kbd i{display:block;height:100%;flex:0 0 32px;border-radius:5px;background:var(--key);box-shadow:0 1px 0 rgba(0,0,0,.25)}
+.kbd .wide{flex-basis:180px}
+.kbd .mid{flex-basis:46px}
+
+.lead{font-size:15px;line-height:20px;color:var(--ink2);margin:0}
+.cluster{display:flex;flex-wrap:wrap;gap:var(--space-2);align-items:center}
+.ex{min-height:44px;padding:0 var(--space-3);border-radius:22px;border:1px solid var(--line);background:var(--surface);font-size:15px;line-height:20px;text-align:left}
+.ex[disabled]{color:var(--ink3);background:var(--muted-bg);border-style:dashed}
+.stack{display:flex;flex-direction:column;gap:var(--space-2)}
+.reading{display:flex;flex-direction:column;gap:0}
+.minor{font-size:13px;line-height:18px;color:var(--ink3);margin:0}
+.reading .cluster{gap:0 var(--space-2)}
+.chip{min-height:44px;display:inline-flex;align-items:center}
+.chip span{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--line);font-size:15px;line-height:20px;white-space:nowrap}
+.chip span b{font-weight:400;color:var(--ink3)}
+.chip.warn span{border-color:var(--warn);background:var(--warn-bg);color:var(--warn);border-style:dashed}
+.chip.warn span b{color:var(--warn)}
+.chip[aria-expanded="true"] span{border-color:var(--tag-new);box-shadow:0 0 0 2px var(--tag-new)}
+.head{font-size:22px;line-height:28px;font-weight:600;margin:0}
+.head.refuse{color:var(--ink2)}
+.refusal{background:var(--muted-bg);border-radius:12px;padding:var(--space-3) var(--space-4);display:flex;flex-direction:column;gap:var(--space-2)}
+.rcode{font-size:12px;line-height:16px;font-weight:600;color:var(--ink3);letter-spacing:.04em;text-transform:uppercase}
+.sub{font-size:15px;line-height:20px;color:var(--ink);margin:0}
+.arows{background:var(--surface);border-radius:12px;display:flex;flex-direction:column}
+.arow{display:flex;align-items:center;gap:10px;height:60px;padding:0 var(--space-3) 0 14px;border-top:.5px solid var(--line);width:100%}
+.arow:first-child{border-top:0;border-radius:12px 12px 0 0}
+.arow:last-child{border-radius:0 0 12px 12px}
+.arow:only-child{border-radius:12px}
+.arow .main{flex:1;min-width:0}
+.arow .price{font-size:15px;color:var(--ink2);flex:none}
+.chev{color:var(--ink3);flex:none}
+.more{min-height:44px;color:var(--accent);font-weight:600;font-size:15px;padding:0 var(--space-1)}
+.next{min-height:44px;align-self:flex-start;padding:0 var(--space-4);border-radius:22px;background:var(--accent);color:var(--surface);font-weight:600;font-size:15px}
+.pickbtns{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.pickbtns button{min-height:44px;padding:0 var(--space-4);border-radius:22px;border:1px solid var(--accent);color:var(--accent);font-weight:600;font-size:15px;background:var(--surface)}
+.receipt{font-size:13px;line-height:18px;color:var(--ink2);margin:0;border-top:1px dashed var(--line);padding-top:var(--space-2)}
+.receipt .stale{color:var(--warn);font-weight:600}
+.errbox{display:flex;flex-direction:column;gap:var(--space-3);align-items:flex-start;padding-top:var(--space-6)}
+.out{font:15px/22px ui-monospace,Menlo,monospace;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:var(--space-3);margin:0;white-space:pre-wrap;word-break:break-word}
+.out mark{background:var(--accent-faint);color:var(--accent);border-radius:3px;padding:0 2px}
+.out mark.miss{background:var(--warn-bg);color:var(--warn);outline:1.5px dashed var(--warn)}
+.leaves{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);font-size:13px;line-height:18px}
+.leaves h3{font-size:13px;line-height:18px;margin:0 0 var(--space-1);font-weight:600}
+.leaves ul{margin:0;padding-left:16px;color:var(--ink2)}
+.btnrow{display:flex;gap:var(--space-2)}
+.ghost{min-height:44px;padding:0 var(--space-4);border-radius:22px;border:1px solid var(--line);background:var(--surface);font-weight:600;font-size:15px}
+
+/* In-app picker over the answer: an overlay, so the answer under it keeps its place */
+.picker{--pt:172px;position:absolute;left:var(--space-3);right:var(--space-3);top:var(--pt);max-height:min(430px,calc(100% - var(--pt) - 16px));background:var(--surface);border-radius:14px;box-shadow:0 12px 36px rgba(0,0,0,.28);z-index:30;display:flex;flex-direction:column;overflow:hidden}
+.ask.pane .picker{--pt:120px}
+.ask.side .picker{--pt:190px}
+.ask.bar .picker{--pt:120px}
+.picker header{display:flex;align-items:center;justify-content:space-between;padding:0 var(--space-2) 0 var(--space-4);border-bottom:.5px solid var(--line);min-height:48px}
+.picker header h3{margin:0;font-size:15px;line-height:20px;font-weight:600}
+.picker .opts{overflow-y:auto;display:flex;flex-direction:column}
+.picker .opt{min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);padding:0 var(--space-4);border-top:.5px solid var(--line);width:100%}
+.picker .opt:first-child{border-top:0}
+.picker .opt[aria-current="true"]{color:var(--accent);font-weight:600}
+.picker .opt small{font-size:13px;color:var(--ink3);font-weight:400}
+.toast{position:absolute;left:16px;right:16px;bottom:calc(var(--sab) + 76px);background:var(--toast);color:var(--toast-ink);border-radius:14px;padding:var(--space-3) 14px;font-size:15px;line-height:20px;z-index:45;box-shadow:0 8px 20px rgba(0,0,0,.2)}
+.web .toast{left:auto;right:24px;bottom:24px;width:380px}
+
+/* Dashed labels */
+.lbl{position:relative;outline:1.5px dashed var(--tag-new);outline-offset:3px}
+.lbl[data-k="today"]{outline-color:var(--tag-today)}
+.lbl::after{content:attr(data-lbl);position:absolute;top:-11px;right:10px;font-size:11px;line-height:13px;font-weight:600;padding:2px 6px;border-radius:6px;
+  background:var(--tag-new);color:var(--surface);white-space:nowrap;z-index:4;pointer-events:none}
+.lbl[data-k="today"]::after{background:var(--tag-today)}
+.sheetwrap.lbl::after,.sidewrap.lbl::after,.panewrap.lbl::after{top:6px;z-index:50}
+.sidewrap.lbl::after{right:auto;left:10px}
+span.lbl{display:inline-flex}
+:root[data-labels="off"] .lbl{outline:none}
+:root[data-labels="off"] .lbl::after{display:none}
+@media (forced-colors:active){.chip span,.arow,.ex{border:1px solid CanvasText}}
+</style>
+</head>
+<body>
+<div class="top">
+  <p class="sample" role="note"><b>Sample.</b> Every seller, card, order number, date and price on this page is invented. No figure is real. "Today" in the mockup is Sat 21 Nov 2026.</p>
+  <div class="title">
+    <h1>Ask Box</h1>
+    <p><b>Mockup, not built.</b> Type a question about your orders. The box shows how it read it, answers from your own ledger with a receipt, and refuses by name when the records can't settle it.</p>
+  </div>
+  <div class="controls">
+    <nav class="ctl" aria-label="Screen state"><span class="ctl-label">State</span><div class="seg" id="states"></div></nav>
+    <div class="ctl" id="rrow"><span class="ctl-label">Refusal</span><div class="seg" id="reasons"></div></div>
+    <div class="ctl"><span class="ctl-label">Device</span><div class="seg" id="devices"></div>
+      <span class="ctl-label">Theme</span><div class="seg" id="themes"></div></div>
+    <div class="ctl"><span class="ctl-label">Placement</span><div class="seg" id="places"></div>
+      <span class="ctl-label">Labels</span><div class="seg"><button type="button" id="lblBtn" aria-pressed="true">Today / New</button></div></div>
+  </div>
+</div>
+
+<p class="caption" id="caption" aria-live="polite"></p>
+<div class="stage" id="stage"></div>
+
+<div class="note">
+  <b>How to use.</b> Type into the box and press Enter, or tap an example. Try: "did the ember drake come", "did the ember drak arrive", "did the ember drake from last tuesday come", "what's late", "is a moss golem coming", "what did I spend per set". Tap a chip under "Read as" to change it to another value from the ledger. Tap an answer row to open it in Packages.
+  <ol>
+    <li>Frames are illustrative: the phone is drawn at about 390 by 844, the fold as two such screens, and the web at 1180 wide. No size was read from the repo's device list.</li>
+    <li>The input sits at the bottom of the phone sheet so it rides above the keyboard, in thumb reach. On the web it sits at the top of a side sheet, and <kbd>/</kbd> opens it.</li>
+    <li>On the fold the ask box takes the right screen and Packages stays on the left, so a tapped row shows without closing the answer.</li>
+    <li>"Last Tuesday" resolves to the most recent Tuesday before today (Tue 17 Nov). That is after the newest import, so it draws refusal R4. The plan's example table resolves it to Tue 10 Nov; the owner picks one.</li>
+    <li>The lost-mail threshold is drawn at 21 days. The real rule was not read for this mockup.</li>
+  </ol>
+</div>
+
+<script>
+(function(){
+"use strict";
+/* ---------- invented ledger ---------- */
+var TODAY="2026-11-21", IMPORT_END="2026-11-14", LOST_DAYS=21;
+var R=[];
+function add(seller,order,date,items){items.forEach(function(it){R.push({id:"r"+R.length,card:it[0],qty:it[1],price:it[2],seller:seller,order:order,date:date,got:!!it[3],claim:it[4]||null,refund:!!it[5]})})}
+add("Hollow Oak Cards","HO-4471","2026-11-10",[["Ember Drake",1,1.10],["Forest Sprite",2,0.18,1],["Ashen Vow",1,0.30,1]]);
+add("Grimfang Games","GF-5520","2026-10-29",[["Tidepool Seer",2,0.40],["Copper Lantern",2,0.55]]);
+add("Grimfang Games","GF-5528","2026-11-12",[["Ember Drake",1,1.95]]);
+add("Pebble Post Games","PP-3310","2026-11-02",[["Forest Sprite",1,0.20,0,"2026-11-18"],["Ember Dragoon",1,0.85,1]]);
+var LR=["Gloam Heron","Saltwick Imp","Brass Acolyte","Fennel Witch","Hearth Wurm","Quill Sprite","Slate Warden","Dusk Lancer","Marrow Kite","Pine Oracle","Cinder Mole","Rook of Vale","Velvet Shade","Bramble Knight","Owl of Ashes","Tin Herald","Glass Viper","Lichen Monk","Oxbow Giant","Wren Duelist","Sable Courier","Hollow Bell"];
+function lr(a,b){return LR.slice(a,b).map(function(n,i){return [n,1,+(0.12+((a+i)*7%11)*0.04).toFixed(2)]})}
+add("Lantern Row","LR-6F1A","2026-11-12",[["Moss Golem",1,0.35]].concat(lr(0,7)));
+add("Lantern Row","LR-6E07","2026-11-08",lr(7,16));
+add("Lantern Row","LR-6C33","2026-11-03",lr(16,22));
+add("Lantern Row","LR-5B90","2026-10-14",[["Forest Sprite",1,0.22,1],["Gilded Moth",3,0.15,1]]);
+add("Brindle & Thorn","BT-1187","2026-10-06",[["Rust Hound",4,0.25,1],["Morrow Lantern",2,0.60,1],["Harbor Ward",1,2.40,1]]);
+add("Quarry Lane Cards","QL-2208","2026-10-09",[["Mirror Wisp",2,1.70,0,"2026-10-30",1]]);
+add("Quarry Lane Cards","QL-2251","2026-10-21",[["Sunken Bell",2,0.95,1],["Cobble Golem",1,0.50,1]]);
+add("Brindle & Thorn","BT-1240","2026-11-05",[["Thistle Archer",2,0.30,1]]);
+
+var SELLERS=[["Hollow Oak Cards","hollow oak"],["Grimfang Games","grimfang"],["Pebble Post Games","pebble post"],["Lantern Row","lantern row"],["Brindle & Thorn","brindle"],["Quarry Lane Cards","quarry lane"]];
+var CARDS=[];R.forEach(function(r){if(CARDS.indexOf(r.card)<0)CARDS.push(r.card)});
+var TYPES=[["arrived","Arrived?","did the ember drake from hollow oak come"],["alln","All of N?","did all four forest sprites arrive"],["sellerout","Still out from seller","what's still out from grimfang"],["spend","Spend in a range","what did I spend in october"],["late","What's late","what's late"],["coming","Already coming?","is a moss golem coming"]];
+var MONTHS={"2026-10":"October","2026-11":"November"};
+
+/* ---------- helpers ---------- */
+var DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"],MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function D(s){var p=s.split("-");return new Date(+p[0],+p[1]-1,+p[2])}
+function iso(d){return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2)}
+function fmt(s){var d=D(s);return DOW[d.getDay()]+" "+d.getDate()+" "+MON[d.getMonth()]}
+function days(s){return Math.round((D(TODAY)-D(s))/864e5)}
+function money(v){return "$"+v.toFixed(2)}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function lev(a,b){var m=[],i,j;for(i=0;i<=a.length;i++){m[i]=[i]}for(j=1;j<=b.length;j++)m[0][j]=j;
+  for(i=1;i<=a.length;i++)for(j=1;j<=b.length;j++)m[i][j]=Math.min(m[i-1][j]+1,m[i][j-1]+1,m[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return m[a.length][b.length]}
+function lost(r){return !r.got&&!r.refund&&days(r.date)>=LOST_DAYS}
+function status(r){
+  if(r.refund)return '<span class="badge mute">Refunded</span>';
+  if(r.got)return '<span class="badge ok">Received</span>';
+  if(r.claim)return '<span class="badge">Claim filed '+fmt(r.claim).slice(4)+'</span>';
+  if(lost(r))return '<span class="badge">May be lost</span>';
+  return '';
+}
+function orders(rows){var o={};rows.forEach(function(r){o[r.order]=1});return Object.keys(o).length}
+function qty(rows){return rows.reduce(function(a,r){return a+r.qty},0)}
+function cost(rows){return rows.reduce(function(a,r){return a+r.qty*r.price},0)}
+
+/* ---------- the reading: text to a query, on the device ---------- */
+var NUMW={two:2,three:3,four:4,five:5,six:6,"2":2,"3":3,"4":4,"5":5,"6":6};
+var VOCAB="did do does the a an my from of in on at to is are was were what whats what's which who how much many all any still out come came arrive arrived arrives get got here coming yet last this that since spend spent cost paid october november oct nov late claims claim open order orders ordered card cards i me it be has have been anything else go went missing lost never".split(" ");
+function parse(text){
+  var t=" "+text.toLowerCase().replace(/[?.!,]/g," ").replace(/\s+/g," ").trim()+" ";
+  var q={text:text,type:null,card:null,seller:null,date:null,month:null,n:null,r3:false};
+  if(/\b(set|sets|rarity|edition)\b/.test(t))return ref(q,"r5",{type:"spend"});
+  if(/who sent|orphan|envelope|no return/.test(t))return ref(q,"r6");
+  if(/which seller|loses? the most|worst seller|rank/.test(t))return ref(q,"r8");
+  if(/\b(fall|autumn|summer|spring|winter|lately|recently)\b/.test(t))return ref(q,"r9",{type:"spend"});
+  SELLERS.forEach(function(s){if(t.indexOf(s[1])>-1)q.seller=s[0]});
+  CARDS.slice().sort(function(a,b){return b.length-a.length}).forEach(function(c){if(!q.card&&t.indexOf(" "+c.toLowerCase())>-1)q.card=c});
+  var wd=t.match(/last (sun|mon|tues|wednes|thurs|fri|satur)day/);
+  if(wd){var want=["sun","mon","tues","wednes","thurs","fri","satur"].indexOf(wd[1]),d=D(TODAY);do{d.setDate(d.getDate()-1)}while(d.getDay()!==want);q.date=iso(d)}
+  var dm=t.match(/\b(\d{1,2}) (oct|nov)\b/)||t.match(/\b(oct|nov)\w* (\d{1,2})\b/);
+  if(dm){var dd=/\d/.test(dm[1])?dm[1]:dm[2],mm=/\d/.test(dm[1])?dm[2]:dm[1];q.date="2026-"+(mm==="oct"?"10":"11")+"-"+("0"+dd).slice(-2)}
+  if(!q.date){if(/\boct(ober)?\b/.test(t))q.month="2026-10";else if(/\bnov(ember)?\b/.test(t))q.month="2026-11"}
+  var nm=t.match(/\ball (two|three|four|five|six|\d)\b/);if(nm)q.n=NUMW[nm[1]];
+  if(/spen[dt]|\bcost\b|\bpaid\b/.test(t))q.type="spend";
+  else if(/\blate\b|\bclaims?\b|overdue/.test(t))q.type="late";
+  else if(/still out|outstanding|waiting on|still open/.test(t))q.type=q.seller?"sellerout":(q.card?"coming":"sellerout");
+  else if(/\ball\b/.test(t))q.type="alln";
+  else if(/coming|on (the|its) way/.test(t))q.type="coming";
+  else if(/missing|\blost\b|never came/.test(t)){q.type="arrived";q.r3=true}
+  else if(/arrive|\bcome\b|\bcame\b|\bget\b|\bgot\b|\bhere\b/.test(t))q.type="arrived";
+  var needCard=q.type==="arrived"||q.type==="alln"||q.type==="coming";
+  if(needCard&&!q.card){var fz=fuzzy(t,CARDS.map(function(c){return c.toLowerCase()}));if(fz)return ref(q,"r2",{field:"card",typed:fz.typed,closest:fz.closest.map(function(i){return CARDS[i]})})}
+  var fw=t.match(/from (\w+)/);
+  if(fw&&!q.seller&&q.type&&!/^(the|last|this|my)$/.test(fw[1])){var fs=fuzzy(" "+fw[1]+" ",SELLERS.map(function(s){return s[1].split(" ")[0]}));if(fs)return ref(q,"r2",{field:"seller",typed:fw[1],closest:fs.closest.map(function(i){return SELLERS[i][0]})})}
+  if(!q.type||(needCard&&!q.card)||(q.type==="sellerout"&&!q.seller)){var u=t.trim().split(" ").filter(function(x){return x.length>3&&VOCAB.indexOf(x)<0})[0];return ref(q,"r7",{word:u||null})}
+  if(q.type==="spend"&&!q.month&&!q.date)return ref(q,"r9",{type:"spend"});
+  return q;
+}
+function ref(q,code,extra){q.refuse=code;for(var k in extra)q[k]=extra[k];return q}
+function fuzzy(t,names){
+  var words=t.trim().split(" "),best=null;
+  names.forEach(function(n){var k=n.split(" ").length;for(var s=0;s+k<=words.length;s++){var w=words.slice(s,s+k).join(" ");if(w.length<4)continue;var d=lev(w,n);
+    if(d>0&&d<=2&&(!best||d<best.d))best={d:d,typed:w}}});
+  if(!best)return null;
+  var ranked=names.map(function(n,i){return {i:i,d:lev(best.typed,n)}}).sort(function(a,b){return a.d-b.d}).slice(0,2).filter(function(x){return x.d<=4});
+  return {typed:best.typed,closest:ranked.map(function(x){return x.i})};
+}
+
+/* ---------- the ledger answers ---------- */
+function chip(field,label,val,warn){return {f:field,l:label,v:val,w:!!warn}}
+function run(q){
+  var a={q:q,chips:[],rows:[],head:"",sub:"",receipt:true,spend:false};
+  if(q.refuse)return refuse(q,a);
+  if(q.type==="arrived"){
+    a.chips=[chip("card","Card",q.card),chip("seller","Seller",q.seller||"Any"),chip("date","Ordered",q.date?fmt(q.date):"Any date"),chip("type","Asking","arrived?")];
+    if(q.date&&q.date>IMPORT_END){q.refuse="r4";a.chips[2].w=true;return refuse(q,a)}
+    var m=R.filter(function(r){return r.card===q.card&&(!q.seller||r.seller===q.seller)&&(!q.date||r.date===q.date)});
+    if(orders(m)>1){q.refuse="r1";a.chips[1].w=!q.seller;a.chips[2].w=!q.date;a.cands=m;return refuse(q,a)}
+    if(!m.length){a.head="No "+q.card+" order fits";a.sub="Nothing from "+(q.seller||"any seller")+(q.date?" on "+fmt(q.date):"")+". Tap a chip to widen it.";a.muted=true;a.receipt=false;return a}
+    var r=m[0];a.rows=m;
+    if(q.r3){q.refuse="r3";return refuse(q,a)}
+    a.head=r.got?"Marked received":"Not marked received";
+    a.sub=r.card+" ×"+r.qty+", "+r.seller+", ordered "+fmt(r.date)+". "+(r.got?"Checked in.":days(r.date)+" days out; "+(r.claim?"claim filed "+fmt(r.claim)+".":lost(r)?"lost-mail warning.":"no lost-mail warning yet."));
+    return a;
+  }
+  if(q.type==="alln"){
+    var all=R.filter(function(r){return r.card===q.card}),n=qty(all),g=qty(all.filter(function(r){return r.got})),open=all.filter(function(r){return !r.got});
+    a.chips=[chip("card","Card",q.card),chip("type","Asking","all of "+(q.n||n)+"?")];
+    a.head=g+" of "+n+" marked received";
+    a.sub=(q.n&&q.n!==n?"Your ledger holds "+n+", not "+q.n+". ":"")+(open.length?"Open: "+open.map(function(r){return r.qty+" from "+r.seller+", ordered "+fmt(r.date).slice(4)+(r.claim?", claim filed "+fmt(r.claim).slice(4):"")}).join("; ")+".":"None open.");
+    a.rows=open.concat(all.filter(function(r){return r.got}));return a;
+  }
+  if(q.type==="sellerout"){
+    var so=R.filter(function(r){return r.seller===q.seller&&!r.got&&!r.refund}).sort(function(x,y){return x.date<y.date?-1:1});
+    a.chips=[chip("seller","Seller",q.seller),chip("type","Asking","still out?")];
+    if(!so.length){a.head="Nothing from "+q.seller+" is open";a.sub="Every card from this seller is marked received or refunded.";return a}
+    a.head=orders(so)+" order"+(orders(so)>1?"s":"")+", "+qty(so)+" card"+(qty(so)>1?"s":"")+", "+money(cost(so));
+    a.sub="Oldest: "+fmt(so[0].date)+(lost(so[0])?" (lost-mail warning).":", "+days(so[0].date)+" days out.");
+    a.rows=so;return a;
+  }
+  if(q.type==="spend"){
+    var key=q.month||q.date.slice(0,7),sp=R.filter(function(r){return r.date.slice(0,7)===key}),rf=sp.filter(function(r){return r.refund});
+    a.chips=[chip("month","Month",MONTHS[key]||key),chip("type","Asking","spend")];
+    a.head=money(cost(sp))+" spent in "+(MONTHS[key]||key);
+    a.sub=qty(sp)+" cards, "+orders(sp)+" orders, using Tally's cost basis."+(rf.length?" Less "+money(cost(rf))+" refunded ("+orders(rf)+" order).":"");
+    var byO={};sp.forEach(function(r){(byO[r.order]=byO[r.order]||[]).push(r)});
+    a.orderRows=Object.keys(byO).map(function(k){return byO[k]});a.spend=true;return a;
+  }
+  if(q.type==="late"){
+    var lt=R.filter(function(r){return lost(r)||(r.claim&&!r.refund&&!r.got)});
+    a.chips=[chip("type","Asking","what's late")];
+    var lo=orders(lt.filter(lost)),cl=orders(lt.filter(function(r){return r.claim}));
+    a.head=orders(lt)+" orders need a look";a.sub=lo+" past the lost-mail warning, "+cl+" with a claim filed and no refund yet. The same list the warning shows.";
+    a.rows=lt;return a;
+  }
+  if(q.type==="coming"){
+    var cm=R.filter(function(r){return r.card===q.card&&!r.got&&!r.refund});
+    a.chips=[chip("card","Card",q.card),chip("type","Asking","already coming?")];
+    a.head=cm.length?"Yes, "+qty(cm)+" open":"None open";
+    a.sub=cm.length?cm.map(function(r){return r.card+" ×"+r.qty+" from "+r.seller+", ordered "+fmt(r.date)}).join("; ")+".":"Every "+q.card+" in your ledger is marked received.";
+    a.rows=cm;return a;
+  }
+}
+function refuse(q,a){
+  a.code=q.refuse;var c=q.refuse;
+  if(c==="r1"){a.head="Two orders fit. Which one?";a.sub="The app never picks for you.";a.pick=a.cands;a.receipt=false}
+  if(c==="r2"){var isC=q.field==="card";a.chips=[chip(q.field,isC?"Card":"Seller",'"'+q.typed+'"',true)];a.head='No "'+q.typed+'" in your ledger';a.sub="Closest "+(isC?"card":"seller")+" names in your ledger:";a.options=q.closest.map(function(n){return {label:n,act:isC?"setcard":"setseller",v:n}});a.receipt=false}
+  if(c==="r3"){a.head="Not marked received";a.sub="The app can't tell missing from not yet checked in. It knows only what you marked. "+a.rows.map(function(r){return r.card+" from "+r.seller+": ordered "+fmt(r.date)+", "+days(r.date)+" days out"+(r.claim?", claim filed "+fmt(r.claim).slice(4):"")}).join("; ")+".";a.next={label:"Open in Packages",act:"row",v:a.rows[0].id}}
+  if(c==="r4"){a.head="Your newest import ends "+fmt(IMPORT_END);a.sub="Orders after that aren't here, so "+fmt(q.date)+" can't be checked. Tap the date chip to pick an earlier one.";a.next={label:"Import newer orders",act:"toast",v:"Import opens here, over the same view."};a.receipt=false}
+  if(c==="r5"){a.chips=[chip("type","Asking","spend"),chip("type","Per","set",true)];a.head="Your records don't hold set or rarity";a.sub="Order exports carry card names, sellers, dates and prices.";a.next={label:"Ask spend by month instead",act:"ask",v:"what did I spend in october"};a.receipt=false}
+  if(c==="r6"){a.chips=[chip("type","Asking","who sent?",true)];a.head="Orphaned mail isn't matched to orders";a.sub="An envelope with no known sender never answers a question about an order.";a.next={label:"Open Orphaned",act:"toast",v:"Orphaned opens here. Nothing is matched."};a.receipt=false}
+  if(c==="r7"){a.chips=[chip("type","Asking","?",true)];a.head="It can't answer that yet";a.sub=(q.word?'It didn\'t understand "'+q.word+'". ':"")+"It answers six kinds of question:";a.types=true;a.receipt=false}
+  if(c==="r8"){a.chips=[chip("type","Asking","rank sellers",true)];a.head="It doesn't rank sellers";a.sub="A ranking needs a fixed meaning of lost. The seller record card shows each seller's counts with that meaning.";a.next={label:"Open seller record card",act:"toast",v:"The seller record card opens here."};a.receipt=false}
+  if(c==="r9"){a.chips=[chip("type","Asking","spend"),chip("month","Month","?",true)];a.head="Which dates?";
+    var vm=(q.text||"").toLowerCase().match(/(?:(?:in|this|the) )*(fall|autumn|summer|spring|winter|lately|recently)/);
+    a.sub=(vm?'"'+vm[0]+'" could mean several ranges.':"That could mean several ranges.")+" Pick one:";a.options=[{label:"October",act:"setmonth",v:"2026-10"},{label:"November",act:"setmonth",v:"2026-11"}];a.receipt=false}
+  return a;
+}
+
+/* ---------- state ---------- */
+var STATES=[
+  {k:"closed",n:"Closed",cap:"Today's Packages view with one new control: Ask, in the header. Tap it."},
+  {k:"empty",n:"Empty",cap:"No import yet. The box says what fills it and offers one control. The examples stay greyed, and each says why on hover or focus."},
+  {k:"open",n:"Open",cap:"The sheet opens over the view; nothing under it moves. The input is focused and sits above the keyboard. Nothing answers until Enter."},
+  {k:"normal",n:"Answer",cap:"Read as chips, a headline, the matching rows and a receipt. Every number traces to a row you can open."},
+  {k:"picker",n:"Chip picker",cap:"A tap on a chip opens an in-app list of ledger values, never a native dialog. It floats over the answer, so the answer keeps its place."},
+  {k:"many",n:"Many matches",cap:"Over 8 rows: the first 8, then \"Show all 23 in Packages\", which applies a filter there. Rows never stream into the sheet."},
+  {k:"stale",n:"Stale sync",cap:"The receipt says the last sync was 2 hours ago. The answer still shows; the app does not block on sync."},
+  {k:"error",n:"Error",cap:"The ledger could not be read. The sheet says so and offers Retry. It shows no cached answer."},
+  {k:"refusal",n:"Refusal",cap:""},
+  {k:"jump",n:"Row opened",cap:"A tap on an answer row closes the sheet and scrolls Packages to that row, highlighted."},
+  {k:"slice2",n:"Slice 2 send",cap:"Slice 2 only, not recommended yet. Before any call, the exact outgoing text shows with Send. A misspelled name slips past the swap and is flagged."}
+];
+var REASONS=[
+  ["r1","R1 Two fit","did the ember drake come","Two rows fit. Both are listed and you pick. The app never picks."],
+  ["r2","R2 No such name","did the ember drak arrive","No such name. Suggestions come from ledger names only."],
+  ["r3","R3 Unmarked","did the forest sprite from pebble post go missing","\"Missing\" is answered as \"not marked received\", never \"didn't arrive\"."],
+  ["r4","R4 After import","did the ember drake from last tuesday come","The date is after the newest import. The next step offered is import; the date chip can be changed."],
+  ["r5","R5 Field not held","what did I spend per set","Your records don't hold set or rarity. It makes none up."],
+  ["r6","R6 Unknown sender","who sent the 14 nov envelope","Orphaned mail is never matched to an order. A link goes to Orphaned."],
+  ["r7","R7 Unknown type","how heavy was my last package","An unknown question lists the six types it can answer, each tappable, and names the word it did not understand."],
+  ["r8","R8 Seller ranking","which seller loses the most mail","It does not rank sellers. It links to the seller record card."],
+  ["r9","R9 Vague time","what did I spend in the fall","A vague time asks for a range instead of guessing one."]
+];
+var PRESET={closed:"",empty:"",open:"",normal:"did the ember drake from hollow oak come",picker:"did the ember drake from hollow oak come",many:"what's still out from lantern row",stale:"did all four forest sprites arrive",error:"what's late",jump:"what's still out from lantern row",slice2:"which of the ember drakes from grimfnag are still out since 12 nov"};
+var S={s:"closed",r:"r1",d:"phone",t:"auto",p:"sheet",labels:true,q:"",ans:null,pick:null,toast:"",hl:null,filter:null,sent:false,inited:false};
+
+function preset(){
+  S.pick=null;S.toast="";S.hl=null;S.filter=null;S.sent=false;S.ans=null;
+  S.q=S.s==="refusal"?REASONS.filter(function(x){return x[0]===S.r})[0][2]:PRESET[S.s];
+  if(S.q&&S.s!=="error"&&S.s!=="slice2")S.ans=run(parse(S.q));
+  if(S.s==="picker")S.pick="card";
+  if(S.s==="jump")S.hl=R.filter(function(r){return r.order==="LR-6E07"})[2].id;
+}
+
+/* ---------- rendering ---------- */
+function L(k,text,inner,cls,tag){tag=tag||"div";return "<"+tag+' class="lbl '+(cls||"")+'" data-k="'+k+'" data-lbl="'+(k==="today"?"Today: ":"New: ")+text+'">'+inner+"</"+tag+">"}
+var ICON={
+  ask:'<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 12l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  up:'<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M9 15V3M4 8l5-5 5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  chev:'<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  x:'<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  check:'<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 7.5l2.6 2.6L11 4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  box:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+  sum:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14M5 12h14M5 19h9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  q:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10 10.5a2 2 0 1 1 2.5 1.9V14M12 16v.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'
+};
+function statusBar(){return '<div class="island" aria-hidden="true"></div><div class="status" aria-hidden="true"><span class="num">9:41</span><i></i></div>'}
+function tabbar(){
+  function t(n,ic,cur){return '<div class="tab"'+(cur?' aria-current="page"':'')+'>'+ic+n+'</div>'}
+  return L("today","tab bar",t("Packages",ICON.box,1)+t("Tally",ICON.sum)+t("Orphaned",ICON.q),"tabbar","nav")+'<div class="homebar" aria-hidden="true"></div>';
+}
+function askButton(withKey){return L("new","Ask button",'<button type="button" class="askbtn" data-act="open" aria-label="Ask about your orders">'+ICON.ask+'Ask'+(withKey?' <kbd aria-hidden="true">/</kbd>':'')+'</button>',"","span")}
+
+function prow(r){
+  return '<div class="prow'+(S.hl===r.id?" hl":"")+'"><div class="main"><div class="t">'+esc(r.card)+' ×'+r.qty+'</div><div class="s">'+esc(r.seller)+' · '+r.order+' · '+fmt(r.date)+'</div></div>'+
+    (r.got?'<span class="circ on">'+ICON.check+'</span>':(r.claim||lost(r)?status(r):'')+'<span class="circ"></span>')+'</div>';
+}
+function packagesList(maxRows){
+  if(S.s==="empty")return '<div class="emptyview"><p>No orders yet. An order CSV fills this list.</p><button type="button" class="next" data-act="toast" data-v="Import opens here.">Import an order CSV</button></div>';
+  var seen={},rows=R.filter(function(r){return !r.refund});
+  if(S.filter)rows=R.filter(function(r){return r.seller===S.filter&&!r.got});
+  var hlRow=S.hl&&R.filter(function(r){return r.id===S.hl})[0];
+  var order=rows.map(function(r){return r.order}).filter(function(o){if(seen[o])return false;seen[o]=1;return true});
+  if(hlRow&&order.indexOf(hlRow.order)>-1){order.splice(order.indexOf(hlRow.order),1);order.unshift(hlRow.order)}
+  var budget=maxRows,html="";
+  if(S.filter)html+=L("new","filter from Ask",'<div class="filterbar"><button type="button" class="fchip" data-act="clearfilter" aria-label="Clear filter '+esc(S.filter)+', not received">'+esc(S.filter)+', not received '+ICON.x+'</button><span class="s num">'+qty(rows)+' cards</span></div>');
+  order.forEach(function(o){
+    if(budget<=0)return;
+    var rs=rows.filter(function(r){return r.order===o}).slice(0,budget);budget-=rs.length;
+    html+='<div class="grp"><p class="sect">'+esc(rs[0].seller)+' · '+o+'</p><div class="list">'+rs.map(prow).join("")+'</div></div>';
+  });
+  return html;
+}
+function packagesScreen(withAsk,bar){
+  return statusBar()+'<div class="nav"><div class="nav-top">'+(withAsk&&!bar?askButton(false):'')+'</div><h1 class="largetitle">Packages</h1></div>'+
+    '<div class="scroll">'+(bar?L("new","ask bar, moves the list",askPanel("bar")):'')+L("today","Packages list",'<div class="stack">'+packagesList(bar?3:10)+'</div>')+'</div>'+tabbar();
+}
+
+/* The ask box: one component, four placements (sheet, pane, side, bar). */
+function askPanel(mode){
+  var phoneKb=mode==="sheet"&&S.s==="open";
+  var head=mode==="sheet"?'<div class="grabber" aria-hidden="true"></div><div class="askbar"><button type="button" class="navbtn close" data-act="close">Close</button><h2>Ask</h2><span></span></div>'
+    :mode==="pane"?'<div class="askbar"><span></span><h2>Ask</h2><span></span></div>'
+    :mode==="side"?'<div class="askbar"><span></span><h2>Ask</h2><button type="button" class="navbtn closeend" data-act="close">Close</button></div>':'';
+  var disabled=S.s==="empty";
+  var dock='<form class="dock" data-form="ask" role="search"><label class="vh" for="q-'+mode+'">Ask about your orders</label><input class="field" id="q-'+mode+'" name="q" autocomplete="off" enterkeyhint="search" placeholder="'+(disabled?"Import an order CSV to ask":"Ask about your orders")+'" value="'+esc(S.q)+'"'+(disabled?" disabled":"")+'>'+
+    '<button type="submit" class="go" aria-label="Ask"'+(disabled?' disabled title="Nothing to ask yet: import an order CSV first"':'')+'>'+ICON.up+'</button></form>';
+  var kb=phoneKb?'<div class="kbd" aria-hidden="true"><div>'+rep(10,'<i></i>')+'</div><div>'+rep(9,'<i></i>')+'</div><div><i class="mid"></i>'+rep(7,'<i></i>')+'<i class="mid"></i></div><div><i class="mid"></i><i class="wide"></i><i class="mid"></i></div></div>':'';
+  return '<section class="ask '+mode+(phoneKb?" kb":"")+'" aria-label="Ask"'+(mode==="sheet"?' role="dialog"':'')+'>'+head+'<div class="askbody">'+askBody()+'</div>'+dock+kb+pickerHtml()+'</section>';
+}
+function rep(n,s){var o="";for(var i=0;i<n;i++)o+=s;return o}
+function examples(dis){
+  return '<div class="cluster">'+TYPES.slice(0,4).map(function(x){return '<button type="button" class="ex" data-act="ask" data-v="'+esc(x[2])+'"'+(dis?' disabled title="Import an order CSV first; the examples need orders to read"':'')+'>'+esc(x[2])+'</button>'}).join("")+'</div>';
+}
+function askBody(){
+  if(S.s==="empty")return '<div class="stack"><p class="head">Import an order CSV first</p><p class="lead">The box reads your imported orders. With none, it has nothing to answer from.</p><button type="button" class="next" data-act="toast" data-v="Import opens here, over the same view.">Import an order CSV</button></div><div class="stack"><p class="minor">Examples, once orders are in</p>'+examples(true)+'</div>';
+  if(S.s==="error")return '<div class="errbox" role="alert"><p class="head">Couldn\'t read your ledger</p><p class="lead">Nothing was answered, and no older answer is shown in its place.</p><button type="button" class="next" data-act="retry">Retry</button></div>';
+  if(S.s==="slice2")return slice2();
+  if(!S.ans)return '<div class="stack"><p class="lead">Ask about your orders in plain words. It reads your ledger and never changes it. Nothing you ask is kept.</p></div><div class="stack"><p class="minor">Try one</p>'+L("new","example chips",examples(false))+'</div>';
+  return answerHtml(S.ans);
+}
+function rowBtn(r){
+  return '<button type="button" class="arow" data-act="row" data-v="'+r.id+'"><div class="main"><div class="t">'+esc(r.card)+' ×'+r.qty+'</div><div class="s">'+esc(r.seller)+' · '+fmt(r.date)+'</div></div><span class="price num">'+money(r.qty*r.price)+'</span>'+status(r)+'<span class="chev">'+ICON.chev+'</span></button>';
+}
+function answerHtml(a){
+  var h="";
+  if(a.chips.length){
+    h+=L("new","read as",'<div class="reading"><p class="minor">Read as</p><div class="cluster">'+a.chips.map(function(c){
+      return '<button type="button" class="chip'+(c.w?" warn":"")+'" data-act="chip" data-v="'+c.f+'" aria-expanded="'+(S.pick===c.f)+'" aria-label="'+c.l+': '+esc(c.v)+'. Change"><span><b>'+c.l+'</b>'+esc(c.v)+'</span></button>'}).join("")+'</div></div>');
+  }
+  var core="";
+  if(a.code){
+    var rc=REASONS.filter(function(x){return x[0]===a.code})[0];
+    core+='<div class="refusal"><span class="rcode">'+rc[1].replace(/^(R\d) /,"$1 · ")+'</span><p class="head refuse">'+esc(a.head)+'</p><p class="sub">'+esc(a.sub)+'</p>';
+    if(a.pick)core+='<div class="arows">'+a.pick.map(function(r){return '<button type="button" class="arow" data-act="pickrow" data-v="'+r.id+'"><div class="main"><div class="t">'+esc(r.seller)+'</div><div class="s">'+esc(r.card)+' ×'+r.qty+' · ordered '+fmt(r.date)+' · '+money(r.qty*r.price)+'</div></div>'+status(r)+'<span class="chev">'+ICON.chev+'</span></button>'}).join("")+'</div>';
+    if(a.options)core+='<div class="pickbtns">'+a.options.map(function(o){return '<button type="button" data-act="'+o.act+'" data-v="'+esc(o.v)+'">'+esc(o.label)+'</button>'}).join("")+'</div>';
+    if(a.types)core+='<div class="arows">'+TYPES.map(function(x){return '<button type="button" class="arow" data-act="ask" data-v="'+esc(x[2])+'"><div class="main"><div class="t">'+x[1]+'</div><div class="s">"'+esc(x[2])+'"</div></div><span class="chev">'+ICON.chev+'</span></button>'}).join("")+'</div>';
+    if(a.code==="r3"&&a.rows.length)core+='<div class="arows">'+a.rows.map(rowBtn).join("")+'</div>';
+    if(a.next)core+='<button type="button" class="next" data-act="'+a.next.act+'" data-v="'+esc(a.next.v)+'">'+esc(a.next.label)+'</button>';
+    core+='</div>';
+  } else {
+    core+='<div class="stack"><p class="head'+(a.muted?" refuse":"")+'">'+esc(a.head)+'</p>'+(a.sub?'<p class="sub">'+esc(a.sub)+'</p>':'')+'</div>';
+    if(a.orderRows){
+      core+='<div class="arows">'+a.orderRows.slice(0,8).map(function(rs){return '<button type="button" class="arow" data-act="row" data-v="'+rs[0].id+'"><div class="main"><div class="t">'+esc(rs[0].seller)+'</div><div class="s">'+rs[0].order+' · '+fmt(rs[0].date)+' · '+qty(rs)+' cards</div></div><span class="price num">'+money(cost(rs))+'</span>'+(rs[0].refund?status(rs[0]):'')+'<span class="chev">'+ICON.chev+'</span></button>'}).join("")+'</div>';
+    } else if(a.rows.length){
+      core+='<div class="arows">'+a.rows.slice(0,8).map(rowBtn).join("")+'</div>';
+      if(a.rows.length>8)core+='<div>'+L("new","filter hand-off",'<button type="button" class="more" data-act="showall" data-v="'+esc(a.rows[0].seller)+'">Show all '+qty(a.rows)+' in Packages</button>',"","span")+'</div>';
+    }
+  }
+  h+=core;
+  if(a.receipt){
+    var counted=a.orderRows?a.orderRows.reduce(function(n,rs){return n+rs.length},0):a.rows.length;
+    var got=qty(R.filter(function(r){return r.got})),tot=qty(R.filter(function(r){return !r.refund}));
+    var sync=S.s==="stale"?'<span class="stale">synced 2 h ago; another device may have checked in since</span>':'synced 3 min ago';
+    h+=L("new","receipt",'<p class="receipt num">Counted '+counted+' row'+(counted===1?"":"s")+' · newest import ends '+fmt(IMPORT_END).slice(4)+' · '+sync+' · '+got+' of '+tot+' cards checked in'+(a.spend?' · cost basis as Tally':'')+'</p>');
+  }
+  return h;
+}
+function slice2(){
+  if(S.sent&&S.ans)return answerHtml(S.ans);
+  var out='which of the <mark>CARD_1</mark>s from <mark class="miss">grimfnag</mark> are still out since <mark>DATE_1</mark>';
+  return L("new","slice 2, outgoing preview",'<div class="stack"><p class="head">Send this to the model?</p><p class="lead">Only this text leaves the phone, through your private server. Names in your ledger are swapped out first.</p><pre class="out" aria-label="Outgoing text">'+out+'</pre>'+
+    '<p class="sub"><b>"grimfnag" isn\'t a name in your ledger, so it goes as typed.</b> Fix it in the box if it is a seller.</p>'+
+    '<div class="leaves"><div><h3>Sent</h3><ul><li>The text above</li><li>The six question types</li></ul></div><div><h3>Never sent</h3><ul><li>Rows, prices, check-ins</li><li>Your seller and card lists</li><li>The answer</li></ul></div></div>'+
+    '<div class="btnrow"><button type="button" class="next" data-act="send">Send</button><button type="button" class="ghost" data-act="cancelsend">Cancel</button></div></div>');
+}
+function pickerHtml(){
+  if(!S.pick||!S.ans)return "";
+  var q=S.ans.q,f=S.pick,opts=[],title="";
+  if(f==="card"){title="Card, from your ledger";opts=CARDS.slice().sort().map(function(c){var n=orders(R.filter(function(r){return r.card===c}));return {v:c,l:c,m:n+" order"+(n>1?"s":""),cur:q.card===c}})}
+  if(f==="seller"){title="Seller, from your ledger";opts=[{v:"",l:"Any seller",cur:!q.seller}].concat(SELLERS.map(function(s){return {v:s[0],l:s[0],cur:q.seller===s[0]}}))}
+  if(f==="date"){title="Order date"+(q.card?" for "+q.card:"");var ds={};R.filter(function(r){return !q.card||r.card===q.card}).forEach(function(r){ds[r.date]=1});
+    opts=[{v:"",l:"Any date",cur:!q.date}].concat(Object.keys(ds).sort().reverse().map(function(d){return {v:d,l:fmt(d),m:days(d)+" days ago",cur:q.date===d}}))}
+  if(f==="month"){title="Month";opts=Object.keys(MONTHS).map(function(k){return {v:k,l:MONTHS[k],cur:q.month===k}})}
+  if(f==="type"){title="Question type";opts=TYPES.map(function(x){return {v:x[0],l:x[1],m:'"'+x[2]+'"',cur:q.type===x[0]&&!q.refuse}})}
+  return '<div class="picker" role="dialog" aria-label="'+esc(title)+'"><header><h3>'+esc(title)+'</h3><button type="button" class="navbtn" data-act="pickclose">Done</button></header><div class="opts">'+
+    opts.map(function(o){return '<button type="button" class="opt" data-act="pickval" data-v="'+esc(o.v)+'" aria-current="'+(!!o.cur)+'"><span>'+esc(o.l)+'</span>'+(o.m?'<small>'+esc(o.m)+'</small>':'')+'</button>'}).join("")+'</div></div>';
+}
+
+function render(){
+  var root=document.documentElement;
+  if(S.t==="auto")root.removeAttribute("data-theme");else root.setAttribute("data-theme",S.t);
+  root.setAttribute("data-labels",S.labels?"on":"off");
+  var open=S.s!=="closed"&&S.s!=="jump",html="";
+  if(S.d==="phone"){
+    var inner=S.p==="bar"?packagesScreen(false,true):packagesScreen(true,false)+(open?'<div class="scrim" data-act="close"></div>'+L("new","ask sheet",askPanel("sheet"),"sheetwrap"):'');
+    html='<div class="phone"><div class="screen">'+inner+toastHtml()+'</div></div>';
+  } else if(S.d==="fold"){
+    html='<div class="phone duo"><div class="screen left">'+packagesScreen(false,false)+'</div><div class="hinge" aria-hidden="true"></div><div class="screen right">'+statusBar()+L("new","ask pane, right screen",askPanel("pane"),"panewrap")+toastHtml()+'<div class="homebar" aria-hidden="true"></div></div></div>';
+  } else {
+    html='<div class="web"><div class="webbar" aria-hidden="true"><i></i><i></i><i></i><span>Ledger, desktop web</span></div><div class="webapp"><div class="webhead"><h1>Packages</h1><div class="webtabs"><span aria-current="page">Packages</span><span>Tally</span><span>Orphaned</span></div><span class="push">'+askButton(true)+'</span></div>'+
+      '<div class="webbody"><div class="center">'+L("today","Packages list",'<div class="stack">'+packagesList(9)+'</div>')+'</div></div>'+(open?L("new","ask side sheet",askPanel("side"),"sidewrap"):'')+'</div>'+toastHtml()+'</div>';
+  }
+  document.getElementById("stage").innerHTML=html;
+  placePickers();
+  var cap=STATES.filter(function(x){return x.k===S.s})[0].cap;
+  if(S.s==="refusal")cap=REASONS.filter(function(x){return x[0]===S.r})[0][3]+" Each refusal keeps the answer layout, mutes the headline and offers at most one next step.";
+  if(S.d==="fold"&&(S.s==="closed"||S.s==="jump"))cap+=" On the fold, the right screen keeps the ask pane; there is no sheet to close.";
+  if(S.p==="bar"&&S.d==="phone")cap+=" Placement \"bar\": the box sits above Packages and pushes the list down. This costs the no-layout-shift rule.";
+  document.getElementById("caption").textContent=cap;
+  document.getElementById("states").innerHTML=STATES.map(function(x){return '<a href="'+link({s:x.k})+'" aria-current="'+(x.k===S.s)+'">'+x.n+'</a>'}).join("");
+  document.getElementById("reasons").innerHTML=REASONS.map(function(x){return '<a href="'+link({s:"refusal",r:x[0]})+'" aria-current="'+(S.s==="refusal"&&x[0]===S.r)+'">'+x[1]+'</a>'}).join("");
+  document.getElementById("devices").innerHTML=[["phone","Phone"],["fold","Two-screen fold"],["web","Desktop web"]].map(function(x){return '<a href="'+link({d:x[0]})+'" aria-current="'+(x[0]===S.d)+'">'+x[1]+'</a>'}).join("");
+  document.getElementById("themes").innerHTML=["auto","light","dark"].map(function(t){return '<a href="'+link({t:t})+'" aria-current="'+(t===S.t)+'">'+t.charAt(0).toUpperCase()+t.slice(1)+'</a>'}).join("");
+  document.getElementById("places").innerHTML=[["sheet","Sheet over view (recommended)"],["bar","Bar above Packages"]].map(function(x){
+    if(S.d!=="phone")return '<span class="off" aria-disabled="true" aria-current="'+(x[0]===S.p)+'" title="Placement applies to the phone only" tabindex="0">'+x[1]+'</span>';
+    return '<a href="'+link({p:x[0]})+'" aria-current="'+(x[0]===S.p)+'">'+x[1]+'</a>'}).join("");
+  document.getElementById("lblBtn").setAttribute("aria-pressed",String(S.labels));
+}
+/* The picker opens just under the chips, so the chip being changed stays in view. */
+function placePickers(){document.querySelectorAll("#stage .picker").forEach(function(p){var ask=p.closest(".ask"),rd=ask.querySelector(".reading");if(rd)p.style.setProperty("--pt",Math.round(rd.getBoundingClientRect().bottom-ask.getBoundingClientRect().top+4)+"px")})}
+function toastHtml(){return S.toast?'<div class="toast" role="status">'+esc(S.toast)+'</div>':''}
+function link(o){
+  var s=o.s||S.s,r=o.r||S.r,d=o.d||S.d,t=o.t||S.t,p=o.p||S.p;
+  return "#s="+s+(s==="refusal"?"&r="+r:"")+(d!=="phone"?"&d="+d:"")+(t!=="auto"?"&t="+t:"")+(p!=="sheet"?"&p="+p:"");
+}
+function setHash(){history.replaceState(null,"",link({}))}
+function readHash(){
+  var h={};location.hash.replace(/^#/,"").split("&").forEach(function(kv){var p=kv.split("=");if(p[0])h[p[0]]=decodeURIComponent(p[1]||"")});
+  var prev=S.s+S.r;
+  S.s=STATES.some(function(x){return x.k===h.s})?h.s:"closed";
+  S.r=REASONS.some(function(x){return x[0]===h.r})?h.r:"r1";
+  S.d=/^(fold|web)$/.test(h.d||"")?h.d:"phone";
+  S.t=/^(light|dark)$/.test(h.t||"")?h.t:"auto";
+  S.p=h.p==="bar"?"bar":"sheet";
+  if(S.s+S.r!==prev||!S.inited){preset();S.inited=true}
+  render();
+}
+/* After a typed or tapped question, the state picker follows the result. */
+function settle(a){S.ans=a;S.pick=null;if(a.code){S.s="refusal";S.r=a.code}else S.s=a.rows&&a.rows.length>8?"many":"normal"}
+function answer(text){S.q=text;S.toast="";S.sent=false;settle(run(parse(text)));render();setHash();focusField()}
+function rerun(q){delete q.refuse;settle(run(q));render();setHash()}
+function focusField(){var f=document.querySelector("#stage .field");if(f&&!f.disabled)f.focus({preventScroll:true})}
+
+document.addEventListener("submit",function(e){
+  var f=e.target.closest("[data-form]");if(!f)return;e.preventDefault();
+  var v=f.querySelector(".field").value.trim();if(!v)return;
+  if(S.s==="slice2"&&!S.sent){S.q=v;render();return}
+  answer(v);
+});
+document.addEventListener("input",function(e){if(e.target.classList&&e.target.classList.contains("field"))S.q=e.target.value});
+document.addEventListener("click",function(e){
+  var b=e.target.closest("[data-act]");if(!b||b.disabled)return;
+  var a=b.getAttribute("data-act"),v=b.getAttribute("data-v");
+  if(a==="open"){S.s="open";S.q="";S.ans=null;S.hl=null;S.filter=null;S.toast="";render();setHash();focusField();return}
+  if(a==="close"){S.s="closed";S.pick=null;S.toast="";S.hl=null;render();setHash();var ab=document.querySelector("#stage .askbtn");if(ab)ab.focus();return}
+  if(a==="cancelsend"){S.s="open";S.ans=null;render();setHash();focusField();return}
+  if(a==="ask"){answer(v);return}
+  if(a==="chip"){S.pick=S.pick===v?null:v;render();var c=document.querySelector('#stage .picker .opt[aria-current="true"]')||document.querySelector("#stage .picker .opt");if(c)c.focus();return}
+  if(a==="pickclose"){var pf=S.pick;S.pick=null;render();var ch=document.querySelector('#stage .chip[data-v="'+pf+'"]');if(ch)ch.focus();return}
+  if(a==="pickval"){
+    var q=S.ans.q;delete q.refuse;q.r3=false;
+    if(S.pick==="card"){q.card=v;if(["arrived","alln","coming"].indexOf(q.type)<0)q.type="arrived"}
+    if(S.pick==="seller"){q.seller=v||null;if(!q.type||q.type==="late")q.type="sellerout"}
+    if(S.pick==="date")q.date=v||null;
+    if(S.pick==="month"){q.month=v;q.date=null}
+    if(S.pick==="type")q.type=v;
+    var need={arrived:"card",alln:"card",coming:"card",sellerout:"seller",spend:"month"}[q.type];
+    if(need&&!q[need]&&!(q.type==="spend"&&q.date)){S.ans={q:q,chips:[],rows:[],head:"Pick a "+need,sub:"The list holds values from your ledger.",receipt:false};S.pick=need;render();return}
+    rerun(q);return;
+  }
+  if(a==="pickrow"){var r=R.filter(function(x){return x.id===v})[0],q2=S.ans.q;q2.seller=r.seller;q2.date=r.date;rerun(q2);return}
+  if(a==="setcard"){var q3=S.ans.q;q3.card=v;q3.type=q3.type||"arrived";rerun(q3);return}
+  if(a==="setseller"){var q4=S.ans.q;q4.seller=v;q4.type="sellerout";S.q=q4.text="what's still out from "+v.toLowerCase();rerun(q4);return}
+  if(a==="setmonth"){var q5=S.ans.q;q5.month=v;q5.type="spend";rerun(q5);return}
+  if(a==="row"){S.hl=v;S.filter=null;S.pick=null;if(S.d!=="fold")S.s="jump";render();setHash();return}
+  if(a==="showall"){S.filter=v;S.hl=null;if(S.d!=="fold")S.s="jump";render();setHash();return}
+  if(a==="clearfilter"){S.filter=null;render();return}
+  if(a==="retry"){S.q=PRESET.error;settle(run(parse(S.q)));render();setHash();return}
+  /* The model returns a still-out query; the device then finds "grimfnag" is no ledger name (R2). */
+  if(a==="send"){S.sent=true;S.ans=run(ref({text:S.q,type:"sellerout"},"r2",{field:"seller",typed:"grimfnag",closest:["Grimfang Games"]}));render();return}
+  if(a==="toast"){S.toast=v;render();return}
+});
+document.addEventListener("keydown",function(e){
+  if(e.key==="Escape"&&S.pick){var pf=S.pick;S.pick=null;render();var ch=document.querySelector('#stage .chip[data-v="'+pf+'"]');if(ch)ch.focus();return}
+  if(e.key==="/"&&S.d==="web"&&!(e.target.matches&&e.target.matches("input"))){e.preventDefault();if(S.s==="closed"||S.s==="jump"){S.s="open";S.q="";S.ans=null;render();setHash()}focusField()}
+});
+document.getElementById("lblBtn").addEventListener("click",function(){S.labels=!S.labels;render()});
+window.addEventListener("hashchange",readHash);
+readHash();
+})();
+</script>
+</body>
+</html>

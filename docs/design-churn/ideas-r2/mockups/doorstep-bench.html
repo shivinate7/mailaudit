@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Doorstep and Bench</title>
+<style>
+/* Tokens: own neutral choices for an idea mockup, in the frame of round 1's mockups.
+   Type sizes follow the iOS Dynamic Type styles at the default size. */
+:root{
+  --page:#ebe9e3; --screen:#f5f4f0; --surface:#ffffff; --sunk:#eceae4; --ink:#1d1c1a; --ink2:#5c5a55; --ink3:#6b685f; --ink-off:#8f8b82;
+  --line:#dcd9d1; --accent:#a8402a; --accent-faint:#f8ece7; --ok:#256b41; --ok-bg:#e3f0e7; --ok-ink:#17462a;
+  --warn:#8a5200; --warn-bg:#f8ecd6; --err:#a12a2a; --err-bg:#f7e3e1; --tag-new:#2c5aa8; --tag-today:#5c5a55;
+  --chrome:#ffffff; --chrome-line:#d6d3cb; --hinge:#2a2926; --bezel:#151412; --toast:#2b2a27; --toast-ink:#f5f4f0;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --page:#0d0d0c; --screen:#121210; --surface:#1f1e1b; --sunk:#191816; --ink:#f2f0ea; --ink2:#b5b1a8; --ink3:#9a968d; --ink-off:#77736b;
+    --line:#35332e; --accent:#e2795d; --accent-faint:#2e211c; --ok:#7cc898; --ok-bg:#1a3123; --ok-ink:#c9ecd5;
+    --warn:#e6aa52; --warn-bg:#3b2c13; --err:#f08a80; --err-bg:#3a1c1a; --tag-new:#8fb2ef; --tag-today:#b5b1a8;
+    --chrome:#1a1917; --chrome-line:#34322d; --hinge:#000; --bezel:#2b2a27; --toast:#e9e6df; --toast-ink:#1d1c1a;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --page:#0d0d0c; --screen:#121210; --surface:#1f1e1b; --sunk:#191816; --ink:#f2f0ea; --ink2:#b5b1a8; --ink3:#9a968d; --ink-off:#77736b;
+  --line:#35332e; --accent:#e2795d; --accent-faint:#2e211c; --ok:#7cc898; --ok-bg:#1a3123; --ok-ink:#c9ecd5;
+  --warn:#e6aa52; --warn-bg:#3b2c13; --err:#f08a80; --err-bg:#3a1c1a; --tag-new:#8fb2ef; --tag-today:#b5b1a8;
+  --chrome:#1a1917; --chrome-line:#34322d; --hinge:#000; --bezel:#2b2a27; --toast:#e9e6df; --toast-ink:#1d1c1a;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--ink);font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;font-size:17px;line-height:22px;
+  padding:16px 16px 24px}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--tag-new);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+/* Page chrome */
+.sample{background:var(--warn-bg);color:var(--warn);font-size:13px;line-height:18px;padding:8px 12px;border-radius:10px;margin:0 0 12px;max-width:1100px}
+header.page{max-width:1100px;margin:0 0 8px}
+header.page h1{font-size:28px;line-height:34px;margin:0;font-weight:700;letter-spacing:-.01em}
+header.page .meta{font-size:15px;line-height:20px;color:var(--ink2);margin:4px 0 0;max-width:760px}
+header.page .meta b{color:var(--accent);font-weight:600}
+.controls{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:12px 0 0;max-width:1100px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border-radius:18px;border:1px solid var(--line);background:var(--surface);font-size:15px;color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
+.ctl-label{font-size:13px;color:var(--ink3);min-width:64px}
+.caption{font-size:15px;line-height:20px;color:var(--ink2);max-width:780px;margin:14px 0 0;min-height:60px}
+.caption .slice{display:inline-block;font-size:12px;font-weight:600;color:var(--tag-new);border:1px dashed var(--tag-new);border-radius:6px;padding:0 6px;margin-right:6px}
+.stage{display:flex;gap:32px;align-items:flex-start;overflow-x:auto;padding:8px 2px 12px;margin-top:8px}
+.note{font-size:13px;line-height:18px;color:var(--ink3);max-width:1100px;margin:16px 0 0}
+
+/* Device frames */
+.phone{flex:none;background:var(--bezel);border-radius:50px;padding:10px;box-shadow:0 18px 40px rgba(0,0,0,.18)}
+.phone[hidden]{display:none}
+.duo{display:flex}
+.screen{position:relative;width:390px;height:844px;border-radius:40px;overflow:hidden;background:var(--screen);display:flex;flex-direction:column}
+.duo .screen.left{border-top-right-radius:6px;border-bottom-right-radius:6px}
+.duo .screen.right{border-top-left-radius:6px;border-bottom-left-radius:6px}
+.hinge{width:14px;background:var(--hinge);margin:30px 0;border-radius:3px}
+.status{flex:none;height:54px;padding:18px 32px 0;display:flex;justify-content:space-between;font-size:15px;font-weight:600}
+.status i{display:block;width:22px;height:11px;border-radius:3px;border:1.5px solid currentColor;opacity:.85;margin-top:5px}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:17px;background:#000}
+.homebar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--ink);opacity:.8;z-index:30}
+
+/* Navigation */
+.nav{flex:none;padding:0 16px}
+.nav-top{height:44px;display:flex;align-items:center;justify-content:space-between}
+.navbtn{min-width:44px;min-height:44px;font-size:17px;color:var(--accent);display:inline-flex;align-items:center;gap:4px}
+.largetitle{font-size:34px;line-height:41px;font-weight:700;margin:0 0 16px}
+.modes{display:grid;grid-template-columns:1fr 1fr 1fr;background:var(--sunk);border-radius:9px;padding:2px;height:36px;margin:0 0 16px}
+.modes button{border-radius:7px;font-size:15px;font-weight:500;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--ink2)}
+.modes button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.modes .cnt{display:inline-block;min-width:22px;font-size:13px;color:var(--ink3)}
+
+/* Doorstep search bar and its fixed slots */
+.dbar{flex:none;padding:0 16px}
+.srow{display:flex;gap:8px;height:48px}
+.search{flex:1;min-width:0;display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:0 6px 0 12px}
+.search svg{flex:none;color:var(--ink3)}
+.search input{flex:1;min-width:0;border:0;background:none;height:46px;font-size:20px;outline:none}
+.search input::placeholder{color:var(--ink3);font-size:17px}
+.clr{width:36px;height:36px;border-radius:18px;display:grid;place-items:center;color:var(--ink3)}
+.clr[hidden]{visibility:hidden;display:grid}
+.nosender{flex:none;width:96px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-size:15px;font-weight:600;text-align:center;line-height:18px}
+.slot{height:30px;display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:12px;line-height:18px;color:var(--ink2)}
+.slot .msg{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot .msg.warn{color:var(--warn)}
+.slot .msg.info{color:var(--tag-new)}
+.counter{flex:none;min-width:112px;text-align:right;font-weight:600;color:var(--ink)}
+
+/* Scroll area */
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:2px 16px 150px;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.sect{font-size:13px;line-height:18px;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em;margin:12px 4px 6px}
+.list{background:var(--surface);border-radius:14px;overflow:hidden}
+
+/* Doorstep rows: fixed height; logging changes colour and text only */
+.row{display:flex;align-items:center;gap:12px;width:100%;height:68px;padding:0 14px;border-top:.5px solid var(--line);position:relative}
+.list > :first-child.row,.list > .lbl:first-child .row{border-top:0}
+.row .main{flex:1;min-width:0}
+.row .t{font-size:17px;line-height:22px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .s{font-size:13px;line-height:18px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mark{flex:none;width:28px;height:28px;border-radius:14px;border:2px solid var(--ink3);display:grid;place-items:center}
+.row.logged{background:var(--sunk)}
+.row.logged .t{color:var(--ink-off);font-weight:500}
+.row.logged .s{color:var(--ok)}
+.row.logged .mark{background:var(--ink-off);border-color:var(--ink-off);color:var(--surface)}
+.row.failed .s{color:var(--err);font-weight:600}
+.row.failed .mark{border-color:var(--err);color:var(--err);font-weight:700;font-size:15px}
+.row.notdue .mark{border-style:dashed}
+.row.notdue .s em{font-style:normal;color:var(--warn);font-weight:600}
+.row.open{background:var(--accent-faint)}
+.row.logged.open{background:var(--accent-faint)}
+
+/* Inline chooser, under the tapped row */
+.panel{background:var(--accent-faint);padding:4px 14px 14px;border-top:0}
+.panel.card{border-radius:14px;margin-top:12px;padding-top:12px}
+body.labels .panel{padding-top:22px}
+.panel p{margin:0 0 8px;font-size:15px;line-height:20px;color:var(--ink)}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:48px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);font-size:15px}
+.opt b{font-weight:600}
+.opt .r{color:var(--ink2);font-size:13px}
+.opt.quiet{background:none;border-style:dashed;color:var(--ink2);justify-content:center}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pair .opt{justify-content:center;font-weight:600}
+.empty{padding:28px 8px 20px;text-align:center}
+.empty h2{font-size:22px;line-height:28px;margin:0 0 6px}
+.empty p{margin:0;color:var(--ink2);font-size:15px;line-height:20px}
+.disclose{display:flex;align-items:center;justify-content:space-between;width:100%;height:48px;padding:0 14px;font-size:15px;color:var(--ink2)}
+
+/* Bench rows */
+.brow{display:flex;align-items:center;gap:12px;width:100%;height:68px;padding:0 14px;border-top:.5px solid var(--line)}
+.list > :first-child.brow,.list > .lbl:first-child .brow{border-top:0}
+.brow .main{flex:1;min-width:0}
+.brow .t{font-size:17px;line-height:22px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brow .s{font-size:13px;line-height:18px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brow .s.nag{color:var(--warn);font-weight:600}
+.brow .s.sync{color:var(--ok)}
+.brow .prog{flex:none;min-width:56px;text-align:right;font-size:15px;color:var(--ink2)}
+.brow .prog.part{color:var(--accent);font-weight:600}
+.brow .prog.done{color:var(--ok);font-weight:600}
+.brow.sel{background:var(--accent-faint)}
+
+/* Checklist (today's per-package view) */
+.ck-head{padding:0 16px 8px}
+.ck-head h2{font-size:28px;line-height:34px;margin:0}
+.ck-head p{margin:2px 0 0;font-size:15px;line-height:20px;color:var(--ink2)}
+.ck-prog{height:30px;display:flex;align-items:center;font-size:13px;color:var(--ink2);padding:0 4px}
+.ck-prog.done{color:var(--ok);font-weight:600}
+.crow{display:flex;align-items:center;gap:12px;width:100%;height:60px;padding:0 14px;border-top:.5px solid var(--line)}
+.list > :first-child.crow{border-top:0}
+.crow .main{flex:1;min-width:0}
+.crow .t{font-size:17px;line-height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crow .s{font-size:13px;line-height:18px;color:var(--ink2)}
+.crow .circ{flex:none;width:26px;height:26px;border-radius:13px;border:2px solid var(--ink3);display:grid;place-items:center}
+.crow.got .circ{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.crow.miss .circ{border-color:var(--err);color:var(--err);font-weight:700;font-size:13px}
+.crow.miss .t{color:var(--ink-off);text-decoration:line-through}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 0}
+.acts .opt{justify-content:center;font-weight:600;color:var(--accent)}
+.filter{width:100%;height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:0 12px;font-size:17px;margin:0 0 8px}
+
+/* Tally and Orphaned */
+.trow{display:flex;align-items:center;gap:12px;min-height:68px;padding:10px 14px;border-top:.5px solid var(--line)}
+.list > :first-child.trow,.list > .lbl:first-child .trow{border-top:0}
+.trow .main{flex:1;min-width:0}
+.trow .t{font-size:17px;line-height:22px;font-weight:600}
+.trow .s{font-size:13px;line-height:18px;color:var(--ink2)}
+.trow .s .house{color:var(--tag-new);font-weight:600}
+.trow .cost{flex:none;font-size:13px;color:var(--ink2);text-align:right}
+.trow .assign{flex:none;min-height:44px;padding:0 12px;color:var(--accent);font-size:15px;font-weight:600}
+
+/* Detail pane (two-screen pose) */
+.hint{margin:auto;padding:0 40px;text-align:center;color:var(--ink3);font-size:15px;line-height:20px}
+.logrow{display:flex;gap:10px;align-items:center;min-height:56px;padding:8px 14px;border-top:.5px solid var(--line)}
+.list > :first-child.logrow{border-top:0}
+.logrow .tm{flex:none;width:44px;font-size:13px;color:var(--ink3)}
+.logrow .main{flex:1;min-width:0;font-size:15px;line-height:20px}
+.logrow .kind{font-size:12px;font-weight:600;color:var(--ok)}
+.logrow .kind.orph{color:var(--warn)}
+.logrow .undo{flex:none;min-height:44px;padding:0 8px;color:var(--accent);font-size:15px;font-weight:600}
+
+/* Tab bar */
+.tabs{flex:none;height:83px;display:grid;grid-template-columns:repeat(3,1fr);border-top:.5px solid var(--chrome-line);background:var(--chrome);padding:6px 0 0;position:relative;z-index:10}
+.tabs button{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:500;color:var(--ink3);height:49px;justify-content:center}
+.tabs button[aria-current="page"]{color:var(--accent)}
+.tabs .dot{display:block;width:24px;height:24px;border-radius:6px;border:2px solid currentColor}
+.tabs .badge{position:absolute;left:calc(50% + 6px);top:0;min-width:18px;height:18px;border-radius:9px;background:var(--accent);color:var(--surface);font-size:11px;line-height:18px;text-align:center;padding:0 5px}
+
+/* Undo chip: an overlay at a fixed place, never in the list flow */
+.chip{position:absolute;left:16px;right:16px;bottom:96px;z-index:20;display:flex;align-items:center;gap:4px;min-height:52px;padding:4px 4px 4px 16px;border-radius:14px;background:var(--toast);color:var(--toast-ink);font-size:15px;line-height:20px;box-shadow:0 6px 18px rgba(0,0,0,.22)}
+.chip .msg{flex:1;min-width:0}
+.chip button{flex:none;min-height:44px;min-width:44px;padding:0 12px;border-radius:10px;font-weight:700;color:var(--toast-ink);display:grid;place-items:center}
+.chip button.u{text-decoration:underline;text-underline-offset:3px}
+
+/* Today / New labels: an outline draws no box, so the toggle moves nothing */
+.lbl{position:relative;display:block}
+body.labels .lbl{outline:1.5px dashed var(--tag-new);outline-offset:-1.5px}
+body.labels .lbl.today{outline-color:var(--tag-today)}
+body.labels .lbl::after{content:attr(data-lbl);position:absolute;top:0;right:0;z-index:5;pointer-events:none;font-size:10px;line-height:14px;font-weight:600;padding:1px 6px;border-bottom-left-radius:6px;background:var(--tag-new);color:var(--surface)}
+body.labels .lbl.today::after{background:var(--tag-today)}
+body.labels .lbl.below::after{top:auto;bottom:0;border-bottom-left-radius:0;border-top-left-radius:6px}
+body.labels .lbl.out::after{top:-15px;border-radius:6px 6px 0 0}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+@media (max-width:480px){
+  body{padding:12px 16px 24px}
+  .ctl-label{min-width:0;width:100%}
+}
+</style>
+</head>
+<body class="labels">
+<p class="sample" role="note"><b>Sample.</b> Every seller, card, time, order and price on this page is invented. No figure is real.</p>
+<header class="page">
+  <h1>Doorstep pass, then bench pass</h1>
+  <p class="meta">Log each envelope in one tap at the door; open it and check its cards later at the bench. <b>Mockup, not built.</b></p>
+  <nav class="controls" aria-label="Doorstep states">
+    <span class="ctl-label">Doorstep</span><div class="seg" id="st-d"></div>
+  </nav>
+  <nav class="controls" aria-label="Bench states">
+    <span class="ctl-label">Bench</span><div class="seg" id="st-b"></div>
+  </nav>
+  <nav class="controls" aria-label="Other views">
+    <span class="ctl-label">Elsewhere</span><div class="seg" id="st-o"></div>
+  </nav>
+  <div class="controls">
+    <span class="ctl-label">Device</span><div class="seg" id="devs"></div>
+    <span class="ctl-label">Theme</span><div class="seg" id="themes"></div>
+    <span class="ctl-label">Labels</span><div class="seg"><button type="button" id="lblBtn" aria-pressed="true">Today / New</button></div>
+    <div class="seg"><button type="button" id="resetBtn">Reset state</button></div>
+  </div>
+</header>
+
+<p class="caption" id="caption" aria-live="polite"></p>
+
+<div class="stage" id="stage">
+  <div class="phone" id="phone"><div class="screen" id="pscreen"></div></div>
+  <div class="phone duo" id="fold" hidden>
+    <div class="screen left" id="fleft"></div>
+    <div class="hinge" aria-hidden="true"></div>
+    <div class="screen right" id="fright"></div>
+  </div>
+</div>
+
+<p class="note">Frames: the phone is drawn at 390 by 844 points, the size the brief names. The two-screen fold is two 390 by 844 panes: no device size was read for it, so it is illustrative. The plan does not name a web build, so no desktop width is drawn. Tap targets are at least 44 points. Everything is live: type in the search, tap rows, tick cards, press Undo. Deep links: <code>#s=d-normal</code>, <code>#t=dark</code>, <code>#d=fold</code>, joined with <code>&amp;</code>.</p>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- Invented data ---------- */
+var SELLERS=[
+ ["Harborlight Games",4,3.20,14],["Crimson Binder Co.",3,2.40,12],["Old Fern Singles",2,1.15,12],["Quarry Hill Collectibles",8,6.70,11],
+ ["Bluefin Card Room",3,2.05,11],["Pale Moon Cards",6,4.10,9],["Saltbox Singles",5,3.60,9],["Juniper & Dice",1,0.45,9],
+ ["Northgate Cards",7,5.25,8],["Tin Lantern TCG",2,1.30,8],["Marigold Mint",4,2.95,8],["Copperleaf Cards",6,4.80,8],
+ ["Wren Street Games",3,1.90,7],["Velvet Sleeve",2,1.05,7],["Ashby Card Cellar",9,7.40,7],["Crimson Binder Co.",5,3.85,6],
+ ["Kettle Creek Singles",4,2.60,6],["Driftwood Duels",1,0.35,6],["Ironbark Collect",5,3.10,6],["Lakeside Loot",2,1.60,6],
+ ["Pinecone Pulls",3,2.25,5],["Morrow Cards",6,3.95,5],["Gull Rock Games",2,0.90,5],["Sable Owl Singles",4,3.05,5],
+ ["Thimble TCG",3,2.15,4],["Brassfield Cards",2,1.40,4],["Cobalt Corner",5,3.75,4],["Fennel Street Singles",1,0.55,4],
+ ["Hollow Oak Games",3,2.30,4],["Larkspur Cards",4,2.85,3],["Millbrook Mint",2,1.25,3],["Oriole Card Shop",6,4.45,3],
+ ["Rook & Raven",3,1.95,3],["Quillon Cards",2,1.10,3],["Redwater Singles",4,3.30,2],["Stonegate TCG",5,3.65,2],
+ ["Tidewell Games",1,0.60,2],["Umber Fox Cards",3,2.20,2]
+];
+var NOTDUE=[["Thornwick Cards",3,1.75,1],["Rosemary Row",2,1.20,0],["Thistle & Tin",4,2.70,0]];
+var INCOMING=[["Corbel Cards",2,1.35,9],["Halcyon Singles",4,2.90,8]];
+var LOGGED=["Harborlight Games","Old Fern Singles","Quarry Hill Collectibles","Bluefin Card Room","Saltbox Singles","Northgate Cards","Tin Lantern TCG",
+  "Copperleaf Cards","Velvet Sleeve","Ashby Card Cellar","Kettle Creek Singles","Ironbark Collect","Pinecone Pulls","Gull Rock Games"];
+var CARDPOOL=["Briar Courier","Saltglass Heron","Kiln Warden","Hollow Bell","Mossback Ox","Ember Lattice","Quiet Ferryman","Duskwater Eel","Glassfen Owl","Rimeback Goat","Cinder Scribe","Tallow Lamp"];
+var PALE_CARDS=[["Briar Courier",1,0.85],["Saltglass Heron",2,1.20],["Kiln Warden",1,1.10],["Hollow Bell",1,0.40],["Mossback Ox",1,0.55]];
+var BENCH=[["Harborlight Games",4,3.20,5,14],["Old Fern Singles",2,1.15,3,12],["Quarry Hill Collectibles",8,6.70,3,11],["Pale Moon Cards",6,4.10,2,9],["Bluefin Card Room",3,2.05,1,11],["Saltbox Singles",5,3.60,0,9]];
+
+var STATES=[
+ {k:"d-empty",g:"d",n:"Empty",sl:"Slice 0",cap:"No package is due today. The search box still covers every open package, because mail can arrive early. Type “thorn” to find one."},
+ {k:"d-normal",g:"d",n:"Mid-pass",sl:"Slice 1",cap:"Fourteen envelopes logged, twenty-four to go. Logged rows grey out where they are, with the time, and the undo chip floats over the list. Tap any row to log it."},
+ {k:"d-search",g:"d",n:"Typing “pal”",sl:"Slice 0 finds, Slice 1 logs",cap:"Three letters narrow 37 sellers to Pale Moon Cards. One tap logs it. In Slice 0 the same tap opens the package checklist instead, with no new field."},
+ {k:"d-two",g:"d",n:"Two orders, one seller",sl:"Slice 1; Can’t tell is Slice 2",cap:"Crimson Binder Co. has two open orders. The chooser opens under the row, so the row you tapped does not move. “Can’t tell” sends the envelope to Orphaned with the seller noted, never to the oldest order."},
+ {k:"d-again",g:"d",n:"Already logged",sl:"Slice 1",cap:"Harborlight Games is already in the house. A second tap asks whether this is another envelope of the same order, so a split shipment does not log twice."},
+ {k:"d-notdue",g:"d",n:"Not expected yet",sl:"Slice 0",cap:"“thorn” matches no seller due today, so the search falls through to every open package. The match is marked “not expected yet”."},
+ {k:"d-nosender",g:"d",n:"No sender",sl:"Slice 2",cap:"An envelope with no return address. “No sender” makes an Orphaned item. It decides nothing: no package is marked arrived and no lost-mail warning goes quiet."},
+ {k:"d-fail",g:"d",n:"Save failed",sl:"Slice 1",cap:"The save for Bluefin Card Room failed. The row says so and stays pending, not logged, and the counter does not count it. Tap the row to retry."},
+ {k:"d-offline",g:"d",n:"Offline",sl:"Slice 1",cap:"No signal at the door. Arrivals save on this phone, and the note above the list says they will sync. The note's slot is always there, so nothing moves when it fills."},
+ {k:"d-import",g:"d",n:"Sync mid-pass",sl:"Slice 1",cap:"A sync brought two new packages while “co” is typed. They wait until the search clears, so no row appears under the thumb. Clear the search to see them join."},
+ {k:"b-empty",g:"b",n:"Bench clear",sl:"Slice 1",cap:"Every envelope in the house is opened and checked."},
+ {k:"b-normal",g:"b",n:"Bench",sl:"Slice 1",cap:"Every package in the house but not yet opened, oldest first. Tap one to open its checklist."},
+ {k:"b-partial",g:"b",n:"4 of 6",sl:"Slice 1",cap:"Pale Moon Cards is part checked. It stays on the bench, reading “4 of 6”, until every card is ticked or marked missing."},
+ {k:"b-nag",g:"b",n:"Waiting 9 days",sl:"Slice 2",cap:"Harborlight Games has sat unopened past the 7-day limit. The row text says “waiting 9 days”. There is no badge, so the row keeps its height."},
+ {k:"b-open",g:"b",n:"Opened package",sl:"Slice 1",cap:"Opening a bench package shows today's card checklist, unchanged. The package leaves the bench when every card is ticked or marked missing. Opened is derived, not stored."},
+ {k:"b-notthis",g:"b",n:"Not this order",sl:"Slice 2",cap:"The packing slip names another seller. Pick the right order: the arrival moves there, the move is logged, and Undo puts it back."},
+ {k:"b-emptyenv",g:"b",n:"Empty envelope",sl:"Slice 1",cap:"Nothing inside the envelope. The confirm sits inline, and it hands both cards to today's missing-card flow."},
+ {k:"b-sync",g:"b",n:"Ticked elsewhere",sl:"Slice 1",cap:"Another phone ticked every card in Saltbox Singles. The row updates in place and stays until the pointer leaves the list, or the mode changes."},
+ {k:"t-tally",g:"o",n:"Tally count",sl:"Slice 2",cap:"Tally gains a third count, “in the house”. Cost basis still moves only when a card is ticked."},
+ {k:"o-orphan",g:"o",n:"Orphaned",sl:"Slice 2",cap:"Envelopes from “No sender” and “Can’t tell” wait here. They decide nothing until assigned."}
+];
+
+/* ---------- State ---------- */
+var S={}, UI={s:"d-normal",t:"auto",d:"phone",labels:true};
+function money(v){return "$"+v.toFixed(2)}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+function hm(m){return Math.floor(m/60)+":"+("0"+(m%60)).slice(-2)}
+function ago(d){return d===0?"ordered today":d===1?"ordered yesterday":"ordered "+d+" days ago"}
+function cardsOf(name,n,total){
+  if(name==="Pale Moon Cards")return PALE_CARDS.map(function(c){return {n:c[0],q:c[1],p:c[2],st:""}});
+  var out=[],each=Math.round(total/n*100)/100,left=total,h=0,i;
+  for(i=0;i<name.length;i++)h=(h*31+name.charCodeAt(i))%997;
+  for(i=0;i<n;i++){var p=i===n-1?Math.round(left*100)/100:each;left-=p;out.push({n:CARDPOOL[(h+i*5)%CARDPOOL.length],q:1,p:p,st:""})}
+  return out;
+}
+function pkgs(){
+  var out=[];
+  SELLERS.forEach(function(r,i){out.push({id:"p"+i,seller:r[0],cards:r[1],total:r[2],days:r[3],due:true,at:0,st:""})});
+  NOTDUE.forEach(function(r,i){out.push({id:"n"+i,seller:r[0],cards:r[1],total:r[2],days:r[3],due:false,at:0,st:""})});
+  return out;
+}
+function byName(n){return S.pk.filter(function(p){return p.seller===n})}
+function byId(id){return S.pk.filter(function(p){return p.id===id})[0]}
+function benchOf(id){return S.bench.filter(function(b){return b.id===id})[0]}
+function bench(spec){
+  return spec.map(function(r,i){return {id:"b"+i,seller:r[0],n:r[1],total:r[2],days:r[3],ordered:r[4],cards:cardsOf(r[0],r[1],r[2]),sync:false}});
+}
+function fresh(){
+  S={view:"packages",mode:"doorstep",pk:pkgs(),q:"",compact:false,showLogged:false,panel:null,chip:null,offline:false,incoming:[],
+     time:642,log:[],orphans:[],bench:bench(BENCH),openB:null,bpanel:null,nq:""};
+  S.log=[{t:"9:58",kind:"tick",text:"Glassfen Owl · Wren Street Games"},{t:"9:57",kind:"tick",text:"Rimeback Goat · Wren Street Games"}];
+}
+function logPass(){
+  var m=628;
+  LOGGED.forEach(function(n){var p=byName(n)[0];p.at=m;S.log.unshift({t:hm(m),kind:"arrived",text:n,id:p.id});m++});
+  S.time=642;
+}
+function preset(k){
+  fresh();
+  var g=k.charAt(0);
+  if(g==="d"){S.mode="doorstep";if(k!=="d-empty")logPass()}
+  if(g==="b")S.mode="bench";
+  if(k==="d-empty"){S.pk=S.pk.filter(function(p){return !p.due})}
+  if(k==="d-normal"){S.chip={text:"Gull Rock Games in the house",undo:{kind:"arrive",ids:[byName("Gull Rock Games")[0].id]}}}
+  if(k==="d-search"){S.q="pal"}
+  if(k==="d-two"){S.q="crim";S.panel={seller:"Crimson Binder Co.",kind:"choose"}}
+  if(k==="d-again"){S.q="harb";S.panel={seller:"Harborlight Games",kind:"again"}}
+  if(k==="d-notdue"){S.q="thorn"}
+  if(k==="d-nosender"){S.orphans.push({t:"10:42",note:""});S.log.unshift({t:"10:42",kind:"orphan",text:"Envelope, no sender"});S.time=643;
+    S.chip={text:"Sent to Orphaned. It decides nothing.",undo:{kind:"orphan"}}}
+  if(k==="d-fail"){var b=byName("Bluefin Card Room")[0];b.at=0;b.st="failed";S.log=S.log.filter(function(e){return e.id!==b.id})}
+  if(k==="d-offline"){S.offline=true;var pm=byName("Pale Moon Cards")[0];pm.at=642;S.time=643;S.log.unshift({t:"10:42",kind:"arrived",text:"Pale Moon Cards",id:pm.id});
+    S.chip={text:"Pale Moon Cards in the house. Saved on this phone.",undo:{kind:"arrive",ids:[pm.id]}}}
+  if(k==="d-import"){S.q="co";S.incoming=INCOMING.map(function(r,i){return {id:"i"+i,seller:r[0],cards:r[1],total:r[2],days:r[3],due:true,at:0,st:""}})}
+  if(k==="b-empty"){S.bench=[]}
+  if(k==="b-partial"||k==="b-open"||k==="b-notthis"){var pc=S.bench[3].cards;pc[0].st="got";pc[1].st="got";if(k==="b-partial")pc[2].st="got"}
+  if(k==="b-nag"){S.bench[0].days=9}
+  if(k==="b-open"||k==="b-notthis"){S.openB="b3"}
+  if(k==="b-notthis"){S.bpanel="notthis"}
+  if(k==="b-emptyenv"){S.openB="b1";S.bpanel="empty"}
+  if(k==="b-sync"){var sb=S.bench[5];sb.cards.forEach(function(c){c.st="got"});sb.sync=true}
+  if(k==="t-tally")S.view="tally";
+  if(k==="o-orphan"){S.view="orphaned";S.orphans=[{t:"10:44",note:""},{t:"10:47",note:"Crimson Binder Co."}]}
+}
+
+/* ---------- Pieces ---------- */
+var IC={
+ check:'<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 7.5l2.6 2.6L11 4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ search:'<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="7.5" cy="7.5" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 12l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+ x:'<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+ back:'<svg width="12" height="20" viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2L2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ chev:'<svg width="8" height="14" viewBox="0 0 8 14" aria-hidden="true"><path d="M1 1l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
+};
+function L(kind,text,inner,extra){return '<div class="lbl '+(kind==="today"?"today ":"")+(extra||"")+'" data-lbl="'+(kind==="today"?"Today: ":"New: ")+esc(text)+'">'+inner+"</div>"}
+function status(){return '<div class="status"><span class="num">'+hm(S.time)+'</span><span style="display:flex;gap:6px"><i></i></span></div><div class="island" aria-hidden="true"></div>'}
+function tabs(){
+  var t=[["packages","Packages"],["tally","Tally"],["orphaned","Orphaned"]],n=S.orphans.length;
+  return L("today","tab bar",'<nav class="tabs" aria-label="Views">'+t.map(function(x){
+    return '<button type="button" data-act="view" data-v="'+x[0]+'"'+(S.view===x[0]?' aria-current="page"':"")+'><span class="dot" aria-hidden="true"></span>'+x[1]+
+      (x[0]==="orphaned"&&n?'<span class="badge num">'+n+'</span>':"")+'</button>'}).join("")+"</nav>","below")+'<div class="homebar" aria-hidden="true"></div>';
+}
+function chip(){
+  if(!S.chip)return "";
+  return '<div class="chip" role="status"><span class="msg">'+esc(S.chip.text)+'</span>'+(S.chip.undo?'<button type="button" class="u" data-act="undo">Undo</button>':"")+'<button type="button" data-act="chipx" aria-label="Dismiss">'+IC.x+'</button></div>';
+}
+function modes(){
+  var m=[["list","List"],["doorstep","Doorstep"],["bench","Bench"]];
+  return L("new","Doorstep and Bench modes",'<div class="modes" role="group" aria-label="Packages mode">'+m.map(function(x){
+    return '<button type="button" data-act="mode" data-m="'+x[0]+'" aria-pressed="'+(S.mode===x[0])+'">'+x[1]+(x[0]==="bench"?' <span class="cnt num">'+S.bench.length+'</span>':"")+"</button>"}).join("")+"</div>","out");
+}
+
+/* ---------- Doorstep ---------- */
+function counts(){var l=0,d=0;S.pk.forEach(function(p){if(!p.due)return;if(p.at)l++;else d++});return [l,d]}
+function groups(list){
+  var order=[],m={};
+  list.forEach(function(p){if(!m[p.seller]){m[p.seller]=[];order.push(p.seller)}m[p.seller].push(p)});
+  return order.map(function(n){return {seller:n,orders:m[n]}});
+}
+function sellerRow(g){
+  var o=g.orders,open=o.filter(function(p){return !p.at}),allIn=!open.length,failed=o.some(function(p){return p.st==="failed"}),nd=!o[0].due;
+  var cls="row",sub,mark="",cards=0,tot=0;
+  open.forEach(function(p){cards+=p.cards;tot+=p.total});
+  var isOpen=S.panel&&S.panel.seller===g.seller;
+  if(failed){cls+=" failed";sub="Not saved — tap to retry";mark="!"}
+  else if(allIn){cls+=" logged";mark=IC.check;
+    var last=Math.max.apply(null,o.map(function(p){return p.at}));
+    sub=isOpen&&S.panel.kind!=="choose"?"Logged "+hm(last)+"":"In the house "+hm(last)+(S.offline?" · will sync":"")}
+  else if(o.length>1){var inn=o.length-open.length;
+    sub=(inn?inn+" in the house · ":"")+open.length+" open order"+(open.length>1?"s":"")+" · "+cards+" cards · "+money(tot)}
+  else sub=(nd?"<em>not expected yet</em> · ":"")+cards+" cards · "+money(tot)+" · "+ago(o[0].days);
+  if(nd)cls+=" notdue";
+  if(isOpen)cls+=" open";
+  return '<button type="button" class="'+cls+'" data-act="row" data-seller="'+esc(g.seller)+'" aria-expanded="'+(!!isOpen)+'"><span class="mark" aria-hidden="true">'+mark+'</span>'+
+    '<span class="main"><span class="t" style="display:block">'+esc(g.seller)+'</span><span class="s num" style="display:block">'+sub+'</span></span></button>'+(isOpen?panel(g):"");
+}
+function orderBtn(p,withSeller){
+  return '<button type="button" class="opt" data-act="pick" data-id="'+p.id+'"><b>'+esc(withSeller?p.seller:ago(p.days).replace("ordered ","Ordered "))+'</b><span class="r num">'+p.cards+" cards · "+money(p.total)+"</span></button>";
+}
+function panel(g){
+  var k=S.panel.kind,open=g.orders.filter(function(p){return !p.at});
+  var tell='<button type="button" class="opt quiet" data-act="canttell" data-seller="'+esc(g.seller)+'">Can’t tell — send to Orphaned</button>';
+  if(k==="choose")return L("new","inline chooser",'<div class="panel"><p>Which order is this envelope?</p><div class="opts">'+open.map(function(p){return orderBtn(p)}).join("")+tell+"</div></div>");
+  if(k==="again")return L("new","split shipment check",'<div class="panel"><p>Another envelope for this order?</p><div class="pair"><button type="button" class="opt" data-act="same">Same order</button><button type="button" class="opt" data-act="diff" data-seller="'+esc(g.seller)+'">Different order</button></div></div>');
+  if(k==="diff"){
+    var others=S.pk.filter(function(p){return p.seller===g.seller&&!p.at});
+    return L("new","different order",'<div class="panel"><p>'+(others.length?"Which other order?":"No other open order from "+esc(g.seller)+".")+'</p><div class="opts">'+others.map(function(p){return orderBtn(p)}).join("")+tell+"</div></div>");
+  }
+  if(k==="same")return '<div class="panel"><p>Counted once. A split shipment is noted on this order.</p></div>';
+  return "";
+}
+function doorstep(){
+  var c=counts(),q=S.q.trim().toLowerCase(),html="";
+  var due=S.pk.filter(function(p){return p.due}),nd=S.pk.filter(function(p){return !p.due});
+  var msg="",mcls="";
+  if(S.offline){msg="Offline. Arrivals save on this phone and will sync.";mcls="warn"}
+  else if(S.incoming.length&&q){msg=S.incoming.length+" synced; shown once search clears";mcls="info"}
+  var bar='<div class="dbar">'+L("new","search-first finder",'<div class="srow"><label class="search"><span class="vh">Return name</span>'+IC.search+
+    '<input type="text" inputmode="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Return name" data-act="q" value="'+esc(S.q)+'">'+
+    '<button type="button" class="clr" data-act="clear" aria-label="Clear search"'+(S.q?"":" hidden")+'>'+IC.x+'</button></label>'+
+    '<button type="button" class="nosender" data-act="nosender">No sender</button></div>','out')+
+    '<div class="slot" role="status"><span class="msg '+mcls+'">'+esc(msg)+'</span>'+(due.length?'<span class="counter num">'+c[0]+" logged · "+c[1]+" due</span>":"")+'</div></div>';
+  if(!due.length&&!q)return bar+'<div class="scroll" data-key="door"><div class="empty"><h2>No mail expected today.</h2><p>Mail can come early. The search above covers every open package.</p></div></div>';
+  if(q){
+    var gm=groups(due.filter(function(p){return p.seller.toLowerCase().indexOf(q)>-1}));
+    var gn=groups(nd.filter(function(p){return p.seller.toLowerCase().indexOf(q)>-1}));
+    if(!due.length)html+='<p class="sect">No mail expected today</p>';
+    if(gm.length)html+='<div class="list">'+gm.map(sellerRow).join("")+"</div>";
+    if(gn.length)html+='<p class="sect">Not expected yet</p><div class="list">'+gn.map(sellerRow).join("")+"</div>";
+    if(!gm.length&&!gn.length)html+='<div class="empty"><h2 style="font-size:17px">No open package matches “'+esc(S.q)+'”.</h2><p>No return name? Use No sender.</p></div>';
+  } else {
+    var gs=groups(due);
+    if(S.compact){
+      var open=gs.filter(function(g){return g.orders.some(function(p){return !p.at})}),done=gs.filter(function(g){return g.orders.every(function(p){return p.at})});
+      html+='<div class="list">'+open.map(sellerRow).join("")+"</div>";
+      if(done.length)html+='<div class="list" style="margin-top:10px"><button type="button" class="disclose" data-act="showlogged" aria-expanded="'+S.showLogged+'"><span>Logged this pass · <span class="num">'+done.length+'</span></span>'+IC.chev+"</button>"+(S.showLogged?done.map(sellerRow).join(""):"")+"</div>";
+    } else html+='<div class="list">'+gs.map(sellerRow).join("")+"</div>";
+  }
+  return bar+'<div class="scroll" data-key="door">'+html+"</div>";
+}
+
+/* ---------- Bench ---------- */
+function ticked(b){return b.cards.filter(function(c){return c.st}).reduce(function(a,c){return a+c.q},0)}
+function inHouse(d){return d===0?"in the house today":"in the house "+d+" day"+(d>1?"s":"")}
+function benchList(){
+  if(!S.bench.length)return '<div class="scroll" data-key="bench"><div class="empty"><h2>Bench clear.</h2><p>Every envelope in the house is opened and checked.</p></div></div>';
+  var rows=S.bench.slice().sort(function(a,b){return b.days-a.days}).map(function(b){
+    var t=ticked(b),nag=b.days>=7,sub;
+    if(b.sync)sub='<span class="s sync num" style="display:block">ticked on another phone · '+b.n+" cards · "+money(b.total)+"</span>";
+    else sub='<span class="s num'+(nag?" nag":"")+'" style="display:block">'+(nag?"waiting "+b.days+" days":inHouse(b.days))+" · "+b.n+" cards · "+money(b.total)+"</span>";
+    var pc=t===b.n?"done":t?"part":"";
+    return '<button type="button" class="brow'+(S.openB===b.id?" sel":"")+'" data-act="openb" data-id="'+b.id+'"><span class="main"><span class="t" style="display:block">'+esc(b.seller)+"</span>"+sub+'</span><span class="prog num '+pc+'">'+t+" of "+b.n+"</span></button>"}).join("");
+  return '<div class="scroll" data-key="bench"><p class="sect">In the house, not opened · oldest first</p>'+L("new","bench list",'<div class="list" data-hover="bench">'+rows+"</div>")+"</div>";
+}
+function checklist(withBack){
+  var b=benchOf(S.openB);
+  if(!b)return '<div class="hint">Open a package on the bench to check its cards here.</div>';
+  var t=ticked(b),done=t===b.n;
+  var head='<div class="nav"><div class="nav-top">'+(withBack?'<button type="button" class="navbtn" data-act="closeb">'+IC.back+" Bench</button>":"")+"</div></div>"+
+    '<div class="ck-head"><h2>'+esc(b.seller)+'</h2><p class="num">'+inHouse(b.days).replace(/^i/,"I")+" · "+ago(b.ordered)+" · "+money(b.total)+"</p></div>";
+  var rows=b.cards.map(function(c,i){
+    return '<button type="button" class="crow '+c.st+'" data-act="tick" data-i="'+i+'"><span class="circ" aria-hidden="true">'+(c.st==="got"?IC.check:c.st==="miss"?"✕":"")+'</span><span class="main"><span class="t" style="display:block">'+esc(c.n)+(c.q>1?" ×"+c.q:"")+'</span><span class="s num" style="display:block">'+money(c.p)+(c.st==="miss"?" · missing":"")+"</span></span></button>"}).join("");
+  var prog='<div class="ck-prog num'+(done?" done":"")+'" role="status">'+(done?"All "+b.n+" checked. It leaves the bench when you go back.":t+" of "+b.n+" checked")+"</div>";
+  var extra;
+  if(S.bpanel==="notthis"){
+    var cand=S.pk.filter(function(p){return p.due&&!p.at&&p.seller!==b.seller&&!S.bench.some(function(x){return x.seller===p.seller})&&(!S.nq||p.seller.toLowerCase().indexOf(S.nq.toLowerCase())>-1)}).slice(0,4);
+    extra=L("new","not this order",'<div class="panel card"><p>Which order does the packing slip name?</p><input class="filter" type="text" placeholder="Seller on the slip" data-act="nq" value="'+esc(S.nq)+'" autocomplete="off"><div class="opts">'+
+      cand.map(function(p){return '<button type="button" class="opt" data-act="moveto" data-id="'+p.id+'"><b>'+esc(p.seller)+'</b><span class="r num">'+p.cards+" cards · "+money(p.total)+"</span></button>"}).join("")+
+      '<button type="button" class="opt quiet" data-act="bcancel">Cancel</button></div></div>');
+  } else if(S.bpanel==="empty"){
+    extra=L("new","empty envelope",'<div class="panel card"><p>Nothing inside? This marks all '+b.n+' cards missing and starts the missing-card flow.</p><div class="pair"><button type="button" class="opt" data-act="allmissing">Mark '+b.n+' missing</button><button type="button" class="opt" data-act="bcancel">Cancel</button></div></div>');
+  } else {
+    extra=L("new","bench actions",'<div class="acts"><button type="button" class="opt" data-act="notthis">Not this order</button><button type="button" class="opt" data-act="emptyenv">Nothing inside</button></div>');
+  }
+  return head+'<div class="scroll" data-key="ck">'+prog+L("today","card checklist",'<div class="list">'+rows+"</div>")+extra+"</div>";
+}
+
+/* ---------- Tally and Orphaned ---------- */
+function tally(){
+  var R=[["Saltglass Heron",4,2,1,1,1.20,2.40],["Briar Courier",3,1,2,0,0.85,2.55],["Kiln Warden",2,2,0,0,2.20,2.20],["Mossback Ox",4,0,1,3,0,2.20],["Hollow Bell",1,0,0,1,0,0.40]];
+  return '<div class="nav"><div class="nav-top"></div><h1 class="largetitle">Tally</h1></div><div class="scroll" data-key="tally">'+L("new","“in the house” count",'<div class="list">'+R.map(function(r){
+    return '<div class="trow"><div class="main"><div class="t">'+r[0]+'</div><div class="s num">'+r[1]+" ordered · "+r[2]+' received · <span class="house">'+r[3]+" in the house</span> · "+r[4]+' out</div></div><div class="cost num">'+money(r[5])+"<br>of "+money(r[6])+"</div></div>"}).join("")+"</div>")+
+    '<p class="sect" style="text-transform:none;letter-spacing:0">Cost basis counts ticked cards only.</p></div>';
+}
+function orphaned(){
+  var rows=S.orphans.map(function(o){
+    return '<div class="trow"><div class="main"><div class="t">'+(o.note?esc(o.note):"No sender")+'</div><div class="s num">'+(o.note?"Couldn’t tell between 2 orders":"Envelope with no return address")+" · "+o.t+'<br>Decides nothing until assigned.</div></div><button type="button" class="assign">Assign</button></div>'}).join("");
+  return '<div class="nav"><div class="nav-top"></div><h1 class="largetitle">Orphaned</h1></div><div class="scroll" data-key="orph">'+(rows?L("today","Orphaned list; the seller note is New",'<div class="list">'+rows+"</div>"):'<div class="empty"><h2>Nothing orphaned.</h2></div>')+"</div>";
+}
+
+/* ---------- Packages ---------- */
+function listMode(){
+  var gs=groups(S.pk.filter(function(p){return p.due}));
+  return '<div class="scroll" data-key="list">'+L("today","Packages list",'<div class="list">'+gs.slice(0,12).map(function(g){
+    var p=g.orders[0];return '<div class="brow"><span class="main"><span class="t" style="display:block">'+esc(g.seller)+'</span><span class="s num" style="display:block">'+p.cards+" cards · "+money(p.total)+" · "+ago(p.days)+"</span></span>"+IC.chev+"</div>"}).join("")+"</div>")+"</div>";
+}
+function packagesPane(phone){
+  if(phone&&S.mode==="bench"&&S.openB)return checklist(true);
+  var h='<div class="nav"><div class="nav-top"></div><h1 class="largetitle">Packages</h1>'+modes()+"</div>";
+  if(S.mode==="doorstep")return h+doorstep();
+  if(S.mode==="bench")return h+benchList();
+  return h+listMode();
+}
+function mainPane(phone){
+  if(S.view==="tally")return tally();
+  if(S.view==="orphaned")return orphaned();
+  return packagesPane(phone);
+}
+function detailPane(){
+  if(S.view!=="packages")return '<div class="hint">Detail opens here.</div>';
+  if(S.mode==="bench")return checklist(false);
+  if(S.mode==="doorstep"){
+    var rows=S.log.slice(0,11).map(function(e,i){
+      var k=e.kind==="arrived"?'<span class="kind">Arrived</span>':e.kind==="orphan"?'<span class="kind orph">Orphaned</span>':e.kind==="move"?'<span class="kind">Arrival moved</span>':'<span class="kind" style="color:var(--ink3)">Card ticked</span>';
+      return '<div class="logrow"><span class="tm num">'+e.t+'</span><span class="main">'+k+"<br>"+esc(e.text)+"</span>"+(i===0&&e.kind!=="tick"&&S.chip&&S.chip.undo?'<button type="button" class="undo" data-act="undo">Undo</button>':"")+"</div>"}).join("");
+    return '<div class="nav"><div class="nav-top"></div><h1 class="largetitle" style="font-size:28px;line-height:34px">Recent checks</h1></div><div class="scroll" data-key="log">'+
+      L("new","“arrived” entries in today’s recent-checks log",'<div class="list">'+rows+"</div>")+"</div>";
+  }
+  return '<div class="hint">Open a package to see its checklist.</div>';
+}
+
+/* ---------- Render ---------- */
+function $(id){return document.getElementById(id)}
+function render(){
+  var fold=UI.d==="fold";
+  $("phone").hidden=fold;$("fold").hidden=!fold;
+  var keep={},ae=document.activeElement,fa=ae&&ae.getAttribute&&ae.getAttribute("data-act"),sel=(fa==="q"||fa==="nq")?ae.selectionStart:0;
+  document.querySelectorAll(".scroll[data-key]").forEach(function(el){keep[el.getAttribute("data-key")]=el.scrollTop});
+  if(fold){
+    $("fleft").innerHTML=status()+mainPane(false)+tabs()+chip();
+    $("fright").innerHTML=status()+detailPane()+'<div class="homebar" aria-hidden="true"></div>';
+    $("pscreen").innerHTML="";
+  } else {
+    $("pscreen").innerHTML=status()+mainPane(true)+tabs()+chip();
+    $("fleft").innerHTML="";$("fright").innerHTML="";
+  }
+  document.querySelectorAll(".scroll[data-key]").forEach(function(el){var k=el.getAttribute("data-key");if(keep[k])el.scrollTop=keep[k]});
+  if(fa==="q"||fa==="nq"){var inp=document.querySelector('#stage input[data-act="'+fa+'"]');if(inp){inp.focus();try{inp.setSelectionRange(sel,sel)}catch(e){}}}
+  var hv=document.querySelector('#stage [data-hover="bench"]');
+  if(hv)hv.addEventListener("mouseleave",function(){
+    if(S.bench.some(function(b){return b.sync&&ticked(b)===b.n})){S.bench=S.bench.filter(function(b){return !(b.sync&&ticked(b)===b.n)});render()}
+  });
+}
+function controls(){
+  ["d","b","o"].forEach(function(g){
+    $("st-"+g).innerHTML=STATES.filter(function(s){return s.g===g}).map(function(s){return '<button type="button" data-s="'+s.k+'" aria-pressed="'+(UI.s===s.k)+'">'+esc(s.n)+"</button>"}).join("");
+  });
+  $("devs").innerHTML=[["phone","Phone"],["fold","Two screens"]].map(function(x){return '<button type="button" data-d="'+x[0]+'" aria-pressed="'+(UI.d===x[0])+'">'+x[1]+"</button>"}).join("");
+  $("themes").innerHTML=[["auto","System"],["light","Light"],["dark","Dark"]].map(function(x){return '<button type="button" data-t="'+x[0]+'" aria-pressed="'+(UI.t===x[0])+'">'+x[1]+"</button>"}).join("");
+  var st=STATES.filter(function(s){return s.k===UI.s})[0];
+  $("caption").innerHTML='<span class="slice">'+esc(st.sl)+"</span>"+esc(st.cap);
+  $("lblBtn").setAttribute("aria-pressed",String(UI.labels));
+  document.body.classList.toggle("labels",UI.labels);
+  if(UI.t==="auto")document.documentElement.removeAttribute("data-theme");else document.documentElement.setAttribute("data-theme",UI.t);
+}
+function writeHash(){
+  var h="s="+UI.s;if(UI.t!=="auto")h+="&t="+UI.t;if(UI.d!=="phone")h+="&d="+UI.d;
+  history.replaceState(null,"","#"+h);
+}
+function readHash(){
+  var m={};location.hash.replace(/^#/,"").split("&").forEach(function(kv){var p=kv.split("=");if(p[0])m[p[0]]=decodeURIComponent(p[1]||"")});
+  UI.s=STATES.some(function(s){return s.k===m.s})?m.s:"d-normal";
+  UI.t=m.t==="dark"||m.t==="light"?m.t:"auto";
+  UI.d=m.d==="fold"?"fold":"phone";
+}
+function go(){preset(UI.s);controls();render()}
+
+/* ---------- Actions ---------- */
+function now(){var t=S.time;S.time++;return t}
+function arrive(ids,text){
+  var t=now();ids.forEach(function(id){var p=byId(id);p.at=t;p.st=""});
+  S.log.unshift({t:hm(t),kind:"arrived",text:text,id:ids[0]});
+  S.chip={text:text+" in the house"+(S.offline?". Saved on this phone.":""),undo:{kind:"arrive",ids:ids}};
+}
+function toOrphan(note){
+  var t=now();S.orphans.push({t:hm(t),note:note||""});
+  S.log.unshift({t:hm(t),kind:"orphan",text:note?note+", can’t tell which order":"Envelope, no sender"});
+  S.chip={text:"Sent to Orphaned"+(note?", noted “"+note+"”":"")+". It decides nothing.",undo:{kind:"orphan"}};
+}
+function dropDone(){S.bench=S.bench.filter(function(b){return ticked(b)<b.n})}
+function act(el){
+  var a=el.getAttribute("data-act"),d=function(k){return el.getAttribute("data-"+k)};
+  if(a==="view"){S.view=d("v");S.chip=null}
+  else if(a==="mode"){S.mode=d("m");S.panel=null;S.compact=true;S.openB=null;S.bpanel=null;dropDone()}
+  else if(a==="row"){
+    var n=d("seller"),o=byName(n),open=o.filter(function(p){return !p.at});
+    if(S.panel&&S.panel.seller===n)S.panel=null;
+    else if(o.some(function(p){return p.st==="failed"})){arrive(o.filter(function(p){return p.st==="failed"}).map(function(p){return p.id}),n);S.panel=null}
+    else if(!open.length)S.panel={seller:n,kind:"again"};
+    else if(o.length>1)S.panel={seller:n,kind:"choose"};
+    else {arrive([open[0].id],n);S.panel=null}
+  }
+  else if(a==="pick"){var p=byId(d("id"));arrive([p.id],p.seller);S.panel=null}
+  else if(a==="canttell"){toOrphan(d("seller"));S.panel=null}
+  else if(a==="same"){S.panel={seller:S.panel.seller,kind:"same"};S.chip={text:"Counted once. Split shipment noted.",undo:null}}
+  else if(a==="diff"){S.panel={seller:d("seller"),kind:"diff"}}
+  else if(a==="nosender"){toOrphan("");S.panel=null}
+  else if(a==="undo"&&S.chip&&S.chip.undo){
+    var u=S.chip.undo;
+    if(u.kind==="arrive"){u.ids.forEach(function(id){var p=byId(id);if(p)p.at=0});S.log.shift()}
+    if(u.kind==="orphan"){S.orphans.pop();S.log.shift()}
+    if(u.kind==="move"){var b=benchOf(u.bid);b.seller=u.from;b.n=u.n;b.total=u.total;b.cards=u.cards;b.ordered=u.ordered;byId(u.pid).at=0;S.log.shift()}
+    if(u.kind==="missing"){var bb=benchOf(u.bid);bb.cards.forEach(function(c,i){c.st=u.prev[i]})}
+    S.chip={text:"Undone.",undo:null};
+  }
+  else if(a==="chipx"){S.chip=null}
+  else if(a==="clear"){S.q="";if(S.incoming.length){S.pk=S.pk.concat(S.incoming);S.incoming=[]}S.compact=true;S.panel=null}
+  else if(a==="showlogged"){S.showLogged=!S.showLogged}
+  else if(a==="openb"){S.openB=d("id");S.bpanel=null;S.nq=""}
+  else if(a==="closeb"){S.openB=null;S.bpanel=null;dropDone()}
+  else if(a==="tick"){var bt=benchOf(S.openB),c=bt.cards[+d("i")];if(c.st==="miss")return;c.st=c.st==="got"?"":"got";S.log.unshift({t:hm(now()),kind:"tick",text:c.n+" · "+bt.seller})}
+  else if(a==="notthis"){S.bpanel="notthis";S.nq=""}
+  else if(a==="emptyenv"){S.bpanel="empty"}
+  else if(a==="bcancel"){S.bpanel=null}
+  else if(a==="allmissing"){var be=benchOf(S.openB),prev=be.cards.map(function(c){return c.st});be.cards.forEach(function(c){c.st="miss"});S.bpanel=null;
+    S.chip={text:be.n+" cards marked missing. The missing-card flow has them.",undo:{kind:"missing",bid:be.id,prev:prev}}}
+  else if(a==="moveto"){
+    var bm=benchOf(S.openB),tp=byId(d("id"));
+    var undo={kind:"move",bid:bm.id,from:bm.seller,n:bm.n,total:bm.total,cards:bm.cards,ordered:bm.ordered,pid:tp.id};
+    var t=now();tp.at=t;S.log.unshift({t:hm(t),kind:"move",text:bm.seller+" → "+tp.seller});
+    bm.seller=tp.seller;bm.n=tp.cards;bm.total=tp.total;bm.ordered=tp.days;bm.cards=cardsOf(tp.seller,tp.cards,tp.total);
+    S.bpanel=null;S.chip={text:"Arrival moved to "+tp.seller+". "+undo.from+" is in transit again.",undo:undo};
+  }
+  render();
+}
+document.addEventListener("click",function(e){
+  var c=e.target.closest("[data-s],[data-t],[data-d]");
+  if(c){
+    if(c.hasAttribute("data-s")){UI.s=c.getAttribute("data-s");writeHash();go();return}
+    if(c.hasAttribute("data-t"))UI.t=c.getAttribute("data-t");
+    if(c.hasAttribute("data-d"))UI.d=c.getAttribute("data-d");
+    writeHash();controls();render();return;
+  }
+  var b=e.target.closest("#stage [data-act]");
+  if(b&&b.tagName!=="INPUT")act(b);
+});
+document.addEventListener("input",function(e){
+  var a=e.target.getAttribute("data-act");
+  if(a==="q"){var was=S.q;S.q=e.target.value;S.panel=null;
+    if(was&&!S.q){if(S.incoming.length){S.pk=S.pk.concat(S.incoming);S.incoming=[]}S.compact=true}
+    render()}
+  if(a==="nq"){S.nq=e.target.value;render()}
+});
+document.addEventListener("keydown",function(e){
+  if(e.key==="Escape"&&(S.panel||S.bpanel)){S.panel=null;S.bpanel=null;render()}
+});
+$("lblBtn").addEventListener("click",function(){UI.labels=!UI.labels;controls()});
+$("resetBtn").addEventListener("click",go);
+window.addEventListener("hashchange",function(){readHash();go()});
+readHash();go();
+})();
+</script>
+</body>
+</html>

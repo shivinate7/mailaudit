@@ -2,7 +2,7 @@
 
 Mockup: `docs/design/duo-hand-gaps.html`. Open it from disk. Deep links: `#s=folded`, `#s=line-now`, `#s=this-envelope`, `#s=still-owed`, `#s=keep-held`, `#s=held-lines`, `#s=tie-post`, `#s=end-of-day`, `#s=suspense-rank`. With no hash, every part shows. Each option has a Hide button. "Show hidden options" brings them back.
 
-Debt `duo-hand-mockup-gaps` (Card in Hand mockup gaps). Decision `duo-card-in-hand` (Card in Hand on the Duo). The October mockup, "the round 2 mockup" below, is `docs/design/duo-card-in-hand/index.html` at commit b8d11e7 (Duo round 2 draws Lost and degen's stack order as options). It was never on main. Its line numbers below are at that commit.
+Debt `duo-hand-mockup-gaps` (Card in Hand mockup gaps). Decision `duo-card-in-hand` (Card in Hand on the Duo). The October mockup, "the round 2 mockup" below, is `docs/design/duo-card-in-hand/index.html` at commit b8d11e7 (Duo round 2 draws Lost and degen's stack order as options). It was never on main. Its home now is the archive branch `origin/archive/design/duo-round2` (head commit 441b4e46). Its line numbers below are at commit b8d11e7.
 
 Designer kind: informed. No brief named a kind.
 
@@ -48,7 +48,7 @@ None of the eight parts lives in PackagesView, TallyView, OrphanedView or RootVi
    - Test 1: check in two cards. `hand-new-envelope` keeps its frame across both check-ins, and the `hand-this-envelope` value names both.
    - Test 2: New envelope resets the value to "Nothing checked in yet".
 
-3. **Still owed here.** Option picked: on the order line.
+3. **Still owed here.** Owner ruling, page item 78 a, 2026-11-18 23:22 CST: on the order line. Option b, under the lines, is not chosen.
    - Source: decision `outstanding-value-per-level` (each level states what is still outstanding) asks each package for "N left · $Y". That text is the bundle's `packagePill`, which `PackagesModel.pills[gk]` already holds (`native/ManifestKit/Sources/ManifestKit/Packages.swift:32`). Use it; do not build a second formatter. The round 2 mockup puts card names under the lines (index.html:167).
    - Options:
      - On the order line, the pick. "Still owed here" with the red figure at the trailing end of the "ordered" line, y 92 to 106. Gain: it adds no row, the Post offer does not move, and it shows above the keys at any envelope length. Loss: the line is busier. At large text it wraps under the date.
@@ -58,9 +58,9 @@ None of the eight parts lives in PackagesView, TallyView, OrphanedView or RootVi
    - Test: `hand-owed` reads `packages.pills[gk]`. Its frame's maxY is less than 405 with five lines and the keys up. A line tap updates it with no change in the line frames.
 
 4. **Keep held.** Carried over.
-   - Source: round 2 mockup index.html:271 to :272. Today the offer has Post only (`HandScreen.swift:324` to `:334`).
-   - Placement: Keep held goes beside Post in the offer slot under the sender. That is the place in decision `duo-card-in-hand`, Post offer paragraph. Item 42 is still open.
-   - A press hides the offer and leaves a receipt of the same height, as `receiptBox` does (`HandScreen.swift:341` to `:353`). The receipt says "Kept on the Suspense line. Nothing is checked in." It clears with the next card or New envelope. The held card stays held, and the typed card's own line tap still works.
+   - Source: round 2 mockup index.html:271 to :272. Today the offer has Post only (`offerRow` in `HandScreen.swift`).
+   - Placement: Keep held goes beside Post in the offer slot, the bar pinned above the keys. That is the place in decision `duo-card-in-hand`, Post offer paragraph (item 42 b, built on PR 362).
+   - A press hides the offer and leaves a receipt of the same height, as the Post receipt does (`receiptRow` in `HandScreen.swift`). The receipt says "Kept on the Suspense line. Nothing is checked in." It clears with the next card or New envelope. The held card stays held, and the typed card's own line tap still works.
    - Test: Keep held changes no line frame and no slot height. `hand.held` is unchanged. Nothing is saved: the store generation is the same.
 
 5. **Held cards marked on their lines.** Carried over.
@@ -78,12 +78,12 @@ None of the eight parts lives in PackagesView, TallyView, OrphanedView or RootVi
    - Test 2: a press checks in only that envelope's copies, in one save.
    - Test 3: both buttons' maxY is under 405 with the keys up.
 
-7. **End of mail day.** Carried over, with an option picked for what opens it: the empty query.
+7. **End of mail day.** Carried over. Owner ruling, page item 79 a, 2026-11-19 23:23 CST: the empty query opens it (`ux-control-earns-place`).
    - Source: round 2 mockup index.html:171 to :195 and :382 to :406. Today the empty query shows the start hint (`HandScreen.swift:249` to `:251`).
    - Left page: "Today's pile", which lists envelopes with a check-in since local midnight (from the saved `receivedAt`). Each row shows got/qty, red when short.
    - Right page: "Not normal today", which lists only short envelopes. Each row names the missing cards and their "N left · $Y", so it has no Open (`ux-control-earns-place`). Departs from: round 2 mockup, which gave each row an Open. Today's `transitBox` follows, unchanged. With nothing to list, it says "All is well." (`ux-all-is-well`). Under its own label, "Across all orders", the masthead's own "still missing" line follows in red (`MastheadModel.missingLine`), outside the "Not normal today" block.
    - What opens it:
-     - Empty query, the pick. It shows once one card is in today. Gain: no new control. Loss: the view appears without being asked for.
+     - Empty query, owner ruling (item 79 a). It shows once one card is in today. Gain: no new control. Loss: the view appears without being asked for.
      - A "Day's end" control. Gain: the view shows only on purpose. Loss: one more control, plus a state to leave.
    - Also drawn: the round 2 no-match frame (index.html:394 to :405), with the answer at the query and Hold in Suspense. It needs the multi-name Suspense line of part 8.
    - Test 1: with an empty query and one check-in today, `hand-pile` lists that envelope.

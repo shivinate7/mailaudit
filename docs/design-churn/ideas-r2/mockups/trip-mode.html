@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trip Mode</title>
+<style>
+/* Tokens: own neutral choices for an idea mockup, the same set as the round 1 idea mockups,
+   plus a grey "held" pair. Type sizes are the iOS Dynamic Type styles at the default size. */
+:root{
+  --page:#ebe9e3; --screen:#f5f4f0; --surface:#ffffff; --ink:#1d1c1a; --ink2:#5c5a55; --ink3:#6b685f;
+  --line:#dcd9d1; --accent:#a8402a; --accent-faint:#f8ece7; --ok:#256b41; --ok-bg:#e3f0e7; --ok-ink:#17462a;
+  --warn:#8a5200; --warn-bg:#f8ecd6; --tag-new:#2c5aa8; --tag-today:#5c5a55;
+  --held-bg:#e7e5df; --held-ink:#4f4d48; --strip:#e3e7ee; --strip-ink:#22324d;
+  --chrome:#ffffff; --chrome-line:#d6d3cb; --scrim:rgba(20,18,15,.32); --hinge:#2a2926; --bezel:#151412; --toast:#2b2a27; --toast-ink:#f5f4f0;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --page:#0d0d0c; --screen:#121210; --surface:#1f1e1b; --ink:#f2f0ea; --ink2:#b5b1a8; --ink3:#9a968d;
+    --line:#35332e; --accent:#e2795d; --accent-faint:#2e211c; --ok:#7cc898; --ok-bg:#1a3123; --ok-ink:#c9ecd5;
+    --warn:#e6aa52; --warn-bg:#3b2c13; --tag-new:#8fb2ef; --tag-today:#b5b1a8;
+    --held-bg:#2c2b28; --held-ink:#c9c5bc; --strip:#1d2533; --strip-ink:#cfdbf0;
+    --chrome:#1a1917; --chrome-line:#34322d; --scrim:rgba(0,0,0,.55); --hinge:#000; --bezel:#2b2a27; --toast:#e9e6df; --toast-ink:#1d1c1a;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --page:#0d0d0c; --screen:#121210; --surface:#1f1e1b; --ink:#f2f0ea; --ink2:#b5b1a8; --ink3:#9a968d;
+  --line:#35332e; --accent:#e2795d; --accent-faint:#2e211c; --ok:#7cc898; --ok-bg:#1a3123; --ok-ink:#c9ecd5;
+  --warn:#e6aa52; --warn-bg:#3b2c13; --tag-new:#8fb2ef; --tag-today:#b5b1a8;
+  --held-bg:#2c2b28; --held-ink:#c9c5bc; --strip:#1d2533; --strip-ink:#cfdbf0;
+  --chrome:#1a1917; --chrome-line:#34322d; --scrim:rgba(0,0,0,.55); --hinge:#000; --bezel:#2b2a27; --toast:#e9e6df; --toast-ink:#1d1c1a;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--ink);font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;font-size:17px;line-height:22px;
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+button,input{font:inherit;color:inherit}
+button{background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+button[disabled]{cursor:default}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--tag-new);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+/* Page chrome */
+.sample{background:var(--warn-bg);color:var(--warn);font-size:13px;line-height:18px;padding:8px 12px;border-radius:10px;margin:0 0 12px;max-width:1100px}
+header.page{max-width:1100px;margin:0 0 8px}
+header.page h1{font-size:28px;line-height:34px;margin:0;font-weight:700;letter-spacing:-.01em}
+header.page .meta{font-size:15px;line-height:20px;color:var(--ink2);margin:4px 0 0}
+header.page .meta b{color:var(--accent);font-weight:600}
+.controls{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:10px 0 0;max-width:1100px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg a,.seg button{display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border-radius:18px;border:1px solid var(--line);background:var(--surface);
+  font-size:15px;text-decoration:none;color:var(--ink)}
+.seg a[aria-current="true"],.seg button[aria-pressed="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
+.ctl-label{font-size:13px;color:var(--ink3);min-width:72px}
+.stategrid{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;align-items:start;max-width:1100px;margin:12px 0 0}
+.stategrid .ctl-label{padding-top:9px}
+.note{font-size:13px;line-height:18px;color:var(--ink3);max-width:1100px;margin:16px 0 0}
+.caption{font-size:15px;line-height:20px;color:var(--ink2);max-width:760px;margin:14px 0 0;min-height:60px}
+.stage{display:flex;gap:32px;align-items:flex-start;overflow-x:auto;padding:8px 2px 12px;margin-top:4px}
+
+/* Phone frames: 390 x 844 per the brief; the device list writes no Duo size */
+.phone{flex:none;background:var(--bezel);border-radius:50px;padding:10px;box-shadow:0 18px 40px rgba(0,0,0,.18)}
+.screen{position:relative;width:390px;height:844px;border-radius:40px;overflow:hidden;background:var(--screen);display:flex;flex-direction:column;--sab:34px}
+.duo{display:flex}
+.duo .screen.left{border-top-right-radius:6px;border-bottom-right-radius:6px}
+.duo .screen.right{border-top-left-radius:6px;border-bottom-left-radius:6px}
+.hinge{width:14px;background:var(--hinge);margin:30px 0;border-radius:3px}
+.status{flex:none;height:47px;padding:16px 30px 0;display:flex;justify-content:space-between;font-size:15px;font-weight:600}
+.status i{display:block;width:22px;height:11px;border-radius:3px;border:1.5px solid currentColor;opacity:.85;margin-top:5px}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:110px;height:32px;border-radius:16px;background:#000}
+.homebar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--ink);opacity:.8;z-index:30}
+
+/* Desktop frame */
+.web{flex:none;width:1200px;height:760px;border-radius:12px;overflow:hidden;background:var(--screen);border:1px solid var(--chrome-line);box-shadow:0 18px 40px rgba(0,0,0,.14);display:flex;flex-direction:column;position:relative;--sab:0px}
+.web-chrome{flex:none;height:32px;background:var(--chrome);border-bottom:1px solid var(--chrome-line);display:flex;align-items:center;gap:6px;padding:0 12px}
+.web-chrome i{width:11px;height:11px;border-radius:6px;background:var(--line)}
+.web-top{flex:none;height:56px;display:flex;align-items:center;gap:24px;padding:0 24px;border-bottom:1px solid var(--line);background:var(--surface)}
+.mast{font-size:15px;font-weight:800;letter-spacing:.18em}
+.web-tabs{display:flex;gap:4px}
+.web-tabs span{display:inline-flex;align-items:center;height:36px;padding:0 12px;border-radius:8px;font-size:15px;color:var(--ink2)}
+.web-tabs span[aria-current="page"]{background:var(--screen);color:var(--ink);font-weight:600}
+.web-body{flex:1;display:flex;min-height:0}
+.web-main{flex:1;min-width:0;position:relative;display:flex;flex-direction:column}
+.web-side{flex:none;width:420px;border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0;background:var(--screen)}
+
+/* List pane */
+.pane{position:relative;flex:1;display:flex;flex-direction:column;min-height:0}
+.nav{flex:none;padding:0 16px 4px;position:relative}
+.nav-top{height:44px;display:flex;justify-content:flex-end;align-items:center;gap:4px}
+.largetitle{font-size:34px;line-height:41px;font-weight:700;margin:0}
+.web .largetitle{font-size:28px;line-height:34px}
+.web .nav{padding:16px 24px 8px}
+.web .nav-top{position:absolute;right:16px;top:12px}
+.navbtn{min-width:44px;min-height:44px;font-size:17px;color:var(--accent);display:inline-flex;align-items:center;justify-content:center;border-radius:22px}
+.navbtn svg{width:24px;height:24px}
+.chip-off{font-size:12px;line-height:16px;font-weight:600;padding:3px 8px;border-radius:10px;background:var(--held-bg);color:var(--held-ink)}
+.scroll{flex:1;overflow:hidden;padding:0 16px calc(var(--sab) + 72px)}
+.web .scroll{padding:0 24px 24px;overflow:auto}
+
+/* Away strip: a fixed slot, decided when the view loads */
+.strip-slot{flex:none;height:64px;padding:2px 16px 10px}
+.web .strip-slot{padding:2px 24px 10px}
+.strip{height:52px;border-radius:14px;background:var(--strip);color:var(--strip-ink);display:flex;align-items:center;gap:8px;padding:0 4px 0 14px}
+.strip .tx{flex:1;min-width:0}
+.strip .l1{font-size:15px;line-height:20px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.strip .l2{font-size:13px;line-height:18px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.strip button{flex:none;min-height:44px;padding:0 10px;font-size:15px;font-weight:600;color:var(--strip-ink);border-radius:10px;text-decoration:underline;text-underline-offset:3px}
+.strip-ghost{position:absolute;left:16px;right:16px;top:100%;height:0;z-index:2}
+
+/* Rows */
+.sect{font-size:13px;line-height:18px;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em;margin:6px 4px 6px}
+.list{background:var(--surface);border-radius:14px;margin:0 0 12px;overflow:hidden}
+.row{display:flex;align-items:center;gap:10px;width:100%;height:68px;padding:0 12px 0 14px;border-top:.5px solid var(--line)}
+.list > .row:first-child,.list > :first-child .row,.list > :first-child.row{border-top:0}
+.row .main{flex:1;min-width:0}
+.row .t{font-size:17px;line-height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .t .oid{color:var(--ink2);font-size:15px}
+.row .s{font-size:13px;line-height:18px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .side{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.row.more{height:48px;color:var(--ink2);font-size:15px;justify-content:center}
+.badge{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:11px;font-size:12px;line-height:16px;font-weight:600;white-space:nowrap}
+.b-held{background:var(--held-bg);color:var(--held-ink)}
+.b-lost{background:var(--accent-faint);color:var(--accent)}
+.b-claim{border:1.5px solid var(--accent);color:var(--accent);height:22px}
+.b-filed{background:var(--ok-bg);color:var(--ok-ink)}
+.b-unknown{background:var(--warn-bg);color:var(--warn)}
+.circ{width:28px;height:28px;border-radius:14px;border:2px solid var(--ink3);flex:none;display:grid;place-items:center;color:var(--surface)}
+.row.checked .circ{background:var(--ok);border-color:var(--ok)}
+.row.checked .t{color:var(--ink2)}
+.rowbtn{cursor:pointer}
+
+/* Tab bar */
+.tabbar{position:absolute;left:16px;right:16px;bottom:calc(var(--sab) - 8px);height:58px;border-radius:29px;background:var(--chrome);border:.5px solid var(--chrome-line);
+  box-shadow:0 6px 20px rgba(0,0,0,.12);display:grid;grid-template-columns:repeat(3,1fr);align-items:center;z-index:5}
+.tab{min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;line-height:13px;color:var(--ink2);gap:2px}
+.tab svg{width:24px;height:24px}
+.tab[aria-current="page"]{color:var(--accent)}
+
+/* Menu popover (in-app, never a native menu) */
+.menu{position:absolute;right:12px;top:44px;width:270px;background:var(--surface);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.22);z-index:12;overflow:visible;border:.5px solid var(--chrome-line)}
+.menu button,.menu .mi{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:48px;padding:0 16px;font-size:17px;border-top:.5px solid var(--line)}
+.menu > :first-child{border-top:0}
+.menu .hist{display:block;padding:10px 16px 12px;border-top:6px solid var(--screen)}
+.menu .hist .h{font-size:13px;line-height:18px;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em}
+.menu .hist .v{font-size:15px;line-height:20px;margin-top:4px}
+.menu-scrim{position:absolute;inset:0;z-index:11}
+
+/* Sheet (phone) and side pane (fold, web) */
+.scrim{position:absolute;inset:0;background:var(--scrim);z-index:10}
+.sheet{position:absolute;left:0;right:0;bottom:0;top:56px;background:var(--screen);border-radius:24px 24px 0 0;z-index:11;display:flex;flex-direction:column;box-shadow:0 -6px 24px rgba(0,0,0,.18)}
+.sheet.short{top:auto;height:500px}
+.grabber{width:36px;height:5px;border-radius:3px;background:var(--ink3);opacity:.5;margin:6px auto 0;flex:none}
+.bar{height:52px;display:grid;grid-template-columns:96px 1fr 96px;align-items:center;padding:0 8px;flex:none}
+.bar h3{margin:0;text-align:center;font-size:17px;line-height:22px;font-weight:600}
+.bar .l{justify-self:start}
+.bar .r{justify-self:end;font-weight:600}
+.bar .stepno{justify-self:end;font-size:15px;color:var(--ink2);padding-right:8px}
+.body{flex:1;overflow:auto;padding:8px 16px 16px;min-height:0}
+.foot{flex:none;padding:8px 16px calc(var(--sab) + 8px);display:flex;gap:10px;background:var(--screen);border-top:.5px solid var(--line)}
+.web-side .foot{padding-bottom:16px}
+.btn{flex:1;min-height:50px;border-radius:12px;background:var(--accent);color:var(--surface);font-weight:600;font-size:17px;text-align:center}
+.btn[disabled]{opacity:.38}
+.btn2{flex:1;min-height:50px;border-radius:12px;background:var(--surface);border:1px solid var(--line);font-weight:600;font-size:17px;text-align:center;color:var(--ink)}
+.fine{font-size:13px;line-height:18px;color:var(--ink2);margin:6px 4px 12px}
+.lead{font-size:15px;line-height:20px;color:var(--ink2);margin:0 4px 12px}
+.card{background:var(--surface);border-radius:14px;padding:14px 16px;margin:0 0 12px}
+.big{font-size:28px;line-height:34px;font-weight:700}
+.big small{font-size:20px;line-height:25px;font-weight:600;color:var(--ink2);margin-left:6px}
+.placeholder{flex:1;display:grid;place-items:center;color:var(--ink3);font-size:15px;padding:24px;text-align:center}
+
+/* Trip sheet */
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 0}
+.field{display:block;min-height:64px;padding:8px 12px;border-radius:12px;background:var(--surface);border:2px solid transparent;width:100%}
+.field[aria-pressed="true"]{border-color:var(--accent)}
+.field .fl{font-size:13px;line-height:18px;color:var(--ink2)}
+.field .fv{font-size:20px;line-height:25px;font-weight:600}
+.field .fv.none{color:var(--ink3);font-weight:400}
+.cal{background:var(--surface);border-radius:14px;padding:4px 8px 8px;margin:0 0 10px}
+.cal-h{display:flex;align-items:center;justify-content:space-between;height:44px}
+.cal-h b{font-size:17px}
+.cal-h button{min-width:44px;min-height:44px;color:var(--accent);font-size:22px;text-align:center}
+.cal-h button[disabled]{color:var(--ink3);opacity:.5}
+.dow,.days{display:grid;grid-template-columns:repeat(7,1fr)}
+.dow span{font-size:12px;line-height:16px;color:var(--ink3);text-align:center;padding:2px 0 4px}
+.days button,.days span{height:44px;display:grid;place-items:center;font-size:17px;position:relative}
+.days button.inr::before{content:"";position:absolute;inset:6px 0;background:var(--accent-faint)}
+.days button.st::before{left:50%}
+.days button.en::before{right:50%}
+.days button.st.en::before{display:none}
+.days button i{font-style:normal;position:relative;width:36px;height:36px;border-radius:18px;display:grid;place-items:center}
+.days button.st i,.days button.en i{background:var(--accent);color:var(--surface);font-weight:600}
+.days button.today i{box-shadow:inset 0 0 0 1.5px var(--ink3)}
+.msg{min-height:40px;font-size:15px;line-height:20px;margin:0 4px 4px}
+.msg.err{color:var(--accent)}
+.msg.info{color:var(--ink2)}
+
+/* Claim and action rows */
+.crow{display:flex;align-items:center;gap:10px;min-height:72px;padding:8px 10px 8px 14px;border-top:.5px solid var(--line)}
+.list > .crow:first-child{border-top:0}
+.crow .main{flex:1;min-width:0}
+.crow .t{font-size:17px;line-height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crow .s{font-size:13px;line-height:18px;color:var(--ink2)}
+.acts{flex:none;width:176px;height:44px;display:flex;gap:6px;justify-content:flex-end;align-items:center}
+.acts .sm{min-height:44px;padding:0 10px;border-radius:10px;font-size:15px;font-weight:600}
+.acts .sm.p{background:var(--accent);color:var(--surface)}
+.acts .sm.s{background:var(--screen);color:var(--ink)}
+.acts .sm.q{color:var(--accent);font-weight:400;padding:0 6px}
+.acts .done-tx{font-size:13px;color:var(--ink2)}
+.acts.auto{width:auto}
+.crow.claim{flex-wrap:wrap;gap:4px 10px}
+.crow.claim .main{flex:1 1 100%}
+.crow.claim .acts{width:100%;justify-content:flex-start}
+
+/* Catch-up */
+.steps{display:flex;gap:6px;margin:0 4px 14px}
+.steps i{flex:1;height:4px;border-radius:2px;background:var(--line)}
+.steps i.on{background:var(--accent)}
+.q{font-size:22px;line-height:28px;font-weight:700;margin:4px 4px 14px}
+.counter{display:flex;align-items:center;justify-content:center;gap:18px;background:var(--surface);border-radius:14px;padding:16px;margin:0 0 12px}
+.counter button{width:56px;height:56px;border-radius:28px;background:var(--screen);font-size:28px;text-align:center;color:var(--accent)}
+.counter input{font-size:48px;line-height:56px;font-weight:700;width:120px;text-align:center;border:0;border-bottom:2px solid var(--line);background:none;padding:0}
+.result{min-height:48px;font-size:17px;line-height:22px;margin:0 4px 8px}
+.sumline{display:flex;align-items:center;gap:8px;height:28px;margin:0 4px 10px;font-size:15px;color:var(--ink2)}
+.chips{display:flex;gap:8px;margin:0 0 10px}
+.chips span{display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border-radius:18px;border:1px solid var(--line);font-size:15px;background:var(--surface)}
+.chips span[aria-pressed="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
+.find{display:block;width:100%;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface);padding:0 12px;font-size:17px;margin:0 0 10px}
+.matchlist{min-height:300px}
+.toast{position:absolute;left:16px;right:16px;bottom:calc(var(--sab) + 80px);background:var(--toast);color:var(--toast-ink);border-radius:14px;padding:12px 14px;font-size:15px;line-height:20px;z-index:20;box-shadow:0 8px 20px rgba(0,0,0,.2)}
+.web .toast{left:auto;right:24px;bottom:24px;width:380px}
+
+/* Dashed labels: Today = exists now, New = this idea adds it */
+.lbl{position:relative;outline:1.5px dashed var(--tag-new);outline-offset:3px}
+.lbl[data-k="today"]{outline-color:var(--tag-today)}
+.lbl::after{content:attr(data-lbl);position:absolute;top:-11px;right:10px;font-size:11px;line-height:13px;font-weight:600;padding:2px 6px;border-radius:6px;
+  background:var(--tag-new);color:var(--surface);white-space:nowrap;z-index:4;pointer-events:none}
+.lbl[data-k="today"]::after{background:var(--tag-today)}
+span.lbl{display:inline-flex}
+.body > .lbl{padding-top:12px}
+.lbl > .sect:first-child{margin-top:14px}
+:root[data-labels="off"] .lbl{outline:none}
+:root[data-labels="off"] .lbl::after{display:none}
+@media (max-width:600px){.stategrid{grid-template-columns:1fr}.stategrid .ctl-label{padding-top:0}}
+</style>
+</head>
+<body>
+<p class="sample" role="note"><b>Sample.</b> Every seller, card, city, order id, date and price on this page is invented. No figure is real.</p>
+<header class="page">
+  <h1>Trip Mode</h1>
+  <p class="meta"><b>Mockup, not built.</b> Away from home: set your trip dates, late mail shows as held instead of lost, claim deadlines stay live, and one catch-up flow clears the pile when you get back.</p>
+  <nav class="stategrid" aria-label="Screen states" id="stategrid"></nav>
+  <div class="controls">
+    <span class="ctl-label">Device</span>
+    <div class="seg" id="devices"></div>
+  </div>
+  <div class="controls">
+    <span class="ctl-label">Theme</span>
+    <div class="seg" id="themes"></div>
+    <span class="ctl-label">Labels</span>
+    <div class="seg"><button type="button" id="lblBtn" aria-pressed="true">Today / New</button></div>
+  </div>
+</header>
+
+<p class="caption" id="caption" aria-live="polite"></p>
+
+<div class="stage" id="stage"></div>
+
+<p class="note">Frames: the phone is drawn at 390 by 844 as the brief asks. The device list writes no size for the Duo poses, so the folded pose is that phone frame and the unfolded pose is two such screens side by side. The desktop frame is 1200 by 760. Type uses the iOS Dynamic Type styles at the default size; tap targets are at least 44 by 44. Every prompt is an in-app sheet or menu: no browser dialog and no native date picker. Claim clock, mail forecast and mailbox deputy are other ideas; where this page draws them it labels them so.</p>
+
+<script>
+(function(){
+"use strict";
+/* Invented orders. The four with a claim date sum to $11.40. */
+var ORD=[
+  {id:"5120-A",seller:"Brass Kettle Cards",city:"Easton Bay, ME",cards:"Quiet Harbor ×4",cost:1.60,due:"2026-11-05",claim:"2026-11-06"},
+  {id:"4471-B",seller:"Gilded Moth",city:"Marrow Falls, OR",cards:"Lantern Wyrm, Saltmarsh Heron ×2",cost:3.10,due:"2026-11-06",claim:"2026-11-09"},
+  {id:"3388-C",seller:"North Fen Games",city:"Larkspur Ridge, CO",cards:"Ashgrove Sentry ×2, Mirelight Totem",cost:4.25,due:"2026-11-08",claim:"2026-11-12"},
+  {id:"6012-D",seller:"Velvet Rook",city:"Cobble Point, WA",cards:"Tidecaller Apprentice",cost:2.45,due:"2026-11-10",claim:"2026-11-14"},
+  {id:"2904-A",seller:"Hollow Oak TCG",city:"Fernwick, TN",cards:"Emberfall Courier ×3",cost:1.35,due:"2026-11-12"},
+  {id:"7735-B",seller:"Tern Street Cards",city:"Port Ainsley, NC",cards:"Cinder Vane, Hushed Grove",cost:0.90,due:"2026-11-14"},
+  {id:"1846-C",seller:"Pine Lantern",city:"Grayhollow, MI",cards:"Riverglass Owl ×2",cost:0.70,due:"2026-11-15"},
+  {id:"5583-A",seller:"Cinder & Quill",city:"Sablewood, AZ",cards:"Thornback Mule",cost:0.55,due:"2026-11-16"}
+];
+var LATE_BEFORE={id:"3071-H",seller:"Driftwood Deck",city:"Hollis Cove, VT",cards:"Gloam Archivist",cost:1.15,due:"2026-10-24"};
+var UNKNOWN=[{id:"9021-E",seller:"Moss & Mica",city:"Tallowmere, KS",cards:"Shardglass Kite",cost:0.85},{id:"4410-F",seller:"Wren Hill Cards",city:"Ollen Springs, ID",cards:"Brackwater Toad ×2",cost:1.20}];
+var IMPORTED={id:"8102-G",seller:"Saltbox Games",city:"Kestrel Hook, RI",cards:"Vesper Lamplighter",cost:0.95,due:"2026-11-13",isNew:true};
+var EXPECTED=31, NAMED_NOTHERE=["7735-B","1846-C","5583-A"];
+
+var G=[
+  ["Set the trip",[
+    ["menu","Packages menu","Nov 2, the day before leaving. The Packages menu gains \"Going away\". The red lost-mail warning on Driftwood Deck is today's look."],
+    ["trip-empty","Empty","The trip sheet opens with no dates. \"Leave\" stays disabled until both days are set. Tap a field, then a day in the in-app calendar; there is no native picker."],
+    ["trip-normal","Dates set","Nov 3 to Nov 17. Both are calendar days in the home time zone, so a phone abroad cannot shift them. Tap \"Leave\" to see the departure sheet."],
+    ["trip-backfirst","Back before leave","Edge: the back day is before the leave day. \"Leave\" stays disabled and the inline text says why. The text sits in a fixed slot, so nothing moves."],
+    ["trip-past","Leave in the past","Edge: today is Nov 5 and the leave day is Nov 3. That is allowed, for someone who forgot to set it before going."],
+    ["trip-sync","Not synced yet","Error: sync is down. The trip saves on this phone, a note says it has not synced, and nothing blocks."]]],
+  ["Before you go",[
+    ["dep-normal","Departure sheet","After \"Leave\", the same sheet shows what may arrive while away and which claim windows close during the trip. \"File now\" sets today's dated claim-filed stamp; \"Leave it\" changes nothing. Try both."],
+    ["dep-empty","Nothing due","Empty: no open order expects to arrive during the trip."],
+    ["dep-noclock","No claim clock yet","Edge: the claim clock (another idea) is not built, so the claim block is hidden and nothing replaces it. The totals come from each order's expected-by date."],
+    ["dep-unknown","Date unknown","Error: two orders have no expected-by date. They are listed as \"date unknown\", never dropped."]]],
+  ["Away",[
+    ["away","Away strip","Nov 9, abroad. The strip takes a fixed slot set when Packages loads. Late orders show a grey \"held\" label, not the red warning. Claim dates stay red; two claims were filed before leaving."],
+    ["away-deputy","With envelope count","If the mailbox deputy (another idea) is built, the strip adds its envelope count. That count is never matched to an order."],
+    ["away-offline","Offline import","On the plane: no network. A CSV of orders bought on the road merges as usual; Saltbox Games is new and falls inside the trip, so it is due in the pile."],
+    ["away-synced","Set on another device","Edge: a 0-day trip, set on the desktop. After sync the phone shows the same strip at its next load."],
+    ["away-disagree","Devices disagree","Edge: the phone said Nov 17, the desktop Nov 18. The existing merge order (later change wins) picks one; the strip shows the result."],
+    ["away-mid","Arrives mid-session","Error case for the strip: a trip arrives by sync while Packages is open. The strip does not appear now, under the pointer. It takes its slot at the next load."]]],
+  ["Return",[
+    ["home-early","Home early","Nov 12: \"I'm home\" tapped before the end date. The post office may still hold mail, so the sheet offers to keep orders held until a chosen day."],
+    ["back","Welcome back","Nov 17: the end date passed by the device calendar, with or without network. The strip now offers the catch-up. All late orders are still held."]]],
+  ["Catch-up",[
+    ["cu-count","1 Count","\"How many envelopes are in the pile?\" Use − and +. The line below compares the count with what was expected. Skip is one tap."],
+    ["cu-match","2 Match","Packages filtered to orders due during the trip. Type \"moth\" in the find field to leave Gilded Moth. Each tap is an ordinary check-in, logged in recent checks."],
+    ["cu-low","Count looks low","Edge: 22 checked but only 20 counted. A quiet note says the count looks low. Nothing blocks."],
+    ["cu-left","3 Leftovers","Envelopes in the pile with no match go to Orphaned one tap at a time, because the count may be wrong. Expected orders not in the pile stay held until the grace period ends."],
+    ["cu-resume","Resume later","Edge: \"Later\" mid-flow keeps the place. The strip offers to resume."],
+    ["cu-empty","Nothing to catch up","Empty: nothing was due during the trip, so the flow ends at once."],
+    ["cu-undo","Undo after close","Error case: after \"Close catch-up\", a wrong check-in still undoes through the recent-checks log, as any check-in does today."]]],
+  ["After",[
+    ["after","Grace over","Nov 24: the grace period ended, so the red lost-mail warning is back on the three still missing. The trip stays as one line in the menu's history."]]]
+];
+var STATES={};G.forEach(function(g){g[1].forEach(function(x){STATES[x[0]]={k:x[0],n:x[1],cap:x[2],g:g[0]}})});
+var TODAY={"menu":"2026-11-02","trip-empty":"2026-11-02","trip-normal":"2026-11-02","trip-backfirst":"2026-11-02","trip-past":"2026-11-05","trip-sync":"2026-11-02",
+  "dep-normal":"2026-11-02","dep-empty":"2026-11-02","dep-noclock":"2026-11-02","dep-unknown":"2026-11-02",
+  "away":"2026-11-09","away-deputy":"2026-11-09","away-offline":"2026-11-09","away-synced":"2026-11-09","away-disagree":"2026-11-09","away-mid":"2026-11-09",
+  "home-early":"2026-11-12","back":"2026-11-17","cu-count":"2026-11-17","cu-match":"2026-11-17","cu-low":"2026-11-17","cu-left":"2026-11-17","cu-resume":"2026-11-17","cu-empty":"2026-11-17","cu-undo":"2026-11-18","after":"2026-11-24"};
+
+var S={s:"",t:"auto",d:"phone",labels:true};
+
+var MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+var MONL=["January","February","March","April","May","June","July","August","September","October","November","December"];
+function fmt(d){if(!d)return "";var p=d.split("-");return MON[+p[1]-1]+" "+(+p[2])}
+function range(a,b){if(a===b)return fmt(a);var pa=a.split("-"),pb=b.split("-");return pa[1]===pb[1]?fmt(a)+"–"+(+pb[2]):fmt(a)+" – "+fmt(b)}
+function iso(y,m,d){return y+"-"+(m<10?"0":"")+m+"-"+(d<10?"0":"")+d}
+function money(v){return "$"+v.toFixed(2)}
+function esc(x){return String(x).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]})}
+function L(k,text,inner,cls,tag){tag=tag||"div";return "<"+tag+' class="lbl '+(cls||"")+'" data-k="'+k+'" data-lbl="'+(k==="today"?"Today: ":"New: ")+text+'">'+inner+"</"+tag+">"}
+function byId(id){return ORD.concat([IMPORTED,LATE_BEFORE]).concat(UNKNOWN).filter(function(o){return o.id===id})[0]}
+function days(a,b){return Math.round((Date.parse(b)-Date.parse(a))/864e5)}
+var ICON={
+  box:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg>',
+  sum:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M17 5H7l6 7-6 7h10"/></svg>',
+  q:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14M12 17h.01"/></svg>',
+  more:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
+  tick:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>'
+};
+
+/* Per-state working data, reset when the state changes */
+var W={};
+function preset(k){
+  W={leave:"2026-11-03",back:"2026-11-17",active:"back",month:10,filed:{},left:{},checked:{},q:"",pile:25,base:9,sent:{},undone:{},toast:"",keep:"2026-11-17",menu:false};
+  if(k==="trip-empty"){W.leave="";W.back="";W.active="leave"}
+  if(k==="trip-backfirst")W.back="2026-11-01";
+  if(k==="menu"||k==="after")W.menu=true;
+  if(/^away|^back$|^home-early$|^cu-/.test(k)){W.filed={"5120-A":"Nov 2","4471-B":"Nov 2"};W.left={"3388-C":1,"6012-D":1}}
+  if(k==="away-synced"){W.leave="2026-11-09";W.back="2026-11-09"}
+  if(k==="away-disagree")W.back="2026-11-18";
+  if(k==="cu-match"||k==="cu-resume")W.checked={"5120-A":1,"3388-C":1,"2904-A":1};
+  if(k==="cu-low"){W.checked={"5120-A":1,"3388-C":1,"2904-A":1};W.pile=20;W.base=19}
+  if(k==="cu-left"||k==="cu-undo"||k==="after"){ORD.forEach(function(o){if(NAMED_NOTHERE.indexOf(o.id)<0)W.checked[o.id]=1});W.base=17}
+}
+function checkedCount(){return W.base+Object.keys(W.checked).length}
+
+/* ---------- List pane ---------- */
+function statusBar(){return '<div class="island" aria-hidden="true"></div><div class="status" aria-hidden="true"><span class="num">9:41</span><i></i></div>'}
+function tabbar(){
+  function t(n,ic,cur){return '<div class="tab"'+(cur?' aria-current="page"':'')+'>'+ic+n+'</div>'}
+  return '<nav class="tabbar" aria-label="Views">'+t("Packages",ICON.box,1)+t("Tally",ICON.sum)+t("Orphaned",ICON.q)+'</nav><div class="homebar" aria-hidden="true"></div>';
+}
+function stripFor(k){
+  var tr=range(W.leave,W.back);
+  var a=function(l1,l2,btn,act){return {l1:l1,l2:l2,btn:btn,act:act}};
+  if(k==="away"||k==="home-early")return a("Away until "+fmt(W.back),EXPECTED+" due in the pile","I'm home","go:home-early");
+  if(k==="away-deputy")return a("Away until "+fmt(W.back),EXPECTED+" due in the pile · 12 envelopes so far","I'm home","go:home-early");
+  if(k==="away-offline")return a("Away until "+fmt(W.back),(EXPECTED+1)+" due in the pile · ends Nov 17 by this phone's calendar","I'm home","go:home-early");
+  if(k==="away-synced")return a("Away today only, "+fmt(W.leave),"Set on desktop · 3 due in the pile","I'm home","go:home-early");
+  if(k==="away-disagree")return a("Away until "+fmt(W.back),EXPECTED+" due in the pile · end date from desktop, the later change","I'm home","go:home-early");
+  if(k==="back")return a("Welcome back","Away "+tr+" · "+EXPECTED+" due in the pile","Start catch-up","go:cu-count");
+  if(k==="cu-resume")return a("Catch-up paused at step 2 of 3",checkedCount()+" of "+EXPECTED+" checked","Resume catch-up","go:cu-match");
+  if(/^cu-(count|match|low|left)$/.test(k))return a("Catch-up in progress","Away "+tr+" · "+EXPECTED+" due in the pile","","");
+  return null;
+}
+function rowMode(k){
+  if(/^(menu|trip-|dep-)/.test(k))return "before";
+  if(k==="after"||k==="cu-undo")return "after";
+  if(k==="cu-empty")return "empty";
+  return "away";
+}
+function orderRow(o,mode,today){
+  var side=[],sub,late=o.due&&o.due<today;
+  if(mode==="before"||mode==="after"){
+    if(late){var b='<span class="badge b-lost">Lost? '+days(o.due,today)+" days late</span>";side.push(o.id==="3071-H"?L("today","lost-mail warning",b,"","span"):b)}
+    sub=(late?"Was due ":"Due ")+fmt(o.due)+" · "+money(o.cost);
+  }else{
+    var inTrip=o.due>=W.leave&&o.due<=W.back;
+    if(late)side.push(o.id==="4471-B"?L("new","held label",'<span class="badge b-held">held</span>',"","span"):'<span class="badge b-held">held</span>');
+    if(W.filed[o.id])side.push('<span class="badge b-filed">Claim filed '+W.filed[o.id]+"</span>");
+    else if(o.claim&&o.claim>=today)side.push(o.id==="6012-D"?L("new","claim clock, other idea",'<span class="badge b-claim">Claim by '+fmt(o.claim)+"</span>","","span"):'<span class="badge b-claim">Claim by '+fmt(o.claim)+"</span>");
+    sub=(late?"Was due ":"Due ")+fmt(o.due)+(inTrip?" · in the pile":"")+" · "+money(o.cost);
+    if(o.isNew)sub="New from import · due "+fmt(o.due)+" · in the pile";
+  }
+  return '<div class="row"><div class="main"><div class="t">'+esc(o.seller)+'</div><div class="s">'+o.id+" · "+esc(sub)+'</div></div><div class="side">'+side.join("")+"</div></div>";
+}
+function listBody(k,today){
+  var mode=rowMode(k),rows=[];
+  if(mode==="empty")return '<p class="sect">Open orders</p><div class="list"><div class="row more">No open orders</div></div>';
+  if(mode==="before"){
+    rows.push(orderRow(LATE_BEFORE,mode,today));
+    ORD.slice(0,5).forEach(function(o){rows.push(orderRow(o,mode,today))});
+    return '<p class="sect">Open orders</p><div class="list">'+rows.join("")+'<div class="row more">+ 26 more open</div></div>';
+  }
+  if(mode==="after"){
+    ORD.filter(function(o){return NAMED_NOTHERE.indexOf(o.id)>-1}).forEach(function(o,i){rows.push(i===0?L("today","lost-mail warning, back after grace",orderRow(o,mode,today)):orderRow(o,mode,today))});
+    return '<p class="sect">Open orders</p><div class="list">'+rows.join("")+'<div class="row more">+ 6 more not here</div></div>';
+  }
+  var cu=/^cu-/.test(k);
+  var list=ORD.filter(function(o){return !(cu&&W.checked[o.id])});
+  if(k==="away-offline")list=list.slice(0,6).concat([IMPORTED]).sort(function(a,b){return a.due<b.due?-1:1});
+  var shown=list.slice(0,7);
+  shown.forEach(function(o){rows.push(orderRow(o,mode,today))});
+  var total=(k==="away-offline"?EXPECTED+1:EXPECTED)-(cu?checkedCount():0);
+  return '<p class="sect">Due during the trip</p><div class="list">'+rows.join("")+'<div class="row more">+ '+(total-shown.length)+' more due in the pile</div></div>';
+}
+function listPane(){
+  var k=S.s,today=TODAY[k],st=stripFor(k),h="";
+  var offline=k==="away-offline"?'<span class="chip-off">Offline</span>':"";
+  var menuBtn='<button type="button" class="navbtn" data-act="menu" aria-label="Packages menu" aria-expanded="'+(W.menu?"true":"false")+'">'+ICON.more+"</button>";
+  h+='<div class="nav"><div class="nav-top">'+offline+(W.menu?L("today","Packages menu",menuBtn,"","span"):menuBtn)+'</div><h2 class="largetitle">Packages</h2>';
+  if(W.menu)h+=menuHTML(k);
+  if(k==="away-mid")h+='<div class="strip-ghost">'+L("new","no strip until next load","")+"</div>";
+  h+="</div>";
+  if(st){
+    var inner='<div class="strip" role="status"><div class="tx"><div class="l1">'+st.l1+'</div><div class="l2">'+st.l2+"</div></div>"+(st.btn?'<button type="button" data-act="'+st.act+'">'+st.btn+"</button>":"")+"</div>";
+    h+='<div class="strip-slot">'+(/^(away|back|cu-resume)$/.test(k)?L("new","away strip, fixed slot",inner):k==="away-deputy"?L("new","envelope count, mailbox deputy (other idea)",inner):inner)+"</div>";
+  }
+  h+='<div class="scroll">'+listBody(k,today)+"</div>";
+  return '<div class="pane">'+h+"</div>";
+}
+function menuHTML(k){
+  var h='<div class="menu" role="menu">'+
+    '<div class="mi" role="menuitem">Import CSV</div>'+
+    '<div class="mi" role="menuitem">Recent checks</div>'+
+    L("new","trip sheet",'<button type="button" role="menuitem" data-act="go:trip-empty">Going away<span aria-hidden="true">›</span></button>');
+  if(k==="after")h+=L("new","trip history",'<div class="hist"><div class="h">Trips</div><div class="v">Away Nov 3–17 · 22 checked on return</div></div>');
+  return h+"</div>";
+}
+
+/* ---------- Sheets ---------- */
+function sheetFor(k){
+  if(/^trip-/.test(k))return tripSheet(k);
+  if(/^dep-/.test(k))return depSheet(k);
+  if(k==="home-early")return homeSheet();
+  if(k==="cu-count")return cuCount();
+  if(k==="cu-match"||k==="cu-low")return cuMatch();
+  if(k==="cu-left")return cuLeft();
+  if(k==="cu-empty")return cuEmpty();
+  if(k==="cu-undo")return recentSheet();
+  return null;
+}
+function bar(l,title,r){return '<div class="bar">'+(l||"<span></span>")+"<h3>"+title+"</h3>"+(r||"<span></span>")+"</div>"}
+function tripValid(){return !!(W.leave&&W.back&&W.back>=W.leave)}
+function tripMsg(k){
+  var today=TODAY[k];
+  if(W.leave&&W.back&&W.back<W.leave)return ["err","Back is before Leave. Pick a later back day."];
+  if(W.leave&&W.leave<today)return ["info","Leave is before today. That's fine if you've already gone."];
+  if(k==="trip-sync"&&tripValid())return ["info","Not synced yet. The trip is saved on this phone and syncs when you're online."];
+  if(tripValid()){var n=days(W.leave,W.back)+1;return ["info","Away "+n+" day"+(n>1?"s":"")+". Late mail shows as held, not lost."]}
+  return ["info","Pick the day you leave and the day you're back."];
+}
+function tripSheet(k){
+  var f=function(which,label){var v=W[which];return '<button type="button" class="field" data-act="field:'+which+'" aria-pressed="'+(W.active===which)+'"><div class="fl">'+label+'</div><div class="fv'+(v?"":" none")+'">'+(v?fmt(v):"Pick a day")+"</div></button>"};
+  var m=tripMsg(k);
+  var body='<div class="fields">'+f("leave","Leave")+f("back","Back")+'</div><p class="fine">Calendar days in your home time zone (Central). A phone abroad keeps these dates.</p>'+cal(TODAY[k])+
+    '<div class="msg '+m[0]+'" role="status">'+m[1]+"</div>";
+  return {bar:bar('<button type="button" class="navbtn l" data-act="go:menu">Cancel</button>',"Going away"),
+    body:L("new","trip sheet",body),foot:'<button type="button" class="btn" data-act="leave"'+(tripValid()?"":" disabled")+">Leave</button>"};
+}
+function cal(today){
+  var y=2026,m=W.month,first=new Date(Date.UTC(y,m,1)).getUTCDay(),dim=new Date(Date.UTC(y,m+1,0)).getUTCDate(),cells=[],ok=tripValid();
+  for(var i=0;i<42;i++){
+    var d=i-first+1;
+    if(d<1||d>dim){cells.push("<span></span>");continue}
+    var v=iso(y,m+1,d),c=[];
+    if(ok&&v>=W.leave&&v<=W.back)c.push("inr");
+    if(v===W.leave)c.push("st");
+    if(v===W.back)c.push("en");
+    if(v===today)c.push("today");
+    cells.push('<button type="button" class="'+c.join(" ")+'" data-act="day:'+v+'" aria-label="'+MONL[m]+" "+d+'"><i class="num">'+d+"</i></button>");
+  }
+  return '<div class="cal"><div class="cal-h"><button type="button" data-act="month:-1" aria-label="Previous month"'+(m<=9?" disabled":"")+'>‹</button><b>'+MONL[m]+" "+y+'</b><button type="button" data-act="month:1" aria-label="Next month"'+(m>=11?" disabled":"")+">›</button></div>"+
+    '<div class="dow" aria-hidden="true"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div><div class="days">'+cells.join("")+"</div></div>";
+}
+function claimRow(o){
+  var a;
+  if(W.filed[o.id])a=L("today","claim-filed stamp",'<span class="badge b-filed">Claim filed '+W.filed[o.id]+"</span>","","span")+'<button type="button" class="sm q" data-act="unfile:'+o.id+'">Undo</button>';
+  else if(W.left[o.id])a='<span class="done-tx">Left open</span><button type="button" class="sm q" data-act="unleave:'+o.id+'">Undo</button>';
+  else a='<button type="button" class="sm p" data-act="file:'+o.id+'">File now</button><button type="button" class="sm s" data-act="leaveit:'+o.id+'">Leave it</button>';
+  return '<div class="crow claim"><div class="main"><div class="t">'+esc(o.seller)+' <span class="oid" style="color:var(--ink2);font-size:15px">· '+o.id+'</span></div><div class="s">Window closes '+fmt(o.claim)+" · "+money(o.cost)+'</div></div><div class="acts">'+a+"</div></div>";
+}
+function depSheet(k){
+  var tr=range(W.leave,W.back),b="";
+  if(k==="dep-empty"){
+    b='<div class="card"><div class="big">Nothing due while you\'re away</div><p class="fine" style="margin:6px 0 0">No open order expects to arrive '+tr+'.</p></div>';
+  }else{
+    b='<div class="card"><div class="big num">31 orders<small>$48.20</small></div><p class="lead" style="margin:4px 0 0">may arrive while you\'re away, '+tr+'.</p><p class="fine" style="margin:4px 0 0">From each order\'s expected-by date.'+(k==="dep-unknown"?" Plus 2 with date unknown, listed below.":"")+"</p></div>";
+    if(k!=="dep-noclock"){
+      var cl=ORD.filter(function(o){return o.claim});
+      b+=L("new","claim block, reads the claim clock",'<p class="sect">4 orders lose their claim window on Nov 6–14</p><p class="fine" style="margin-top:0">File now, or accept the risk. A claim can also be filed from abroad.</p><div class="list">'+cl.map(claimRow).join("")+"</div>");
+    }
+    if(k==="dep-unknown"){
+      b+='<p class="sect">Date unknown · 2</p><div class="list">'+UNKNOWN.map(function(o){return '<div class="row"><div class="main"><div class="t">'+esc(o.seller)+' <span class="oid">· '+o.id+'</span></div><div class="s">'+esc(o.cards)+" · "+money(o.cost)+'</div></div><div class="side"><span class="badge b-unknown">date unknown</span></div></div>'}).join("")+'</div><p class="fine">No expected-by date in the import. They are listed here so none is dropped.</p>';
+    }
+  }
+  return {bar:bar("","Before you go",""),body:L("new","departure sheet",b),foot:'<button type="button" class="btn" data-act="go:away">Done</button>'};
+}
+function homeSheet(){
+  var b='<p class="q">Home before '+fmt(W.back)+'?</p><p class="lead">If the post office is still holding your mail, keep late orders held until it comes.</p>'+
+    '<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div><div style="font-size:13px;line-height:18px;color:var(--ink2)">Mail still held? Keep held until</div><div class="big num" style="font-size:22px;line-height:28px">'+fmt(W.keep)+'</div></div>'+
+    '<div style="display:flex;gap:4px"><button type="button" class="navbtn" data-act="keep:-1" aria-label="One day earlier">‹</button><button type="button" class="navbtn" data-act="keep:1" aria-label="One day later">›</button></div></div>'+
+    '<p class="fine">Claim dates stay live either way.</p>';
+  return {short:true,bar:bar('<button type="button" class="navbtn l" data-act="go:away">Not now</button>',"I'm home"),body:L("new","early return",b),
+    foot:'<button type="button" class="btn2" data-act="go:cu-count">Mail is here</button><button type="button" class="btn" data-act="go:away">Keep held</button>'};
+}
+function steps(n){var h='<div class="steps" aria-label="Step '+n+' of 3">';for(var i=1;i<=3;i++)h+="<i"+(i<=n?' class="on"':"")+"></i>";return h+"</div>"}
+function cuBar(n){return bar('<button type="button" class="navbtn l" data-act="go:cu-resume">Later</button>',"Catch-up",'<span class="stepno">'+n+" of 3</span>")}
+function countResult(){
+  var p=W.pile;
+  if(p<EXPECTED)return '<b class="num">'+p+"</b> in the pile, <b>"+EXPECTED+"</b> expected → up to <b>"+(EXPECTED-p)+"</b> not here yet.";
+  if(p>EXPECTED)return '<b class="num">'+p+"</b> in the pile, <b>"+EXPECTED+"</b> expected → <b>"+(p-EXPECTED)+"</b> more than expected.";
+  return '<b class="num">'+p+"</b> in the pile, as many as expected.";
+}
+function cuCount(){
+  var b=steps(1)+'<p class="q">How many envelopes are in the pile?</p><div class="counter"><button type="button" data-act="pile:-1" aria-label="One fewer">−</button><input class="num" id="pileIn" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" value="'+W.pile+'" aria-label="Envelopes in the pile"><button type="button" data-act="pile:1" aria-label="One more">+</button></div>'+
+    '<p class="result" id="pileResult" role="status">'+countResult()+'</p><p class="fine">Type the number or use − and +. A count only: it never marks an order received or lost.</p>';
+  return {bar:cuBar(1),body:L("new","catch-up, count",b),foot:'<button type="button" class="btn2" data-act="go:cu-match">Skip</button><button type="button" class="btn" data-act="go:cu-match">Next</button>'};
+}
+function matchRows(){
+  var q=W.q.trim().toLowerCase();
+  var list=ORD.filter(function(o){return !q||(o.seller+" "+o.city+" "+o.cards).toLowerCase().indexOf(q)>-1});
+  if(!list.length)return '<div class="list"><div class="row more">No order matches "'+esc(W.q)+'"</div></div>';
+  return '<div class="list">'+list.map(function(o){var c=!!W.checked[o.id];
+    return '<button type="button" class="row rowbtn'+(c?" checked":"")+'" data-act="chk:'+o.id+'" aria-pressed="'+c+'"><span class="circ">'+(c?ICON.tick:"")+'</span><span class="main"><span class="t" style="display:block">'+esc(o.seller)+' <span class="oid">· '+o.id+'</span></span><span class="s" style="display:block">'+(c?"Checked · in recent checks":esc(o.city)+" · "+esc(o.cards))+"</span></span></button>"}).join("")+
+    (q?"":'<div class="row more">+ 23 more due during the trip</div>')+"</div>";
+}
+function sumLine(){
+  var n=checkedCount(),low=n>W.pile;
+  return '<span class="num">'+n+" checked · "+W.pile+" counted</span>"+(low?L("new","quiet note, no block",'<span class="badge b-unknown">count looks low</span>',"","span"):"");
+}
+function cuMatch(){
+  var b=steps(2)+'<div class="sumline" id="sumline" role="status">'+sumLine()+'</div><div class="chips"><span aria-pressed="true">Due during trip · 31</span><span>Still open · 44</span></div>'+
+    '<input class="find" type="search" id="find" placeholder="Find seller, city or card" value="'+esc(W.q)+'" aria-label="Find seller, city or card" autocomplete="off">'+
+    '<div class="matchlist" id="matchlist">'+matchRows()+'</div><p class="fine">Each tap is an ordinary check-in. It lands in recent checks, and undo works there.</p>';
+  return {bar:cuBar(2),body:L("new","catch-up, match",b),foot:'<button type="button" class="btn" data-act="go:cu-left">Next</button>'};
+}
+function cuLeft(){
+  var n=checkedCount(),nomatch=Math.max(0,W.pile-n),nothere=EXPECTED-n,rows="";
+  for(var i=1;i<=nomatch;i++){
+    var a=W.sent[i]?'<span class="done-tx">Sent to Orphaned</span><button type="button" class="sm q" data-act="unsend:'+i+'">Undo</button>':'<button type="button" class="sm p" data-act="send:'+i+'">Send to Orphaned</button>';
+    rows+='<div class="crow"><div class="main"><div class="t">Envelope '+i+'</div><div class="s">In the pile, no order matched</div></div><div class="acts">'+a+"</div></div>";
+  }
+  var b=steps(3)+'<p class="sect">In the pile, no match · '+nomatch+'</p><div class="list">'+rows+'</div><p class="fine" style="margin-top:-4px">One tap each. The count may be wrong, so there is no send-all.</p>'+
+    '<p class="sect">Expected, not in the pile · '+nothere+'</p><div class="list">'+ORD.filter(function(o){return NAMED_NOTHERE.indexOf(o.id)>-1}).map(function(o){
+      return '<div class="row"><div class="main"><div class="t">'+esc(o.seller)+' <span class="oid">· '+o.id+'</span></div><div class="s">Was due '+fmt(o.due)+" · "+money(o.cost)+'</div></div><div class="side"><span class="badge b-held">held until Nov 20</span></div></div>'}).join("")+
+    '<div class="row more">+ '+(nothere-3)+' more</div></div><p class="fine">They stay open and held until the grace period ends, 3 days after you close this.</p>';
+  return {bar:cuBar(3),body:L("new","catch-up, leftovers",b),foot:'<button type="button" class="btn" data-act="go:after">Close catch-up</button>'};
+}
+function cuEmpty(){
+  var b='<div class="card" style="margin-top:12px"><div class="big">Nothing to catch up</div><p class="fine" style="margin:6px 0 0">No order was due '+range(W.leave,W.back)+'.</p></div>';
+  return {short:true,bar:bar("","Catch-up"),body:L("new","catch-up, empty",b),foot:'<button type="button" class="btn" data-act="go:menu">Close</button>'};
+}
+function recentSheet(){
+  var ids=["4471-B","2904-A","3388-C","5120-A"],t=["6:52 pm","6:50 pm","6:47 pm","6:41 pm"];
+  var rows=ids.map(function(id,i){var o=byId(id),u=W.undone[id];
+    return '<div class="crow"><div class="main"><div class="t">'+esc(o.seller)+'</div><div class="s">'+id+(u?" · back to not received":" · checked Nov 17, "+t[i]+" · catch-up")+'</div></div><div class="acts auto">'+
+      (u?'<span class="done-tx">Undone</span>':'<button type="button" class="sm s" data-act="undo:'+id+'">Undo</button>')+"</div></div>"}).join("");
+  var b='<p class="lead">Catch-up closed Nov 17. These are ordinary check-ins, so each undoes here.</p><div class="list">'+rows+"</div>";
+  return {bar:bar("","Recent checks",'<button type="button" class="navbtn r" data-act="go:after">Done</button>'),body:L("today","recent-checks log",b)};
+}
+function tripPane(k){
+  if(/^(menu|after|cu-empty|away-mid)$/.test(k))return '<div class="placeholder">Pick a package to see its cards.</div>';
+  var cl=ORD.filter(function(o){return o.claim});
+  var b='<div class="card"><div style="font-size:13px;line-height:18px;color:var(--ink2)">Trip</div><div class="big num" style="font-size:22px;line-height:28px">Away '+range(W.leave,W.back)+'</div><p class="fine" style="margin:4px 0 0">'+EXPECTED+" due in the pile · late ones held, not lost</p></div>"+
+    '<p class="sect">Claim windows during the trip</p><div class="list">'+cl.map(function(o){
+      var s=W.filed[o.id]?'<span class="badge b-filed">Claim filed '+W.filed[o.id]+"</span>":(o.claim>=TODAY[k]?'<span class="badge b-claim">Claim by '+fmt(o.claim)+"</span>":'<span class="badge b-held">window closed</span>');
+      return '<div class="row"><div class="main"><div class="t">'+esc(o.seller)+'</div><div class="s">'+o.id+" · "+money(o.cost)+'</div></div><div class="side">'+s+"</div></div>"}).join("")+"</div>";
+  return '<div class="bar"><span></span><h3>Trip</h3><span></span></div><div class="body">'+L("new","trip pane, wide layouts",b)+"</div>";
+}
+
+/* ---------- Compose per device ---------- */
+function sheetBlock(sh,phone){
+  return (phone?'<div class="grabber" aria-hidden="true"></div>':"")+sh.bar+'<div class="body">'+sh.body+"</div>"+(sh.foot?'<div class="foot">'+sh.foot+"</div>":"");
+}
+function toastHTML(){return W.toast?'<div class="toast" role="status">'+esc(W.toast)+"</div>":""}
+function menuScrim(){return W.menu?'<div class="menu-scrim" data-act="menu"></div>':""}
+function renderStage(){
+  var k=S.s,sh=sheetFor(k),h="";
+  if(S.d==="phone"){
+    h='<div class="phone"><div class="screen">'+statusBar()+listPane()+tabbar()+menuScrim()+
+      (sh?'<div class="scrim"></div><div class="sheet'+(sh.short?" short":"")+'" role="dialog" aria-modal="true" aria-label="'+esc(STATES[k].n)+'">'+sheetBlock(sh,true)+"</div>":"")+toastHTML()+"</div></div>";
+  }else if(S.d==="fold"){
+    h='<div class="phone duo"><div class="screen left">'+statusBar()+listPane()+tabbar()+menuScrim()+'</div><div class="hinge" aria-hidden="true"></div>'+
+      '<div class="screen right">'+statusBar()+'<div class="pane">'+(sh?sheetBlock(sh,false):tripPane(k))+"</div>"+toastHTML()+'<div class="homebar" aria-hidden="true"></div></div></div>';
+  }else{
+    h='<div class="web"><div class="web-chrome" aria-hidden="true"><i></i><i></i><i></i></div><div class="web-top"><span class="mast">MANIFEST</span><div class="web-tabs"><span aria-current="page">Packages</span><span>Tally</span><span>Orphaned</span></div></div>'+
+      '<div class="web-body"><div class="web-main">'+listPane()+menuScrim()+'</div><aside class="web-side">'+(sh?sheetBlock(sh,false):tripPane(k))+"</aside></div>"+toastHTML()+"</div>";
+  }
+  document.getElementById("stage").innerHTML=h;
+}
+
+/* ---------- Page chrome, hash ---------- */
+function link(s,t,d){return "#s="+s+(t!=="auto"?"&t="+t:"")+(d!=="phone"?"&d="+d:"")+(S.labels?"":"&l=off")}
+function render(){
+  var r=document.documentElement;
+  if(S.t==="auto")r.removeAttribute("data-theme");else r.setAttribute("data-theme",S.t);
+  r.setAttribute("data-labels",S.labels?"on":"off");
+  renderStage();
+  var st=STATES[S.s];
+  document.getElementById("caption").textContent=st.g+" · "+st.n+". "+st.cap;
+  document.getElementById("stategrid").innerHTML=G.map(function(g){return '<span class="ctl-label">'+g[0]+'</span><div class="seg">'+g[1].map(function(x){return '<a href="'+link(x[0],S.t,S.d)+'" aria-current="'+(x[0]===S.s)+'">'+x[1]+"</a>"}).join("")+"</div>"}).join("");
+  document.getElementById("devices").innerHTML=[["phone","Phone (Duo folded)"],["fold","Two screens (Duo unfolded)"],["web","Desktop web"]].map(function(d){return '<a href="'+link(S.s,S.t,d[0])+'" aria-current="'+(d[0]===S.d)+'">'+d[1]+"</a>"}).join("");
+  document.getElementById("themes").innerHTML=["auto","light","dark"].map(function(t){return '<a href="'+link(S.s,t,S.d)+'" aria-current="'+(t===S.t)+'">'+t.charAt(0).toUpperCase()+t.slice(1)+"</a>"}).join("");
+  document.getElementById("lblBtn").setAttribute("aria-pressed",String(S.labels));
+}
+function go(k){S.s=k;preset(k);history.replaceState(null,"",link(S.s,S.t,S.d));render()}
+function readHash(){
+  var h={};location.hash.replace(/^#/,"").split("&").forEach(function(kv){var p=kv.split("=");if(p[0])h[p[0]]=decodeURIComponent(p[1]||"")});
+  var prev=S.s;
+  S.s=STATES[h.s]?h.s:"menu";
+  S.t=/^(light|dark)$/.test(h.t||"")?h.t:"auto";
+  S.d=/^(fold|web)$/.test(h.d||"")?h.d:"phone";
+  S.labels=h.l!=="off";
+  if(S.s!==prev)preset(S.s);
+  render();
+}
+function addDays(d,n){var t=new Date(Date.parse(d)+n*864e5);return iso(t.getUTCFullYear(),t.getUTCMonth()+1,t.getUTCDate())}
+
+document.getElementById("lblBtn").addEventListener("click",function(){S.labels=!S.labels;history.replaceState(null,"",link(S.s,S.t,S.d));render()});
+document.getElementById("stage").addEventListener("click",function(e){
+  var el=e.target.closest("[data-act]");if(!el||el.disabled)return;
+  var a=el.getAttribute("data-act"),i=a.indexOf(":"),verb=i<0?a:a.slice(0,i),arg=i<0?"":a.slice(i+1),next=null;
+  switch(verb){
+    case "go":go(arg);return;
+    case "leave":var lv=W.leave,bk=W.back;go("dep-normal");W.leave=lv;W.back=bk;renderStage();return;
+    case "menu":W.menu=!W.menu;break;
+    case "field":W.active=arg;break;
+    case "day":W[W.active]=arg;if(W.active==="leave"&&(!W.back||W.back<arg))W.active="back";break;
+    case "month":W.month=Math.max(9,Math.min(11,W.month+(+arg)));break;
+    case "file":W.filed[arg]="Nov 2";next="unfile:"+arg;break;
+    case "unfile":delete W.filed[arg];next="file:"+arg;break;
+    case "leaveit":W.left[arg]=1;next="unleave:"+arg;break;
+    case "unleave":delete W.left[arg];next="leaveit:"+arg;break;
+    case "keep":W.keep=addDays(W.keep,+arg);break;
+    case "pile":W.pile=Math.max(0,W.pile+(+arg));break;
+    case "chk":if(W.checked[arg])delete W.checked[arg];else W.checked[arg]=1;break;
+    case "send":W.sent[arg]=1;next="unsend:"+arg;break;
+    case "unsend":delete W.sent[arg];next="send:"+arg;break;
+    case "undo":W.undone[arg]=1;W.toast=byId(arg).seller+" · "+arg+" is back to not received.";break;
+  }
+  /* Keep each scroll box where it was, so a press never moves content under the pointer */
+  var sc=[].map.call(document.querySelectorAll("#stage .body,#stage .scroll"),function(x){return x.scrollTop});
+  renderStage();
+  [].forEach.call(document.querySelectorAll("#stage .body,#stage .scroll"),function(x,j){if(sc[j])x.scrollTop=sc[j]});
+  var n=document.querySelector('#stage [data-act="'+(next||a)+'"]')||document.querySelector('#stage [data-act="'+a+'"]');
+  if(n&&!n.disabled)n.focus({preventScroll:true});
+});
+document.getElementById("stage").addEventListener("input",function(e){
+  if(e.target.id==="pileIn"){W.pile=parseInt(e.target.value.replace(/\D/g,""),10)||0;document.getElementById("pileResult").innerHTML=countResult();return}
+  if(e.target.id!=="find")return;
+  W.q=e.target.value;
+  document.getElementById("matchlist").innerHTML=matchRows();
+});
+window.addEventListener("hashchange",readHash);
+readHash();
+})();
+</script>
+</body>
+</html>

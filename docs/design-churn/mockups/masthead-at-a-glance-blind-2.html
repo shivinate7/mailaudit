@@ -1,0 +1,976 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Masthead at a glance</title>
+<style>
+/* Tokens. Spacing on the 4 px house step, radius 8 px (house tokens.md). Colours are this
+   designer's own choice: the house file gives no hex. Type sizes are Apple Dynamic Type styles,
+   iOS, Large (default) and AX5, read 2026-11-21. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px;
+  --radius: 8px;
+
+  --bench: #E3E6EC;
+  --surface: #F7F8FA;
+  --raised: #FFFFFF;
+  --sunk: #ECEEF2;
+  --text: #171B24;
+  --muted: #555D6C;
+  --line: #D7DBE2;
+  --accent: #2A47A8;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #DCE3F7;
+  --warn: #A3361B;
+  --warn-soft: #F8E3DC;
+  --ok: #1F6E45;
+  --ok-soft: #DCEFE3;
+  --hinge: #0D0F13;
+  --banner: #171B24;
+  --banner-ink: #FFFFFF;
+  --tag: #2A47A8;
+
+  --t-lt: 34px; --l-lt: 41px;
+  --t-t1: 28px; --l-t1: 34px;
+  --t-t2: 22px; --l-t2: 28px;
+  --t-t3: 20px; --l-t3: 25px;
+  --t-hl: 17px; --l-hl: 22px;
+  --t-body: 17px; --l-body: 22px;
+  --t-call: 16px; --l-call: 21px;
+  --t-sub: 15px; --l-sub: 20px;
+  --t-foot: 13px; --l-foot: 18px;
+  --t-c1: 12px; --l-c1: 16px;
+  --t-c2: 11px; --l-c2: 13px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bench: #08090C;
+    --surface: #121419;
+    --raised: #1B1E25;
+    --sunk: #23272F;
+    --text: #E9EBF0;
+    --muted: #A3AAB7;
+    --line: #2F343E;
+    --accent: #95AAF5;
+    --accent-ink: #0C1430;
+    --accent-soft: #212B4B;
+    --warn: #F39A82;
+    --warn-soft: #3B211A;
+    --ok: #7ACB9D;
+    --ok-soft: #17301F;
+    --hinge: #000000;
+    --banner: #E9EBF0;
+    --banner-ink: #121419;
+    --tag: #95AAF5;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bench: #08090C;
+  --surface: #121419;
+  --raised: #1B1E25;
+  --sunk: #23272F;
+  --text: #E9EBF0;
+  --muted: #A3AAB7;
+  --line: #2F343E;
+  --accent: #95AAF5;
+  --accent-ink: #0C1430;
+  --accent-soft: #212B4B;
+  --warn: #F39A82;
+  --warn-soft: #3B211A;
+  --ok: #7ACB9D;
+  --ok-soft: #17301F;
+  --hinge: #000000;
+  --banner: #E9EBF0;
+  --banner-ink: #121419;
+  --tag: #95AAF5;
+  color-scheme: dark;
+}
+/* Largest accessibility text size: Apple's AX5 column. */
+.ax5 {
+  --t-lt: 60px; --l-lt: 70px;
+  --t-t1: 58px; --l-t1: 68px;
+  --t-t2: 56px; --l-t2: 66px;
+  --t-t3: 55px; --l-t3: 65px;
+  --t-hl: 53px; --l-hl: 62px;
+  --t-body: 53px; --l-body: 62px;
+  --t-call: 51px; --l-call: 60px;
+  --t-sub: 49px; --l-sub: 58px;
+  --t-foot: 44px; --l-foot: 52px;
+  --t-c1: 43px; --l-c1: 51px;
+  --t-c2: 40px; --l-c2: 48px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bench);
+  color: var(--text);
+  font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 20px;
+}
+button, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+/* Bench: the page around the device frames. Not part of the design. */
+.sample {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--banner); color: var(--banner-ink);
+  padding: var(--space-2) var(--space-4);
+  font-size: 15px; text-align: center;
+}
+.bench { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); max-width: 72rem; margin-inline: auto; }
+.bench p { margin: 0; }
+.who { color: var(--muted); }
+.ctl-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.ctl-lbl { font-weight: 600; }
+.seg-ctl { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised); overflow: hidden; }
+.seg-ctl > span { display: inline-flex; }
+.seg-ctl button { min-height: 44px; padding: 0 var(--space-3); border: 0; background: none; }
+.seg-ctl button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.seg-ctl .hide-btn { padding: 0 var(--space-3); color: var(--muted); border-inline-start: 1px solid var(--line); }
+.seg-ctl button[aria-pressed="true"] + .hide-btn { color: var(--text); }
+.bench select { min-height: 44px; padding: 0 var(--space-2); border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised); }
+.bench label.check { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 44px; }
+.plain-btn { min-height: 44px; padding: 0 var(--space-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised); }
+.blurb { max-width: 70ch; }
+
+.stage { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: var(--space-8); padding: var(--space-4) var(--space-4) var(--space-12); }
+.slot { display: flex; flex-direction: column; gap: var(--space-2); max-width: 100%; }
+.slot-cap { margin: 0; color: var(--muted); font-size: 13px; line-height: 18px; max-width: 466px; }
+.slot-scroll { max-width: 100%; overflow-x: auto; padding-bottom: var(--space-1); }
+
+/* Device frames. */
+.frame {
+  --status-h: 44px;
+  --home-h: 20px;
+  --tab-h: 56px;
+  position: relative; flex: none; overflow: hidden;
+  border-radius: 24px;
+  background: var(--surface); color: var(--text);
+  outline: 1px solid var(--line);
+  font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+  font-size: var(--t-body); line-height: var(--l-body);
+  -webkit-tap-highlight-color: transparent;
+}
+.frame[data-device="iphone-duo-folded"] { width: 466px; height: 678px; }
+.frame[data-device="iphone-duo-unfolded"] {
+  width: 951px; height: 669px;
+  display: grid; grid-template-columns: 455.5px 40px 455.5px;
+  background: var(--hinge);
+}
+.frame[data-device="iphone-phone"] { width: 466px; height: 678px; resize: both; min-width: 320px; min-height: 480px; max-width: 640px; max-height: 1000px; }
+.hinge { background: var(--hinge); }
+
+.screen { position: relative; height: 100%; min-width: 0; display: flex; flex-direction: column; background: var(--surface); overflow: hidden; }
+.statusbar {
+  flex: none;
+  height: calc(var(--status-h) + env(safe-area-inset-top, 0px));
+  padding: env(safe-area-inset-top, 0px) max(var(--space-6), env(safe-area-inset-right, 0px)) 0 max(var(--space-6), env(safe-area-inset-left, 0px));
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 15px; line-height: 20px; font-weight: 600;
+}
+.sb-icons { display: inline-flex; gap: var(--space-1); align-items: flex-end; }
+.sb-icons i { display: block; width: 4px; background: currentColor; border-radius: 1px; }
+.scroll {
+  position: relative; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
+  padding-bottom: calc(var(--home-h) + env(safe-area-inset-bottom, 0px));
+  overscroll-behavior: contain;
+}
+.has-tabs .scroll { padding-bottom: calc(var(--tab-h) + var(--home-h) + var(--space-4) + env(safe-area-inset-bottom, 0px)); }
+.pad { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-4) max(var(--space-4), env(safe-area-inset-right, 0px)) var(--space-4) max(var(--space-4), env(safe-area-inset-left, 0px)); }
+
+/* Shared parts. */
+.ico { width: 1em; height: 1em; flex: none; }
+.ico path, .ico circle { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ico .fill { fill: currentColor; stroke: none; }
+.warnc { color: var(--warn); }
+.okc { color: var(--ok); }
+.meta { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--t-foot); line-height: var(--l-foot); color: var(--muted); }
+.meta.warnc { color: var(--warn); }
+.meta.okc { color: var(--ok); }
+.btn {
+  min-height: 44px; padding: 0 var(--space-4);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--raised); font-size: var(--t-hl); line-height: var(--l-hl); font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+}
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.wide { width: 100%; min-height: 52px; }
+.text-btn { min-height: 44px; padding: 0 var(--space-2); border: 0; background: none; color: var(--accent); font-size: var(--t-sub); line-height: var(--l-sub); font-weight: 600; }
+.text-btn.strong { font-weight: 700; }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.lead { margin: 0; font-size: var(--t-t2); line-height: var(--l-t2); font-weight: 600; }
+.ptitle { margin: 0; font-size: var(--t-t2); line-height: var(--l-t2); font-weight: 700; }
+.ltitle { margin: 0; font-size: var(--t-lt); line-height: var(--l-lt); font-weight: 700; }
+.sec { display: flex; flex-direction: column; gap: var(--space-2); }
+.sec-h { margin: 0; font-size: var(--t-foot); line-height: var(--l-foot); font-weight: 600; color: var(--muted); display: flex; align-items: center; gap: var(--space-1); }
+.sec-h.warnc { color: var(--warn); }
+.group { display: flex; flex-direction: column; background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.group > * + * { border-top: 1px solid var(--line); }
+.empty-note { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); padding: var(--space-4); background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius); }
+.empty-note p { margin: 0; }
+.machine summary { min-height: 44px; display: flex; align-items: center; color: var(--muted); font-size: var(--t-foot); cursor: pointer; }
+.machine p { margin: 0; font-family: ui-monospace, Menlo, monospace; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--muted); }
+
+.skel { height: 20px; width: var(--w, 70%); border-radius: var(--radius); background: var(--sunk); }
+.ax5 .skel { height: 48px; }
+
+/* A card you check off. The whole row is the press target. */
+.card-row {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center;
+  gap: var(--space-3); width: 100%; min-height: 48px;
+  padding: var(--space-2) var(--space-4);
+  border: 0; background: none; text-align: start;
+  font-size: var(--t-body); line-height: var(--l-body);
+}
+.card-row:disabled { cursor: default; color: var(--muted); }
+.ck { width: 28px; height: 28px; flex: none; }
+.ax5 .ck { width: 48px; height: 48px; }
+.ck-ring { fill: none; stroke: var(--muted); stroke-width: 2; }
+.ck-tick { fill: none; stroke: transparent; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.card-row[aria-pressed="true"] .ck-ring { fill: var(--accent); stroke: var(--accent); }
+.card-row[aria-pressed="true"] .ck-tick { stroke: var(--accent-ink); }
+.card-row:disabled .ck-ring { fill: var(--sunk); stroke: var(--line); }
+.card-row:disabled .ck-tick { stroke: var(--muted); }
+.cname { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
+.sub { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--muted); }
+.price { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--muted); font-variant-numeric: tabular-nums; }
+.ax5 .card-row { grid-template-columns: auto 1fr; }
+.ax5 .card-row .price { grid-column: 2; }
+
+.pkg { display: flex; flex-direction: column; gap: var(--space-2); }
+.pkg-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1) var(--space-3); }
+.pkg-id { display: flex; flex-direction: column; min-width: 0; }
+.seller { font-size: var(--t-hl); line-height: var(--l-hl); font-weight: 600; overflow-wrap: anywhere; }
+.glist { display: flex; flex-direction: column; gap: var(--space-6); }
+
+.navbar { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-height: 44px; padding: 0 var(--space-2); }
+.back { display: inline-flex; align-items: center; gap: var(--space-1); min-height: 44px; padding: 0 var(--space-2); border: 0; background: none; color: var(--accent); font-size: var(--t-body); line-height: var(--l-body); }
+.nav-title { font-size: var(--t-hl); line-height: var(--l-hl); font-weight: 600; }
+
+/* Floating tab bar (HIG tab bars: it floats above content at the bottom). */
+.tabbar {
+  position: absolute; z-index: 5;
+  left: var(--space-4); right: var(--space-4);
+  bottom: calc(var(--home-h) + env(safe-area-inset-bottom, 0px));
+  height: var(--tab-h);
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--raised); border: 1px solid var(--line); border-radius: 28px;
+}
+.has-tabs::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; height: calc(var(--home-h) + env(safe-area-inset-bottom, 0px)); background: var(--surface); }
+.tab { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-1); min-height: 44px; border: 0; border-radius: 24px; background: none; color: var(--muted); font-size: 11px; line-height: 13px; font-weight: 600; }
+.tab .ico { width: 22px; height: 22px; }
+.tab[aria-current="page"] { color: var(--accent); background: var(--accent-soft); }
+.badge { position: absolute; top: 6px; left: calc(50% + 6px); width: 10px; height: 10px; border-radius: 50%; background: var(--warn); border: 2px solid var(--raised); }
+
+/* Sheet (HIG sheets: Done on the trailing edge). */
+.sheet-wrap { position: absolute; inset: 0; z-index: 10; display: flex; align-items: flex-end; background: rgb(0 0 0 / 0.32); }
+.sheet { width: 100%; max-height: 85%; overflow: auto; background: var(--surface); border-radius: 16px 16px 0 0; padding-bottom: calc(var(--home-h) + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; }
+.sheet-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-2) 0; }
+.sheet-bar .text-btn { justify-self: end; grid-column: 3; }
+.sheet-title { grid-column: 2; font-size: var(--t-hl); line-height: var(--l-hl); font-weight: 600; }
+
+.sync-panel { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); }
+.sync-panel p { margin: 0; }
+.sp-state { display: flex; gap: var(--space-2); align-items: flex-start; }
+.sp-state .ico { margin-top: var(--space-1); }
+.sp-run { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); min-height: 52px; }
+.spin { width: 20px; height: 20px; border-radius: 50%; border: 3px solid var(--accent-soft); border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(1turn); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; border-color: var(--accent); } }
+.sp-note { color: var(--muted); font-size: var(--t-foot); line-height: var(--l-foot); }
+
+/* "New:" labels. A blind designer cannot see today's screen, so every part is New. */
+.labels-on [data-new] { outline: 2px dashed var(--tag); outline-offset: -3px; }
+.labels-on [data-new]::after {
+  content: "New: " attr(data-new);
+  position: absolute; top: 4px; right: 4px; z-index: 3;
+  padding: 0 var(--space-2); border-radius: 4px;
+  background: var(--surface); color: var(--tag); border: 1px dashed var(--tag);
+  font-size: 11px; line-height: 16px; font-weight: 600; pointer-events: none;
+}
+
+/* ---- Concept: Sentence ---------------------------------------------------- */
+.mh { position: relative; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); }
+.mh-a { position: sticky; top: 0; z-index: 2; background: var(--surface); border-bottom: 1px solid var(--line); }
+.ax5 .mh-a { position: relative; }
+.sent { margin: 0; font-size: var(--t-t1); line-height: var(--l-t1); font-weight: 400; text-wrap: pretty; }
+.num { font-weight: 700; font-variant-numeric: tabular-nums; }
+.numlink { display: inline; padding: var(--space-1) 0; margin: 0; border: 0; background: none; font-size: inherit; line-height: inherit; font-weight: inherit; text-align: start; text-decoration: underline; text-decoration-color: var(--line); text-decoration-thickness: 2px; text-underline-offset: 6px; }
+.numlink .num { color: var(--accent); }
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.chip {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  min-height: 44px; padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--warn); border-radius: var(--radius);
+  background: var(--warn-soft); color: var(--warn);
+  font-size: var(--t-sub); line-height: var(--l-sub); font-weight: 600; text-align: start;
+}
+.allwell { margin: 0; display: flex; align-items: center; gap: var(--space-2); min-height: 44px; color: var(--ok); font-size: var(--t-hl); line-height: var(--l-hl); font-weight: 600; }
+.syncline { align-self: flex-start; display: inline-flex; align-items: center; gap: var(--space-2); min-height: 44px; margin-block: calc(-1 * var(--space-2)); padding: 0; border: 0; background: none; color: var(--muted); font-size: var(--t-foot); line-height: var(--l-foot); }
+.ax5 .syncline { margin-block: 0; align-items: flex-start; text-align: start; }
+.ax5 .syncline .ico { margin-top: 8px; }
+.pkg-row {
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--space-3);
+  width: 100%; min-height: 56px; padding: var(--space-2) var(--space-4);
+  border: 0; background: none; text-align: start;
+}
+.pkg-row.is-sel { background: var(--accent-soft); }
+.chev { width: 10px; height: 16px; color: var(--muted); }
+.ax5 .chev { width: 20px; height: 32px; }
+.chev path { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.detail { display: flex; flex-direction: column; gap: var(--space-3); }
+
+/* ---- Concept: Mail bar ---------------------------------------------------- */
+.mh-b { gap: var(--space-3); }
+.bar-row { display: flex; align-items: center; gap: var(--space-3); }
+.bar { flex: 1; display: flex; gap: var(--space-1); height: 32px; padding: var(--space-1); border: 1px solid var(--text); border-radius: var(--radius); background: var(--surface); }
+.bar i { display: block; min-width: 6px; border-radius: 4px; cursor: pointer; }
+.bar .s-today { background: var(--accent); }
+.bar .s-out { background: var(--accent-soft); border: 1px solid var(--accent); }
+.bar .s-lost { background: repeating-linear-gradient(135deg, var(--warn) 0 3px, var(--warn-soft) 3px 7px); border: 1px solid var(--warn); }
+.bar i.sel { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--text); position: relative; z-index: 1; }
+.seal {
+  flex: none; width: 64px; height: 64px; border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
+  border: 2px dashed var(--ok); background: var(--ok-soft); color: var(--ok);
+  font-size: 11px; line-height: 13px; font-weight: 700; padding: 0;
+}
+.seal .ico { width: 20px; height: 20px; }
+.seal .glyph { font-size: 20px; line-height: 22px; font-weight: 800; }
+.seal-bad { border-style: solid; border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
+.seal-never, .seal-unk { border-style: dotted; border-color: var(--muted); background: var(--sunk); color: var(--muted); }
+.seal-run { border-style: solid; border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.seal .long { display: none; }
+.seg-tabs { display: grid; grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr)); gap: var(--space-2); }
+.seg-tab {
+  position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 0;
+  min-height: 44px; padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised); text-align: start;
+}
+.seg-tab[aria-pressed="true"] { outline: 2px solid var(--text); outline-offset: -2px; }
+.seg-tab .key { width: 16px; height: 8px; border-radius: 2px; }
+.seg-tab .n { font-size: var(--t-t1); line-height: var(--l-t1); font-weight: 700; font-variant-numeric: tabular-nums; }
+.seg-tab .w { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--muted); }
+.seg-tab.lost .n, .seg-tab.lost .w { color: var(--warn); }
+.key.s-today { background: var(--accent); }
+.key.s-out { background: var(--accent-soft); border: 1px solid var(--accent); }
+.key.s-lost { background: repeating-linear-gradient(135deg, var(--warn) 0 2px, var(--warn-soft) 2px 4px); border: 1px solid var(--warn); }
+.b-status { min-height: 44px; display: flex; align-items: center; }
+.b-list { padding-top: 0; }
+/* Open pose: the bar stands up on the left page. */
+.mh-b.vert { min-height: 100%; }
+.v-top { display: flex; align-items: center; gap: var(--space-3); }
+.v-top .sync-txt { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--muted); }
+.v-body { flex: 1; display: flex; gap: var(--space-4); min-height: 280px; }
+.bar.v { flex: none; flex-direction: column; width: 36px; height: auto; }
+.bar.v i { min-height: 6px; min-width: 0; }
+.v-body .seg-tabs { flex: 1; grid-template-columns: 1fr; align-content: start; }
+.ax5 .seg-tabs { grid-template-columns: 1fr; }
+.ax5 .bar-row { flex-wrap: wrap; }
+.ax5 .seal { width: 100%; height: auto; min-height: 44px; border-radius: var(--radius); flex-direction: row; gap: var(--space-2); justify-content: flex-start; padding: var(--space-2) var(--space-3); font-size: var(--t-foot); line-height: var(--l-foot); }
+.ax5 .seal .short { display: none; }
+.ax5 .seal .long { display: inline; text-align: start; }
+.ax5 .seal .ico { width: 1em; height: 1em; }
+
+/* ---- Concept: Front page -------------------------------------------------- */
+.mh-c { gap: var(--space-4); }
+.docket { display: flex; flex-direction: column; border-top: 2px solid var(--text); }
+.d-row {
+  display: grid; grid-template-columns: calc(var(--t-lt) * 1.6) 1fr auto; align-items: baseline; gap: var(--space-4);
+  width: 100%; min-height: 64px; padding: var(--space-3) var(--space-2);
+  border: 0; border-bottom: 1px solid var(--line); background: none; text-align: start;
+}
+.d-num { font-size: var(--t-lt); line-height: var(--l-lt); font-weight: 700; font-variant-numeric: tabular-nums; text-align: end; }
+.d-lbl { font-size: var(--t-t3); line-height: var(--l-t3); }
+.d-row .chev { align-self: center; }
+.d-row.warn .d-num, .d-row.warn .d-lbl { color: var(--warn); }
+.d-row.warn { background: var(--warn-soft); border-bottom: 1px solid var(--warn); }
+.d-row.slim .d-num .ico { width: 24px; height: 24px; }
+.d-row.slim { min-height: 52px; align-items: center; }
+.d-row.slim .d-lbl { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--muted); display: inline-flex; align-items: center; gap: var(--space-2); }
+.d-row.slim .d-num { font-size: var(--t-t3); }
+.d-well { display: flex; align-items: center; gap: var(--space-2); min-height: 52px; margin: 0; padding: var(--space-2); border-bottom: 1px solid var(--line); color: var(--ok); font-size: var(--t-hl); line-height: var(--l-hl); font-weight: 600; }
+.ax5 .d-row { grid-template-columns: 1fr auto; gap: 0 var(--space-3); }
+.ax5 .d-num { text-align: start; grid-column: 1; }
+.ax5 .d-lbl { grid-column: 1; }
+.ax5 .d-row .chev { grid-column: 2; grid-row: 1 / span 2; }
+.dock { flex: none; padding: var(--space-3) var(--space-4) calc(var(--home-h) + env(safe-area-inset-bottom, 0px)); background: var(--surface); border-top: 1px solid var(--line); }
+.segmented { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-1); padding: var(--space-1); border-radius: var(--radius); background: var(--sunk); }
+.segmented button { min-height: 44px; padding: 0 var(--space-2); border: 0; border-radius: 4px; background: none; font-size: 13px; line-height: 16px; font-weight: 600; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.segmented button b { font-size: 15px; line-height: 18px; font-variant-numeric: tabular-nums; }
+.segmented button[aria-pressed="true"] { background: var(--raised); box-shadow: 0 0 0 1px var(--line); }
+.segmented button.lost { color: var(--warn); }
+.c-sticky { position: sticky; top: 0; z-index: 2; background: var(--surface); padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--line); }
+
+@media (forced-colors: active) {
+  .ck-ring { stroke: CanvasText; }
+  .card-row[aria-pressed="true"] .ck-ring { fill: Highlight; stroke: Highlight; }
+  .card-row[aria-pressed="true"] .ck-tick { stroke: HighlightText; }
+  .bar i { border: 1px solid CanvasText; }
+  .bar i.sel { outline: 3px solid Highlight; }
+  .seg-tab[aria-pressed="true"], .segmented button[aria-pressed="true"], .tab[aria-current="page"] { outline: 3px solid Highlight; }
+}
+@media (max-width: 520px) {
+  .stage { padding-inline: 0; }
+  .slot { padding-inline: var(--space-4); }
+}
+</style>
+</head>
+<body>
+<div class="sample" role="note"><strong>Sample.</strong> No figure, seller, card, price or time on this page is real.</div>
+<header class="bench">
+  <p class="who">Designer kind: blind. Mockup masthead-at-a-glance-blind-2: the top of a mail check-in checklist, in three concepts. Each device frame is live: check off cards, open the warnings, run a sync.</p>
+  <div class="ctl-row">
+    <span class="ctl-lbl" id="lbl-c">Concept</span>
+    <div class="seg-ctl" id="ctl-c" role="group" aria-labelledby="lbl-c"></div>
+    <button class="plain-btn" id="unhide" hidden>Show hidden concepts</button>
+  </div>
+  <div class="ctl-row">
+    <label class="ctl-lbl" for="ctl-s">State</label>
+    <select id="ctl-s"></select>
+    <label class="ctl-lbl" for="ctl-d">Device</label>
+    <select id="ctl-d"></select>
+    <span class="ctl-lbl" id="lbl-t">Theme</span>
+    <div class="seg-ctl" id="ctl-t" role="group" aria-labelledby="lbl-t"></div>
+    <label class="check"><input type="checkbox" id="ctl-l" checked> Show "New:" labels</label>
+    <button class="plain-btn" id="reset">Reset sample</button>
+  </div>
+  <p class="blurb" id="blurb"></p>
+</header>
+<noscript><p class="bench">This mockup draws its device frames with JavaScript. Turn JavaScript on to see them. The notes file beside it describes each concept in words.</p></noscript>
+<main class="stage" id="stage">
+  <div class="slot" data-d="folded">
+    <p class="slot-cap">Duo, folded. One screen, 466 x 678 pt, held in one hand.</p>
+    <div class="frame" data-device="iphone-duo-folded" data-key="folded" data-pose="compact"></div>
+  </div>
+  <div class="slot" data-d="open">
+    <p class="slot-cap">Duo, open. 951 x 669 pt. Hinge from x 455.5 to x 495.5; nothing crosses it.</p>
+    <div class="slot-scroll"><div class="frame" data-device="iphone-duo-unfolded" data-key="open" data-pose="open"></div></div>
+  </div>
+  <div class="slot" data-d="phone">
+    <p class="slot-cap">Large phone. No size is written for it, so it starts at the folded Duo's size. Drag the corner to try others.</p>
+    <div class="frame" data-device="iphone-phone" data-key="phone" data-pose="compact"></div>
+  </div>
+  <div class="slot" data-d="ax5">
+    <p class="slot-cap">Duo, folded, at the largest accessibility text size (AX5).</p>
+    <div class="frame ax5" data-device="iphone-duo-folded" data-key="ax5" data-pose="compact"></div>
+  </div>
+</main>
+<script>
+(function () {
+  'use strict';
+
+  var CONCEPTS = [
+    { key: 'sentence', name: 'Sentence', blurb: 'Sentence: the top is one typeset sentence with the two counts, then a status line that names only what is wrong, then the sync time. The checklist sits right under it. A floating tab bar moves between Out, Today and Sync.' },
+    { key: 'bar', name: 'Mail bar', blurb: 'Mail bar (the bold one): no title and no tab bar. The top is one bar, cut in proportion into what came today, what is still out and what may be lost, with a postmark seal for the last sync. The bar is the only way to move: press a part of it, or its count beneath, and the list below shows that part.' },
+    { key: 'front', name: 'Front page', blurb: 'Front page: the glance is its own first screen, a short docket of figures with problems on top. "Check in mail" at the thumb opens the checklist. On the open Duo, the docket and the checklist sit side by side.' }
+  ];
+  var STATES = [
+    ['ok', 'All is well'], ['lost', 'Packages may be lost'], ['disagreed', 'Last sync disagreed'],
+    ['both', 'Lost packages and a disagreed sync'], ['never', 'Never synced'], ['syncunknown', 'Sync state unknown'],
+    ['allin', 'Every card in'], ['empty', 'No orders yet'], ['loading', 'Loading'], ['failed', 'Saved data unreadable']
+  ];
+  var DEVICES = [['all', 'All devices'], ['folded', 'Duo folded'], ['open', 'Duo open'], ['phone', 'Large phone'], ['ax5', 'Duo folded, largest text']];
+  var THEMES = [['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']];
+
+  // Invented sellers and cards. lostOrdered/lostDays apply only in the states with lost packages.
+  var RAW = [
+    { id: 'p1', seller: 'Harbor Lane Cards', ordered: 'Nov 4', days: 17, cards: [['Ember Wyrm', 0.45, 'today'], ['Tidal Archivist', 1.20, null], ['Glass Orchard', 0.15, null], ['Lantern Moth', 0.25, 'today']] },
+    { id: 'p7', seller: 'Quiet Owl Cards', ordered: 'Nov 13', days: 8, lostOrdered: 'Oct 28', lostDays: 24, lostable: true, cards: [['Iron Lullaby', 0.80, null], ['Paper Lion', 0.30, null]] },
+    { id: 'p2', seller: 'Mossgiel Games', ordered: 'Nov 6', days: 15, cards: [['Saltmarsh Scout', 0.10, 'today'], ['Copper Augur', 0.35, 'today'], ['Hollow Bell', 0.20, 'today']] },
+    { id: 'p3', seller: 'The Third Shelf', ordered: 'Nov 8', days: 13, cards: [['Riven Cartographer', 2.40, null], ['Mire Lantern', 0.30, null]] },
+    { id: 'p4', seller: 'Kestrel Card Supply', ordered: 'Nov 9', days: 12, cards: [['Quiet Hour', 0.12, 'before'], ['Ashen Courier', 0.60, null], ['Velvet Snare', 0.18, null], ['Northwind Pact', 0.90, null], ['Gull Herald', 0.10, 'today']] },
+    { id: 'p8', seller: 'Lantern Row Games', ordered: 'Nov 16', days: 5, lostOrdered: 'Oct 25', lostDays: 27, lostable: true, cards: [['Seastone Idol', 3.10, null]] },
+    { id: 'p5', seller: 'North Pier Hobby', ordered: 'Nov 11', days: 10, cards: [['Brass Familiar', 0.22, null]] },
+    { id: 'p6', seller: 'Brindle and Co', ordered: 'Nov 12', days: 9, cards: [['Fen Oracle', 1.75, null], ['Dusk Ferryman', 0.40, null], ['Tallow Sprite', 0.15, null]] },
+    { id: 'p9', seller: 'Cobble Street Cards', ordered: 'Nov 14', days: 7, cards: [['Willow Warden', 0.50, null], ['Gutter Saint', 0.25, null], ['Pale Sextant', 0.15, null], ['Rook of Ash', 0.65, null]] },
+    { id: 'p10', seller: 'Ferngate Collectibles', ordered: 'Nov 15', days: 6, cards: [['Morning Toll', 0.20, 'today'], ['Kiln Wisp', 0.10, 'today']] }
+  ];
+
+  var S = { c: 'sentence', s: 'ok', d: 'all', t: 'auto', v: '', labels: true, hidden: [], syncing: false, syncNote: '' };
+  var D = [], SYNC = {}, MODE = 'loaded', NAV = {}, syncTimer = null;
+
+  function load(state) {
+    MODE = (state === 'loading' || state === 'failed' || state === 'empty') ? state : 'loaded';
+    var lost = state === 'lost' || state === 'both';
+    D = state === 'empty' ? [] : RAW.map(function (p) {
+      var isLost = !!(p.lostable && lost);
+      return {
+        id: p.id, seller: p.seller,
+        ordered: isLost ? p.lostOrdered : p.ordered,
+        days: isLost ? p.lostDays : p.days,
+        lost: isLost,
+        cards: p.cards.map(function (c) { return { name: c[0], price: c[1], got: state === 'allin' ? (c[2] || 'before') : c[2] }; })
+      };
+    });
+    if (state === 'disagreed' || state === 'both') SYNC = { mins: 52, agreed: false };
+    else if (state === 'never') SYNC = { never: true };
+    else if (state === 'syncunknown') SYNC = { unknown: true };
+    else SYNC = { mins: 4, agreed: true };
+    S.syncing = false; S.syncNote = ''; S.undo = null; clearTimeout(syncTimer);
+    NAV = {};
+  }
+
+  function nav(k) {
+    if (!NAV[k]) {
+      NAV[k] = { tab: 'out', sel: null, seg: 'out', pushed: false, cf: 'out', sheet: false };
+      if (S.v) setView(NAV[k], S.v);
+    }
+    return NAV[k];
+  }
+
+  function outOf(p) { return p.cards.filter(function (c) { return !c.got; }).length; }
+  function pk(id) { return D.filter(function (p) { return p.id === id; })[0]; }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (m) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]; }); }
+  function money(n) { return '$' + n.toFixed(2); }
+  function plural(n, one, many) { return n === 1 ? one : many; }
+
+  function facts() {
+    var out = 0, today = 0, lostPk = 0, lostCards = 0;
+    D.forEach(function (p) {
+      var o = outOf(p);
+      out += o;
+      today += p.cards.filter(function (c) { return c.got === 'today'; }).length;
+      if (p.lost && o) { lostPk++; lostCards += o; }
+    });
+    var probs = [];
+    if (lostPk) probs.push({ k: 'lost', text: lostPk + ' ' + plural(lostPk, 'package', 'packages') + ' may be lost' });
+    if (SYNC.unknown) probs.push({ k: 'sync', text: 'Sync state unknown' });
+    else if (SYNC.never) probs.push({ k: 'sync', text: 'Never synced with another device' });
+    else if (SYNC.agreed === false) probs.push({ k: 'sync', text: 'The devices disagreed' });
+    return { out: out, today: today, lostPk: lostPk, lostCards: lostCards, probs: probs, syncProb: probs.some(function (p) { return p.k === 'sync'; }) };
+  }
+  function agoLong() { return SYNC.mins === 0 ? 'just now' : SYNC.mins + ' min ago'; }
+  function syncWhen() { return (SYNC.unknown || SYNC.never) ? '' : 'Synced ' + agoLong(); }
+
+  // Icons.
+  var I = {
+    check: '<svg class="ck" viewBox="0 0 28 28" aria-hidden="true"><circle class="ck-ring" cx="14" cy="14" r="12"/><path class="ck-tick" d="M8.5 14.5l3.5 3.5 7.5-8"/></svg>',
+    chev: '<svg class="chev" viewBox="0 0 10 16" aria-hidden="true"><path d="M2 2l6 6-6 6"/></svg>',
+    back: '<svg class="chev" viewBox="0 0 10 16" aria-hidden="true" style="color:inherit"><path d="M8 2L2 8l6 6"/></svg>',
+    warn: '<svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5l8 14.5H2z"/><path d="M10 8v4"/><circle class="fill" cx="10" cy="14.6" r="1.1"/></svg>',
+    ok: '<svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8"/><path d="M6.5 10.3l2.4 2.4 4.6-5"/></svg>',
+    sync: '<svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 8.5a6.5 6.5 0 0 1 11.6-2.8M16.5 11.5a6.5 6.5 0 0 1-11.6 2.8"/><path d="M15.5 2.5v3.5H12M4.5 17.5V14H8"/></svg>',
+    tOut: '<svg class="ico" viewBox="0 0 22 22" aria-hidden="true"><path d="M3 6h16v11H3z"/><path d="M3 6l8 6 8-6"/></svg>',
+    tToday: '<svg class="ico" viewBox="0 0 22 22" aria-hidden="true"><path d="M3 12h4l1.5 3h5L15 12h4v6H3z"/><path d="M11 3v7M8 7l3 3 3-3"/></svg>',
+    tSync: '<svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 8.5a6.5 6.5 0 0 1 11.6-2.8M16.5 11.5a6.5 6.5 0 0 1-11.6 2.8"/><path d="M15.5 2.5v3.5H12M4.5 17.5V14H8"/></svg>'
+  };
+
+  function screen(inner, o) {
+    o = o || {};
+    return '<div class="screen ' + (o.cls || '') + '">' +
+      '<div class="statusbar" aria-hidden="true"><span>9:41</span><span class="sb-icons"><i style="height:5px"></i><i style="height:8px"></i><i style="height:11px"></i><i style="height:14px"></i></span></div>' +
+      (o.top || '') +
+      '<div class="scroll" data-scroll="' + (o.sk || 'm') + '">' + inner + '</div>' +
+      (o.bottom || '') + (o.overlay || '') + '</div>';
+  }
+  var HINGE = '<div class="hinge" aria-hidden="true"></div>';
+
+  // Loading, failed and empty look the same in every concept: each is its own state, never a zero.
+  function special(cls, id) {
+    if (MODE === 'loading') return '<section class="mh ' + cls + '" ' + id + ' data-new="masthead" aria-busy="true"><p class="lead">Reading your saved orders…</p><div class="skel" style="--w:85%"></div><div class="skel" style="--w:60%"></div><div class="skel" style="--w:40%"></div></section>';
+    if (MODE === 'failed') return '<section class="mh ' + cls + '" ' + id + ' data-new="masthead"><p class="lead">The orders saved on this device could not be read.</p><div class="cluster"><button class="btn primary" data-act="retry">Try again</button></div><details class="machine"><summary>What the device said</summary><p>Sample text: storage read returned no rows (code 0x1F).</p></details></section>';
+    if (MODE === 'empty') return '<section class="mh ' + cls + '" ' + id + ' data-new="masthead"><p class="lead">Import an order export to start the checklist.</p><div class="cluster"><button class="btn primary" data-act="import">Import orders</button></div></section>';
+    return null;
+  }
+
+  function pkgMeta(p) {
+    var o = outOf(p), n = p.cards.length;
+    if (p.lost && o) return '<span class="meta warnc">' + I.warn + 'No card in ' + p.days + ' days, ordered ' + p.ordered + '</span>';
+    if (!o) return '<span class="meta okc">' + I.ok + 'Every card in</span>';
+    return '<span class="meta">' + o + ' of ' + n + ' ' + plural(n, 'card', 'cards') + ' out, ordered ' + p.ordered + '</span>';
+  }
+
+  function cardRow(p, i, withSeller) {
+    var c = p.cards[i], got = !!c.got, before = c.got === 'before';
+    return '<button class="card-row" data-act="toggle" data-pkg="' + p.id + '" data-i="' + i + '" aria-pressed="' + got + '"' + (before ? ' disabled' : '') + '>' +
+      I.check + '<span class="cname">' + esc(c.name) +
+      (withSeller ? '<span class="sub">' + esc(p.seller) + '</span>' : '') +
+      (before ? '<span class="sub">Came on an earlier day</span>' : '') +
+      '</span><span class="price">' + money(c.price) + '</span></button>';
+  }
+
+  // Which packages a view lists. Order is fixed: lost first, then oldest first. A card checked
+  // off stays in place, ticked, so nothing jumps under the thumb.
+  function listPkgs(filter) {
+    if (filter === 'today') return D.filter(function (p) { return p.cards.some(function (c) { return c.got === 'today'; }); });
+    if (filter === 'lost') return D.filter(function (p) { return p.lost; }).sort(function (a, b) { return b.days - a.days; });
+    return D.filter(function (p) { return p.cards.some(function (c) { return c.got !== 'before'; }); })
+      .filter(function (p) { return filter !== 'out' || outOf(p) || p.cards.some(function (c) { return c.got === 'today'; }); })
+      .sort(function (a, b) { return (b.lost - a.lost) || (b.days - a.days); });
+  }
+
+  function emptyMsg(filter) {
+    if (filter === 'today') return '<div class="empty-note"><p>No card has come today yet.</p><button class="btn" data-act="view" data-v="out">Show what is out</button></div>';
+    if (filter === 'lost') return '<div class="empty-note"><p>No package looks lost now.</p><button class="btn" data-act="view" data-v="out">Show what is out</button></div>';
+    return '<div class="empty-note"><p>Nothing is out. Every card you ordered is in.</p><button class="btn" data-act="view" data-v="today">Show what came today</button></div>';
+  }
+
+  // "Mark all received" turns into "Undo" in the same place, until the next press.
+  function allBtn(p, cls) {
+    if (S.undo && S.undo.pkg === p.id) return '<button class="' + cls + '" data-act="undoall" data-pkg="' + p.id + '">Undo</button>';
+    return outOf(p) ? '<button class="' + cls + '" data-act="allin" data-pkg="' + p.id + '">Mark all received</button>' : '';
+  }
+
+  function grouped(filter) {
+    var ps = listPkgs(filter);
+    if (filter === 'out' && !facts().out && !ps.length) return emptyMsg('out');
+    if (!ps.length) return emptyMsg(filter);
+    return '<div class="glist">' + ps.map(function (p) {
+      var idx = [];
+      p.cards.forEach(function (c, i) { if (filter === 'today' ? c.got === 'today' : c.got !== 'before') idx.push(i); });
+      var o = outOf(p);
+      return '<section class="pkg"><div class="pkg-head"><div class="pkg-id"><span class="seller">' + esc(p.seller) + '</span>' + pkgMeta(p) + '</div>' +
+        (filter !== 'today' ? allBtn(p, 'text-btn') : '') +
+        '</div><div class="group">' + idx.map(function (i) { return cardRow(p, i); }).join('') + '</div></section>';
+    }).join('') + '</div>';
+  }
+
+  function syncPanel() {
+    var st;
+    if (SYNC.unknown) st = '<p class="sp-state warnc">' + I.warn + '<span>The record of the last sync could not be read, so it is not known whether your devices agree.</span></p>';
+    else if (SYNC.never) st = '<p class="sp-state warnc">' + I.warn + '<span>This device has not synced with another device yet.</span></p>';
+    else if (SYNC.agreed === false) st = '<p class="sp-state warnc">' + I.warn + '<span>At the last sync, ' + agoLong() + ', your devices did not agree. Sync again to bring them in step.</span></p>';
+    else st = '<p class="sp-state okc">' + I.ok + '<span>At the last sync, ' + agoLong() + ', your devices agreed.</span></p>';
+    var act = S.syncing
+      ? '<div class="sp-run" role="status"><span class="spin" aria-hidden="true"></span><span>Syncing…</span><button class="btn" data-act="syncstop">Stop</button></div>'
+      : '<div class="sp-run"><button class="btn primary" data-act="syncnow">Sync now</button></div>';
+    return '<div class="sync-panel">' + st + act + (S.syncNote ? '<p class="sp-note" role="status">' + S.syncNote + '</p>' : '') + '</div>';
+  }
+
+  function sheet() {
+    return '<div class="sheet-wrap"><div class="sheet" role="dialog" aria-modal="true" aria-label="Sync"><div class="sheet-bar"><span class="sheet-title">Sync</span><button class="text-btn strong" data-act="sheet-close">Done</button></div><div class="pad">' + syncPanel() + '</div></div></div>';
+  }
+
+  /* ---------- Sentence ---------- */
+  function mhA(F, id) {
+    var sp = special('mh-a', id); if (sp) return sp;
+    var outTxt = F.out
+      ? '<button class="numlink" data-act="view" data-v="out"><span class="num">' + F.out + '</span> ' + plural(F.out, 'card', 'cards') + ' still out.</button> '
+      : 'Every card is in. ';
+    var todayTxt = F.today
+      ? '<button class="numlink" data-act="view" data-v="today"><span class="num">' + F.today + '</span> came today.</button>'
+      : 'None came today.';
+    var status = F.probs.length
+      ? '<div class="chips">' + F.probs.map(function (p) { return '<button class="chip" data-act="prob" data-k="' + p.k + '">' + I.warn + '<span>' + p.text + '</span></button>'; }).join('') + '</div>'
+      : '<p class="allwell">' + I.ok + '<span>All is well.</span></p>';
+    var sw = syncWhen();
+    return '<section class="mh mh-a" ' + id + ' data-new="masthead"><p class="sent">' + outTxt + todayTxt + '</p>' + status +
+      (sw ? '<button class="syncline" data-act="view" data-v="sync">' + I.sync + '<span>' + sw + '</span></button>' : '') + '</section>';
+  }
+  function tabbarA(n, F) {
+    var t = [['out', 'Out', I.tOut], ['today', 'Today', I.tToday], ['sync', 'Sync', I.tSync]];
+    return '<nav class="tabbar" aria-label="Sections">' + t.map(function (x) {
+      return '<button class="tab" data-act="view" data-v="' + x[0] + '" aria-current="' + (n.tab === x[0] ? 'page' : 'false') + '">' + x[2] + '<span>' + x[1] + '</span>' +
+        (x[0] === 'sync' && F.syncProb ? '<i class="badge"></i>' : '') + '</button>';
+    }).join('') + '</nav>';
+  }
+  function pageA(n, F, open, sel) {
+    if (n.tab === 'sync') return '<div class="pad"><h2 class="ptitle">Sync</h2>' + syncPanel() + '</div>';
+    if (n.tab === 'today') {
+      var rows = [];
+      D.forEach(function (p) { p.cards.forEach(function (c, i) { if (c.got === 'today') rows.push(cardRow(p, i, true)); }); });
+      return '<div class="pad"><h2 class="ptitle">Today</h2>' + (rows.length ? '<div class="group">' + rows.join('') + '</div>' : emptyMsg('today')) + '</div>';
+    }
+    var ps = listPkgs('out');
+    if (!F.out && !ps.length) return '<div class="pad"><h2 class="ptitle">Out</h2>' + emptyMsg('out') + '</div>';
+    var lost = ps.filter(function (p) { return p.lost; }), rest = ps.filter(function (p) { return !p.lost; });
+    function rows2(list) {
+      return '<div class="group">' + list.map(function (p) {
+        var isSel = open && sel === p.id;
+        return '<button class="pkg-row' + (isSel ? ' is-sel' : '') + '" data-act="openpkg" data-pkg="' + p.id + '"' + (isSel ? ' aria-current="true"' : '') + '><span class="pkg-id"><span class="seller">' + esc(p.seller) + '</span>' + pkgMeta(p) + '</span>' + I.chev + '</button>';
+      }).join('') + '</div>';
+    }
+    return '<div class="pad"><h2 class="ptitle">Out</h2>' +
+      (lost.length ? '<div class="sec" data-sec="lost"><h3 class="sec-h warnc">' + I.warn + 'May be lost</h3>' + rows2(lost) + '</div>' : '') +
+      (rest.length ? '<div class="sec"><h3 class="sec-h">On the way</h3>' + rows2(rest) + '</div>' : '') + '</div>';
+  }
+  function detailA(id, n, back) {
+    var p = pk(id); if (!p) return '';
+    var o = outOf(p);
+    return '<div class="pad"><div class="detail"><h2 class="ltitle">' + esc(p.seller) + '</h2>' + pkgMeta(p) +
+      '<div class="group">' + p.cards.map(function (c, i) { return cardRow(p, i); }).join('') + '</div>' +
+      allBtn(p, 'btn primary wide') + '</div></div>';
+  }
+  function renderA(fr, n, F) {
+    var id = fr.dataset.key === 'folded' ? 'id="masthead-sentence"' : '';
+    var mh = mhA(F, id);
+    var loaded = MODE === 'loaded';
+    if (fr.dataset.pose === 'open') {
+      var first = listPkgs('out')[0];
+      var sel = n.sel || (first && first.id);
+      var L = screen(mh + (loaded ? pageA(n, F, true, sel) : ''), { cls: loaded ? 'has-tabs' : '', bottom: loaded ? tabbarA(n, F) : '', sk: 'L' + n.tab });
+      var R = screen(loaded ? detailA(sel, n, false) : (MODE === 'loading' ? '<div class="pad"><div class="skel"></div><div class="skel" style="--w:50%"></div></div>' : ''), { sk: 'R' + sel });
+      return L + HINGE + R;
+    }
+    if (loaded && n.sel) {
+      var top = '<div class="navbar"><button class="back" data-act="unsel">' + I.back + '<span>' + (n.tab === 'today' ? 'Today' : 'Out') + '</span></button></div>';
+      return screen(detailA(n.sel, n, true), { top: top, sk: 'D' + n.sel });
+    }
+    return screen(mh + (loaded ? pageA(n, F, false) : ''), { cls: loaded ? 'has-tabs' : '', bottom: loaded ? tabbarA(n, F) : '', sk: 'M' + n.tab });
+  }
+
+  /* ---------- Mail bar ---------- */
+  function seal() {
+    var cls, glyph, short, long;
+    if (S.syncing) { cls = 'run'; glyph = I.sync; short = 'syncing'; long = 'Syncing…'; }
+    else if (SYNC.unknown) { cls = 'unk'; glyph = '<span class="glyph">?</span>'; short = 'unknown'; long = 'Sync state unknown'; }
+    else if (SYNC.never) { cls = 'never'; glyph = '<span class="glyph">–</span>'; short = 'never'; long = 'Never synced with another device'; }
+    else if (SYNC.agreed === false) { cls = 'bad'; glyph = '<span class="glyph">!</span>'; short = SYNC.mins === 0 ? 'now' : SYNC.mins + ' min'; long = 'The devices disagreed, ' + agoLong(); }
+    else { cls = 'good'; glyph = I.ok; short = SYNC.mins === 0 ? 'now' : SYNC.mins + ' min'; long = 'Synced ' + agoLong() + ', devices agree'; }
+    return '<button class="seal seal-' + cls + '" data-act="sheet" aria-label="' + long + '. Open sync.">' + glyph + '<span class="short">' + short + '</span><span class="long">' + long + '</span></button>';
+  }
+  function segsB(n, F) {
+    var outOk = F.out - F.lostCards;
+    var bar = [];
+    // The bar itself is pressable for the thumb; the count tabs under it carry the same press for keyboard and screen reader.
+    if (F.today) bar.push('<i class="s-today' + (n.seg === 'today' ? ' sel' : '') + '" data-act="view" data-v="today" style="flex:' + F.today + ' 1 0"></i>');
+    if (outOk) bar.push('<i class="s-out' + (n.seg === 'out' ? ' sel' : '') + '" data-act="view" data-v="out" style="flex:' + outOk + ' 1 0"></i>');
+    if (F.lostCards) bar.push('<i class="s-lost' + (n.seg === 'lost' ? ' sel' : '') + '" data-act="view" data-v="lost" style="flex:' + F.lostCards + ' 1 0"></i>');
+    var tabs = [
+      ['today', F.today, 'came today', 's-today', ''],
+      ['out', F.out, plural(F.out, 'card', 'cards') + ' still out', 's-out', '']
+    ];
+    if (F.lostPk) tabs.push(['lost', F.lostPk, plural(F.lostPk, 'package', 'packages') + ' may be lost', 's-lost', ' lost']);
+    var tabHtml = '<div class="seg-tabs" role="group" aria-label="Show in the list" style="--n:' + tabs.length + '">' + tabs.map(function (t) {
+      return '<button class="seg-tab' + t[4] + '" data-act="view" data-v="' + t[0] + '" aria-pressed="' + (n.seg === t[0]) + '"><span class="key ' + t[3] + '" aria-hidden="true"></span><span class="n">' + t[1] + '</span><span class="w">' + t[2] + '</span></button>';
+    }).join('') + '</div>';
+    return { bar: '<div class="bar' + '" aria-hidden="true">' + bar.join('') + '</div>', tabs: tabHtml };
+  }
+  function statusB(F) {
+    if (!F.probs.length) return '<div class="b-status"><p class="allwell">' + I.ok + '<span>All is well.</span></p></div>';
+    var s = F.probs.filter(function (p) { return p.k === 'sync'; })[0];
+    return s ? '<div class="b-status"><button class="chip" data-act="prob" data-k="sync">' + I.warn + '<span>' + s.text + '</span></button></div>' : '';
+  }
+  function mhB(n, F, id, vert) {
+    var sp = special('mh-b', id); if (sp) return sp;
+    var g = segsB(n, F);
+    if (vert) {
+      return '<section class="mh mh-b vert" ' + id + ' data-new="masthead as navigation"><div class="v-top">' + seal() + '<span class="sync-txt">' + (syncWhen() || (SYNC.never ? 'Never synced' : 'Sync state unknown')) + '</span></div>' +
+        '<div class="v-body">' + g.bar.replace('class="bar', 'class="bar v') + g.tabs + '</div>' + statusB(F) + '</section>';
+    }
+    return '<section class="mh mh-b" ' + id + ' data-new="masthead as navigation"><div class="bar-row">' + g.bar + seal() + '</div>' + g.tabs + statusB(F) + '</section>';
+  }
+  function renderB(fr, n, F) {
+    var id = fr.dataset.key === 'folded' ? 'id="masthead-bar"' : '';
+    var loaded = MODE === 'loaded';
+    var ov = n.sheet ? sheet() : '';
+    if (fr.dataset.pose === 'open') {
+      var L = screen(mhB(n, F, id, true), { overlay: ov, sk: 'L' });
+      var R = screen(loaded ? '<div class="pad">' + grouped(n.seg) + '</div>' : '', { sk: 'R' + n.seg });
+      return L + HINGE + R;
+    }
+    return screen(mhB(n, F, id, false) + (loaded ? '<div class="pad b-list">' + grouped(n.seg) + '</div>' : ''), { overlay: ov, sk: 'M' + n.seg });
+  }
+
+  /* ---------- Front page ---------- */
+  function docket(F, id, withDock) {
+    var sp = special('mh-c', id); if (sp) return sp;
+    var rows = '';
+    if (F.probs.length) {
+      F.probs.forEach(function (p) {
+        if (p.k === 'lost') rows += '<button class="d-row warn" data-act="view" data-v="lost"><span class="d-num">' + F.lostPk + '</span><span class="d-lbl">' + plural(F.lostPk, 'package', 'packages') + ' may be lost</span>' + I.chev + '</button>';
+        else rows += '<button class="d-row warn slim" data-act="view" data-v="sync"><span class="d-num">' + I.warn + '</span><span class="d-lbl">' + p.text + '</span>' + I.chev + '</button>';
+      });
+    } else {
+      rows += '<p class="d-well">' + I.ok + '<span>All is well.</span></p>';
+    }
+    rows += '<button class="d-row" data-act="view" data-v="out"><span class="d-num">' + F.out + '</span><span class="d-lbl">' + plural(F.out, 'card', 'cards') + ' still out</span>' + I.chev + '</button>';
+    rows += '<button class="d-row" data-act="view" data-v="today"><span class="d-num">' + F.today + '</span><span class="d-lbl">came today</span>' + I.chev + '</button>';
+    var sw = syncWhen();
+    if (sw) rows += '<button class="d-row slim" data-act="view" data-v="sync"><span class="d-num" aria-hidden="true">' + I.sync + '</span><span class="d-lbl">' + sw + '</span>' + I.chev + '</button>';
+    return '<section class="mh mh-c" ' + id + ' data-new="front page"><div class="docket">' + rows + '</div></section>';
+  }
+  function checklistC(n, F) {
+    var segs = [['out', 'Out', F.out, ''], ['today', 'Today', F.today, '']];
+    if (F.lostPk) segs.push(['lost', 'May be lost', F.lostPk, 'lost']);
+    var cf = (n.cf === 'lost' && !F.lostPk && !D.some(function (p) { return p.lost; })) ? 'out' : n.cf;
+    var seg = '<div class="c-sticky"><div class="segmented" role="group" aria-label="Show">' + segs.map(function (s) {
+      return '<button class="' + s[3] + '" data-act="cf" data-v="' + s[0] + '" aria-pressed="' + (cf === s[0]) + '"><b>' + s[2] + '</b>' + s[1] + '</button>';
+    }).join('') + '</div></div>';
+    return seg + '<div class="pad">' + grouped(cf) + '</div>';
+  }
+  function renderC(fr, n, F) {
+    var id = fr.dataset.key === 'folded' ? 'id="masthead-front"' : '';
+    var loaded = MODE === 'loaded';
+    var ov = n.sheet ? sheet() : '';
+    if (fr.dataset.pose === 'open') {
+      var L = screen('<div class="pad"><h1 class="ltitle">Mail day</h1></div>' + docket(F, id), { overlay: ov, sk: 'L' });
+      var R = screen(loaded ? '<div class="pad" style="padding-bottom:0"><h2 class="ptitle">Checklist</h2></div>' + checklistC(n, F) : '', { sk: 'R' + n.cf });
+      return L + HINGE + R;
+    }
+    if (loaded && n.pushed) {
+      var top = '<div class="navbar"><button class="back" data-act="pop">' + I.back + '<span>Mail day</span></button><span class="nav-title">Checklist</span><span style="width:44px"></span></div>';
+      return screen(checklistC(n, F), { top: top, overlay: ov, sk: 'C' + n.cf });
+    }
+    var dock = loaded ? '<div class="dock"><button class="btn primary wide" data-act="push" data-v="out">Check in mail</button></div>' : '';
+    return screen('<div class="pad"><h1 class="ltitle">Mail day</h1></div>' + docket(F, id), { bottom: dock, overlay: ov, sk: 'M' });
+  }
+
+  function setView(n, v) {
+    if (S.c === 'sentence') {
+      if (v === 'lost') { n.tab = 'out'; n.sel = null; }
+      else { n.tab = v; n.sel = null; }
+    } else if (S.c === 'bar') {
+      if (v === 'sync') n.sheet = true; else n.seg = v;
+    } else {
+      if (v === 'sync') n.sheet = true; else { n.pushed = true; n.cf = v; }
+    }
+  }
+
+  function startSync() {
+    S.syncing = true; S.syncNote = '';
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(function () {
+      S.syncing = false; SYNC = { mins: 0, agreed: true }; S.syncNote = 'Your devices agree.';
+      render();
+    }, 2600);
+  }
+  function stopSync() {
+    clearTimeout(syncTimer); S.syncing = false; S.syncNote = 'Stopped. Nothing changed.';
+  }
+
+  /* ---------- Render, hash and bench ---------- */
+  var stage = document.getElementById('stage');
+
+  function sig(el) {
+    return ['act', 'pkg', 'i', 'v', 'k'].map(function (k) { return el.dataset[k] || ''; }).join('|');
+  }
+
+  function render() {
+    var F = facts();
+    var act = document.activeElement, focusKey = null, focusSig = null;
+    if (act && act.dataset && act.dataset.act && act.closest('.frame')) { focusKey = act.closest('.frame').dataset.key; focusSig = sig(act); }
+    var renderer = S.c === 'sentence' ? renderA : S.c === 'bar' ? renderB : renderC;
+    document.querySelectorAll('.frame').forEach(function (fr) {
+      var slot = fr.closest('.slot');
+      var show = S.d === 'all' || slot.dataset.d === S.d;
+      slot.hidden = !show;
+      if (!show) return;
+      var keep = {};
+      fr.querySelectorAll('[data-scroll]').forEach(function (s) { keep[s.dataset.scroll] = s.scrollTop; });
+      fr.innerHTML = renderer(fr, nav(fr.dataset.key), F);
+      fr.querySelectorAll('[data-scroll]').forEach(function (s) { if (keep[s.dataset.scroll] != null) s.scrollTop = keep[s.dataset.scroll]; });
+      if (focusKey === fr.dataset.key) {
+        var hit = Array.prototype.filter.call(fr.querySelectorAll('[data-act]'), function (el) { return sig(el) === focusSig; })[0];
+        if (hit) hit.focus({ preventScroll: true });
+        else { var dlg = fr.querySelector('[role="dialog"] [data-act]'); if (dlg) dlg.focus({ preventScroll: true }); }
+      }
+    });
+    document.body.classList.toggle('labels-on', S.labels);
+  }
+
+  stage.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-act]');
+    if (!b || b.disabled || !stage.contains(b)) return;
+    var fr = b.closest('.frame'), n = nav(fr.dataset.key), a = b.dataset.act, p;
+    var undo = S.undo; S.undo = null;
+    switch (a) {
+      case 'undoall':
+        if (undo) { p = pk(undo.pkg); undo.idx.forEach(function (i) { p.cards[i].got = null; }); }
+        break;
+      case 'view': setView(n, b.dataset.v); break;
+      case 'cf': n.cf = b.dataset.v; break;
+      case 'openpkg': n.sel = b.dataset.pkg; break;
+      case 'unsel': n.sel = null; break;
+      case 'toggle':
+        p = pk(b.dataset.pkg);
+        var c = p.cards[+b.dataset.i];
+        if (c.got === 'before') return;
+        c.got = c.got ? null : 'today';
+        break;
+      case 'allin':
+        p = pk(b.dataset.pkg);
+        S.undo = { pkg: p.id, idx: [] };
+        p.cards.forEach(function (c2, i) { if (!c2.got) { c2.got = 'today'; S.undo.idx.push(i); } });
+        break;
+      case 'prob': setView(n, b.dataset.k === 'lost' ? 'lost' : 'sync'); break;
+      case 'push': n.pushed = true; n.cf = b.dataset.v || 'out'; break;
+      case 'pop': n.pushed = false; break;
+      case 'sheet': n.sheet = true; break;
+      case 'sheet-close': n.sheet = false; break;
+      case 'syncnow': startSync(); break;
+      case 'syncstop': stopSync(); break;
+      case 'retry': case 'import': S.s = 'ok'; load('ok'); writeHash(); syncBench(); break;
+    }
+    render();
+  });
+  stage.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    var fr = e.target.closest && e.target.closest('.frame');
+    if (fr && nav(fr.dataset.key).sheet) { nav(fr.dataset.key).sheet = false; render(); }
+  });
+
+  function readHash() {
+    var h = new URLSearchParams(location.hash.slice(1));
+    var c = h.get('c'), s = h.get('s'), d = h.get('d'), t = h.get('t'), v = h.get('v');
+    if (CONCEPTS.some(function (x) { return x.key === c; })) S.c = c;
+    if (STATES.some(function (x) { return x[0] === s; })) S.s = s;
+    if (DEVICES.some(function (x) { return x[0] === d; })) S.d = d;
+    if (THEMES.some(function (x) { return x[0] === t; })) S.t = t;
+    S.v = ['out', 'today', 'lost', 'sync'].indexOf(v) >= 0 ? v : '';
+  }
+  function writeHash() {
+    var h = new URLSearchParams();
+    h.set('c', S.c); h.set('s', S.s);
+    if (S.d !== 'all') h.set('d', S.d);
+    if (S.t !== 'auto') h.set('t', S.t);
+    if (S.v) h.set('v', S.v);
+    history.replaceState(null, '', '#' + h.toString());
+  }
+  function applyTheme() {
+    if (S.t === 'auto') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', S.t);
+  }
+
+  var ctlC = document.getElementById('ctl-c'), ctlS = document.getElementById('ctl-s'), ctlD = document.getElementById('ctl-d'),
+    ctlT = document.getElementById('ctl-t'), ctlL = document.getElementById('ctl-l'), unhide = document.getElementById('unhide'),
+    blurb = document.getElementById('blurb');
+  STATES.forEach(function (x) { var o = document.createElement('option'); o.value = x[0]; o.textContent = x[1]; ctlS.appendChild(o); });
+  DEVICES.forEach(function (x) { var o = document.createElement('option'); o.value = x[0]; o.textContent = x[1]; ctlD.appendChild(o); });
+
+  function syncBench() {
+    var visible = CONCEPTS.filter(function (x) { return S.hidden.indexOf(x.key) < 0; });
+    if (!visible.length) { S.hidden = []; visible = CONCEPTS.slice(); }
+    if (S.hidden.indexOf(S.c) >= 0) { S.c = visible[0].key; NAV = {}; }
+    ctlC.innerHTML = visible.map(function (x) {
+      return '<span><button data-c="' + x.key + '" aria-pressed="' + (S.c === x.key) + '">' + x.name + '</button>' +
+        (visible.length > 1 ? '<button class="hide-btn" data-hide="' + x.key + '" aria-label="Hide ' + x.name + '">Hide</button>' : '') + '</span>';
+    }).join('');
+    unhide.hidden = !S.hidden.length;
+    ctlT.innerHTML = THEMES.map(function (x) { return '<button data-t="' + x[0] + '" aria-pressed="' + (S.t === x[0]) + '">' + x[1] + '</button>'; }).join('');
+    ctlS.value = S.s; ctlD.value = S.d; ctlL.checked = S.labels;
+    blurb.textContent = CONCEPTS.filter(function (x) { return x.key === S.c; })[0].blurb;
+  }
+
+  ctlC.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.hide) { S.hidden.push(b.dataset.hide); }
+    else if (b.dataset.c) { S.c = b.dataset.c; NAV = {}; }
+    syncBench(); writeHash(); render();
+  });
+  unhide.addEventListener('click', function () { S.hidden = []; syncBench(); render(); });
+  ctlT.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    S.t = b.dataset.t; applyTheme(); syncBench(); writeHash();
+  });
+  ctlS.addEventListener('change', function () { S.s = ctlS.value; load(S.s); writeHash(); render(); });
+  ctlD.addEventListener('change', function () { S.d = ctlD.value; writeHash(); render(); });
+  ctlL.addEventListener('change', function () { S.labels = ctlL.checked; render(); });
+  document.getElementById('reset').addEventListener('click', function () { load(S.s); render(); });
+  window.addEventListener('hashchange', function () { readHash(); applyTheme(); load(S.s); syncBench(); render(); });
+
+  readHash(); applyTheme(); load(S.s); syncBench(); render();
+})();
+</script>
+</body>
+</html>

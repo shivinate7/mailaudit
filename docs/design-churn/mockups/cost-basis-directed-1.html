@@ -1,0 +1,701 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cost Basis One Number</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger, palette-tokens-contrast-floor).
+   The native app is held to light (UIUserInterfaceStyle) and the web app has no dark set,
+   so this page draws one theme. The dark* keys belong to the orders extension only. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6;
+  --accent:#6F5CA6; --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9;
+  --manila:#EADBBA; --manilaInk:#695832; --amber:#846008; --gold:#C9A961; --silver:#C4C3C0;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+  /* Duo status bar foot: unmeasured on the inner screen; drawn at the UI test floor of 20 pt
+     (DuoHandUITests.statusBarFloor, as docs/design/duo-hand-tap-shift.html draws it). */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: max(env(safe-area-inset-bottom), 20px);
+  /* The bar: 64 pt tall, 12 pt above the bottom (phone-nav-is-bottom-bar, web bar D). */
+  --bar-h: 64px;
+  --new:#2E7A5E; --today:#A8443C;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-6:24px;
+}
+* { box-sizing:border-box; }
+html { -webkit-text-size-adjust:100%; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+button, input, select, textarea { font-family:inherit; font-size:inherit; color:inherit; }
+button { background:none; border:0; padding:0; cursor:pointer; text-align:inherit; }
+button:focus-visible, input:focus-visible, a:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+::selection { background:color-mix(in srgb, var(--accent) 22%, transparent); color:var(--ink); }
+input { caret-color:var(--accent); }
+.fig, .ct, .paid, .thirds b, dd, .pr, .step span { font-variant-numeric:tabular-nums; }
+main { max-width:1100px; margin:0 auto; padding:var(--space-4); display:flex; flex-direction:column; gap:var(--space-4); }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:var(--space-2) var(--space-3); font-weight:600; }
+.intro { display:flex; flex-direction:column; gap:var(--space-2); }
+.intro h1 { font-family:var(--cochin); font-size:28px; line-height:1.15; margin:0; }
+.intro p { margin:0; max-width:72ch; color:var(--inkSoft); }
+.kind { font-family:var(--mono); font-size:12px; color:var(--ink); }
+.controls { display:flex; flex-direction:column; gap:var(--space-2); }
+.controls .group { display:flex; flex-wrap:wrap; gap:var(--space-2); align-items:center; }
+.controls .gl { font-size:13px; color:var(--inkSoft); min-width:5.5em; }
+.controls a, .controls button { font-size:14px; min-height:44px; padding:0 var(--space-3); display:inline-flex; align-items:center;
+  border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; }
+.controls a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.legend { display:flex; flex-wrap:wrap; gap:var(--space-4); font-size:13px; color:var(--inkSoft); }
+.legend span { display:inline-flex; align-items:center; gap:var(--space-2); }
+.legend i { width:24px; height:14px; border:2px dashed; border-radius:3px; display:inline-block; }
+section.concept { display:flex; flex-direction:column; gap:var(--space-3); border-top:1px solid var(--line); padding-top:var(--space-4); }
+section.concept[hidden] { display:none; }
+.chead { display:flex; flex-wrap:wrap; gap:var(--space-3); align-items:baseline; justify-content:space-between; }
+.chead h2 { font-family:var(--cochin); font-size:24px; margin:0; }
+.chead p { margin:0; max-width:72ch; color:var(--inkSoft); flex-basis:100%; }
+.frames { display:flex; flex-wrap:wrap; gap:var(--space-6); align-items:flex-start; }
+.wide { width:100%; overflow-x:auto; padding-bottom:var(--space-2); }
+figure { margin:0; display:flex; flex-direction:column; gap:var(--space-2); max-width:100%; }
+/* A frame wider than the viewer's screen scrolls inside its own box; the page never scrolls sideways. */
+.frames > figure { overflow-x:auto; }
+figcaption { font-size:13px; color:var(--inkSoft); max-width:466px; }
+figcaption b { color:var(--ink); font-family:var(--cochin); font-size:16px; }
+
+/* ---------------- devices: 1 CSS px = 1 pt ---------------- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:16px; overflow:hidden; flex:none; font-family:var(--cochin); line-height:1.25; }
+.dev.fold  { width:466px; height:678px; }   /* brief: folded pose 466 x 678 */
+.dev.phone { width:375px; height:760px; }   /* width: the repo's checked iPhone width (375); height not written, drawn at 760 */
+.dev.open  { width:951px; height:669px; }   /* brief: open pose 951 x 669, hinge 455.5 to 495.5 */
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 var(--space-4); font:600 12px var(--sys); z-index:30; background:var(--paper); }
+.pg { position:absolute; top:0; bottom:0; overflow:hidden; }
+.dev.fold .pg, .dev.phone .pg { left:0; right:0; }
+.dev.open .pg.l { left:0; width:455.5px; } .dev.open .pg.r { left:495.5px; width:455.5px; }
+.hinge { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 55%, transparent); z-index:31; }
+.hinge span { position:absolute; top:300px; left:50%; transform:translateX(-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); white-space:nowrap; }
+.scroll { position:absolute; left:0; right:0; top:var(--sat); bottom:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain;
+  padding:0 var(--space-4) calc(var(--bar-h) + 12px + var(--sab) + var(--space-6)); display:flex; flex-direction:column; gap:var(--space-3); }
+.dev.open .pg.r .scroll { padding-bottom:calc(var(--bar-h) + 12px + var(--sab) + var(--space-6)); }
+.dev.open .pg.l .scroll { padding-bottom:var(--space-6); }
+.scroll > * { flex:none; }
+.dev.open .pg.r .scroll { padding-top:var(--space-3); }
+
+/* ---- the masthead, as built today (masthead-is-one-letterhead, masthead-tallies-unequal-thirds) ---- */
+.mh { display:flex; flex-direction:column; gap:var(--space-2); padding-top:var(--space-2); }
+.lh { display:flex; align-items:center; gap:var(--space-3); }
+.lh::before, .lh::after { content:""; flex:1; height:0; border-top:1px solid var(--gold); }
+.lh b { font-family:var(--cochin); font-size:20px; letter-spacing:4px; font-weight:400; }
+.thirds { display:flex; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+.thirds > div { flex:1; padding:6px 6px 6px 8px; border-left:1px solid var(--line); display:flex; flex-direction:column; gap:2px; min-width:0; }
+.thirds > div:first-child { border-left:0; }
+.thirds .w { flex:1.7; }
+.micro { font:10.5px var(--mono); letter-spacing:1.2px; text-transform:uppercase; color:var(--inkSoft); }
+.thirds b { font:700 15px var(--mono); white-space:nowrap; }
+.thirds b span { color:var(--inkSoft); font-weight:400; }
+.mfoot { display:flex; justify-content:space-between; gap:var(--space-2); font:12px var(--cochin); color:var(--inkSoft); }
+.mfoot .miss { font-weight:700; color:var(--red); }
+.mfoot .ok { font-weight:700; color:var(--green); }
+
+/* ---- the one number ---- */
+.head { position:relative; display:flex; flex-direction:column; gap:var(--space-1); padding:var(--space-3) 0 var(--space-2); background:var(--paper); }
+.head.pin { position:sticky; top:0; z-index:12; border-bottom:1px solid var(--line); }
+.head .after { font-size:17px; color:var(--ink); }
+.head .lab { font-size:17px; color:var(--ink); display:flex; justify-content:space-between; align-items:center; min-height:20px; gap:var(--space-2); }
+.head.pin .lab { min-height:44px; }
+.head .lab .scopeName { font-size:17px; color:var(--ink); font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* Reserved: the figure box keeps one height and the width of the widest figure the ledger can show,
+   so a check-in that changes the figure moves nothing (no-layout-shift-under-pointer). */
+.fig { display:block; font:700 34px/41px var(--mono); height:41px; white-space:nowrap; letter-spacing:-0.5px; color:var(--ink); text-align:left; }
+.fig.wait { color:var(--inkSoft); font-weight:400; }
+/* The double rule under a sum: the ledger mark for a final total. Gold is ornament (palette-gold-is-ornament-only). */
+.rule2 { width:min(100%, 260px); height:5px; border-top:1px solid var(--gold); border-bottom:1px solid var(--gold); }
+.scope { font:12px/16px var(--mono); color:var(--inkSoft); min-height:16px; }
+.scope.good { color:var(--green); font-weight:700; }
+.cells { display:flex; gap:var(--space-4); flex-wrap:wrap; }
+.dc { min-height:44px; display:inline-flex; align-items:center; font-size:15px; color:var(--ink); text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:4px; text-decoration-thickness:2px; }
+.dc[aria-expanded="true"] { text-decoration-color:var(--accent); color:var(--accent); }
+.back { min-height:44px; min-width:44px; display:inline-flex; align-items:center; font:15px var(--cochin); color:var(--accent); flex:none; }
+.back[aria-hidden="true"] { visibility:hidden; }
+
+/* ---- the panel: overlays the list with the paper fill (motion-disclosure-panels-arrive, head-panels-carry-paper-fill) ---- */
+.panel { position:absolute; left:0; right:0; top:100%; z-index:14; background:var(--paper); border:1px solid var(--line); border-radius:8px;
+  box-shadow:0 8px 24px color-mix(in srgb, var(--ink) 18%, transparent); padding:var(--space-3); display:flex; flex-direction:column; gap:var(--space-2); }
+.inline-panel { position:relative; top:auto; box-shadow:none; background:var(--card); }
+.ptitle { display:flex; justify-content:space-between; align-items:center; font-size:17px; font-weight:700; min-height:44px; }
+.ptitle button { font:15px var(--cochin); color:var(--accent); min-height:44px; min-width:44px; display:inline-flex; align-items:center; justify-content:flex-end; font-weight:400; }
+.sum { display:grid; grid-template-columns:1fr auto; column-gap:var(--space-3); row-gap:var(--space-1); align-items:baseline; }
+.sum dt { font-size:15px; } .sum dd { margin:0; font:14px var(--mono); text-align:right; white-space:nowrap; }
+.sum .minus dd { color:var(--red); }
+.sum .tot { border-top:1px solid var(--ink); padding-top:var(--space-1); font-weight:700; }
+.sum .tot dd { font-weight:700; border-bottom:4px double var(--gold); padding-bottom:2px; }
+.sum .soft { color:var(--inkSoft); font-size:13px; grid-column:1 / -1; }
+.ph { font-size:13px; color:var(--inkSoft); margin-top:var(--space-2); }
+.out { display:grid; grid-template-columns:1fr auto; column-gap:var(--space-3); row-gap:var(--space-2); }
+.out dt { font-size:14px; } .out dt small { display:block; font-size:12.5px; color:var(--inkSoft); }
+.out dd { margin:0; font:13px var(--mono); color:var(--inkSoft); text-align:right; white-space:nowrap; }
+.note { font-size:12.5px; color:var(--inkSoft); }
+
+/* ---- search and list ---- */
+.find { min-height:44px; border:1px solid var(--line); background:var(--card); border-radius:8px; padding:0 var(--space-3); font:16px var(--cochin); width:100%; }
+.found { font-size:13px; color:var(--inkSoft); }
+.list { display:flex; flex-direction:column; gap:var(--space-2); }
+.row { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.row.done { background:var(--greenSoft); }
+.row.sel { box-shadow:inset 3px 0 0 var(--accent); }
+.rh { width:100%; display:flex; gap:var(--space-3); padding:var(--space-2) var(--space-3); min-height:56px; align-items:center; }
+.rh .l { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.nm { font-size:17px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.meta { font:12px var(--mono); color:var(--inkSoft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.rh .r { flex:none; display:flex; flex-direction:column; align-items:flex-end; gap:2px; }
+.ct { font:700 15px var(--mono); white-space:nowrap; }
+.ct.done { color:var(--green); }
+.ct.big { font-size:17px; }
+.paid { font:15px var(--mono); white-space:nowrap; min-width:8ch; text-align:right; }
+.paid.none { color:var(--inkSoft); }
+.rd { border-top:1px solid var(--line); padding:var(--space-2) var(--space-3) var(--space-3); display:flex; flex-direction:column; gap:var(--space-2); }
+.mini { display:grid; grid-template-columns:1fr auto auto; column-gap:var(--space-3); row-gap:2px; font-size:14px; }
+.mini span:nth-child(3n+2), .mini span:nth-child(3n) { font:13px var(--mono); text-align:right; white-space:nowrap; }
+.mini .rd-red { color:var(--red); }
+/* The copy lines sit in the row itself, ruled apart, never a card inside a card. */
+.copies { display:flex; flex-direction:column; border-top:1px solid var(--line); margin:0 calc(-1 * var(--space-3)); }
+.inline-panel .copies { margin:0; }
+.cp { display:flex; align-items:center; gap:var(--space-2); min-height:52px; padding-right:var(--space-2); border-top:1px solid var(--line); }
+.cp:first-child { border-top:0; }
+.cp.got { background:var(--greenSoft); }
+.box { flex:0 0 44px; height:44px; display:grid; place-items:center; }
+.box i { width:30px; height:30px; border:1.5px solid var(--inkSoft); border-radius:6px; display:grid; place-items:center; color:var(--card); }
+.box svg { width:18px; height:18px; }
+.cp.got .box i { background:var(--green); border-color:var(--green); }
+.cp .who { flex:1; min-width:0; display:flex; flex-direction:column; }
+.cp .who b { font-size:15px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cp .who small { font:11.5px var(--mono); color:var(--inkSoft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cp .pr { font:13px var(--mono); white-space:nowrap; }
+.step { display:flex; align-items:center; flex:none; }
+.step button { width:44px; height:44px; display:grid; place-items:center; font:700 18px var(--mono); color:var(--accent); }
+.step span { font:700 13px var(--mono); min-width:4ch; text-align:center; }
+.more { font-size:13px; color:var(--inkSoft); text-align:center; padding:var(--space-2) 0; }
+.blank { display:flex; flex-direction:column; gap:var(--space-3); padding:var(--space-4) 0; }
+.blank p { margin:0; font-size:17px; }
+.btn { min-height:44px; padding:0 var(--space-4); border-radius:8px; background:var(--accent); color:var(--card); font:600 15px var(--cochin); display:inline-flex; align-items:center; justify-content:center; align-self:flex-start; }
+.btn.ghost { background:var(--card); color:var(--accent); border:1px solid var(--line); }
+.skel { height:56px; border-radius:8px; background:color-mix(in srgb, var(--line) 45%, transparent); }
+
+/* ---- the system tab bar: floats at the bottom (HIG tab bars). Labels stop at the default size (duo-card-in-hand, Tab bar text). ---- */
+.tabbar { position:absolute; left:24px; right:24px; bottom:calc(var(--sab) - 8px); height:var(--bar-h); z-index:20; display:flex; gap:var(--space-1); padding:var(--space-1);
+  border-radius:32px; background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(14px) saturate(1.4); -webkit-backdrop-filter:blur(14px) saturate(1.4);
+  border:1px solid var(--line); box-shadow:0 4px 16px color-mix(in srgb, var(--ink) 12%, transparent); font-family:var(--sys); }
+.tab { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; border-radius:28px; font-size:10px; color:var(--inkSoft); min-height:44px; position:relative; }
+.tab svg { width:22px; height:22px; }
+.tab.on { background:color-mix(in srgb, var(--card) 90%, transparent); color:var(--accent); }
+.tab .badge { position:absolute; top:4px; right:calc(50% - 20px); background:var(--red); color:var(--card); font:700 10px var(--sys); border-radius:8px; padding:0 4px; }
+
+/* ---- the sheet: Year-end summary (HIG sheets: Cancel leading, the confirming act trailing) ---- */
+.scrim { position:absolute; inset:0; z-index:40; background:color-mix(in srgb, var(--ink) 32%, transparent); }
+.sheet { position:absolute; left:0; right:0; bottom:0; top:calc(var(--sat) + 12px); z-index:41; background:var(--card); border-radius:16px 16px 0 0;
+  display:flex; flex-direction:column; font-family:var(--cochin); }
+.grab { width:36px; height:5px; border-radius:3px; background:var(--silver); align-self:center; margin-top:6px; flex:none; }
+.tbar { display:flex; align-items:center; justify-content:space-between; padding:0 var(--space-2); min-height:52px; flex:none; font-family:var(--sys); }
+.tbar button { min-height:44px; min-width:44px; padding:0 var(--space-2); font:17px var(--sys); color:var(--accent); }
+.tbar button.strong { font-weight:600; }
+.tbar h3 { margin:0; font:600 17px var(--sys); }
+.sbody { flex:1; overflow-y:auto; padding:0 var(--space-4) calc(var(--sab) + var(--space-4)); display:flex; flex-direction:column; gap:var(--space-3); }
+.sbody > * { flex:none; }
+.covers { display:flex; justify-content:space-between; align-items:center; min-height:44px; border-bottom:1px solid var(--line); font-size:15px; }
+.covers button { color:var(--accent); font:15px var(--cochin); min-height:44px; display:inline-flex; align-items:center; }
+.csv { font:11px/15px var(--mono); background:var(--paper); border:1px solid var(--line); border-radius:8px; padding:var(--space-2); white-space:pre; overflow-x:auto; color:var(--ink); margin:0; }
+.said { font-size:13px; min-height:18px; color:var(--green); }
+.said.bad { color:var(--red); }
+.acts { display:flex; gap:var(--space-2); flex-wrap:wrap; }
+.opt { display:flex; flex-direction:column; gap:var(--space-1); padding-top:var(--space-2); }
+.dev.open .scrim, .dev.open .sheet { left:495.5px; }
+
+/* ---- accessibility size AX5 on the folded pose: HIG typography AX5 table ---- */
+.ax .fig { font-size:60px; line-height:70px; height:auto; white-space:normal; overflow-wrap:anywhere; }  /* Large Title AX5 60/70 */
+.ax .dc, .ax .back { font-size:49px; line-height:58px; }                        /* Subhead AX5 49/58 */
+.ax .head .lab, .ax .head .after { font-size:53px; line-height:62px; }          /* Body AX5 53/62 */
+.ax .head .lab { flex-direction:column; align-items:flex-start; }
+/* At AX5 the scale would fill the screen, so it stops pinning and scrolls with the list. */
+.ax .head.pin { position:relative; top:auto; }
+.ax .head .lab .scopeName { font-size:53px; white-space:normal; }
+.ax .scope { font-size:43px; line-height:51px; }                                /* Caption 1 AX5 43/51 */
+.ax .cells { flex-direction:column; gap:0; }
+.ax .nm { font-size:53px; line-height:62px; white-space:normal; }                /* Body AX5 53/62 */
+.ax .meta { font-size:43px; line-height:51px; white-space:normal; }
+.ax .rh { flex-direction:column; align-items:stretch; }
+.ax .rh .r { flex-direction:row; flex-wrap:wrap; justify-content:space-between; align-items:baseline; column-gap:var(--space-3); }
+.ax .paid { min-width:0; }
+/* The sheet at AX5: its body text grows; the toolbar stays at the default size (whether the system grows it is unread). */
+.ax .covers { font-size:53px; line-height:62px; flex-wrap:wrap; } .ax .covers button { font-size:49px; }
+.ax .btn { font-size:49px; min-height:72px; } .ax .said, .ax .ph, .ax .soft, .ax .out dt small, .ax .sum dt small { font-size:43px; line-height:51px; }
+.ax .acts { flex-direction:column; align-items:stretch; }
+.ax .ct, .ax .paid { font-size:53px; line-height:62px; }
+.ax .find { font-size:53px; min-height:72px; }
+.ax .found, .ax .note { font-size:43px; line-height:51px; }
+.ax .mh .thirds { flex-direction:column; }
+.ax .mh .thirds > div { border-left:0; border-top:1px solid var(--line); }
+.ax .micro { font-size:40px; line-height:48px; }                               /* Caption 2 AX5 40/48 */
+.ax .thirds b { font-size:53px; line-height:62px; white-space:normal; overflow-wrap:anywhere; }
+.ax .mfoot { font-size:43px; line-height:51px; flex-direction:column; }
+.ax .lh b { font-size:55px; }
+.ax .panel { position:static; box-shadow:none; }
+.ax .sum dt, .ax .out dt { font-size:53px; line-height:62px; } .ax .sum dd, .ax .out dd { font-size:53px; white-space:normal; text-align:left; }
+.ax .sum, .ax .out { grid-template-columns:1fr; }
+.ax .ptitle { font-size:53px; } .ax .ptitle button { font-size:49px; }
+.ax .mini { grid-template-columns:1fr; font-size:53px; } .ax .mini span { font-size:53px !important; text-align:left !important; }
+.ax .cp { flex-wrap:wrap; } .ax .cp .who b { font-size:53px; white-space:normal; } .ax .cp .who small { font-size:43px; white-space:normal; }
+.ax .cp .pr { font-size:53px; }
+
+/* ---- tags: dashed outline on what exists today, and on what this concept adds ---- */
+:where([data-tag]) { position:relative; }
+body.tags [data-tag] { outline:2px dashed var(--t); outline-offset:2px; }
+body.tags [data-tag]::after { content:attr(data-tag); position:absolute; right:4px; top:-15px; font:600 11px/14px var(--sys); padding:0 4px; background:var(--paper);
+  color:var(--t); z-index:25; white-space:nowrap; letter-spacing:0; text-transform:none; pointer-events:none; }
+[data-tag^="New"] { --t:var(--new); } [data-tag^="Today"] { --t:var(--today); }
+@media (prefers-reduced-motion: no-preference) { .panel:not(.inline-panel) { animation:arrive 160ms ease-out; } }
+@keyframes arrive { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+</style>
+</head>
+<body class="tags">
+<main>
+  <div class="banner" role="note">Sample. No figure, card, seller or order on this page is real. Every number comes from a made-up ledger of about 2,000 lines.</div>
+  <header class="intro">
+    <h1>Cost basis: what you paid for what arrived</h1>
+    <p class="kind">Designer kind: directed. Direction: one-number. A single honest number up front, detail one tap down.</p>
+    <p>Tally today shows a unit rate and a red outstanding figure on every row, and the masthead rounds the money. Each concept below leads with one exact figure: what you paid, in card prices, for the copies that are in your hands. Tap the figure for how it adds up and what it leaves out. Every tap on this page works: check a copy in and the figures move, nothing else does.</p>
+  </header>
+  <nav class="controls" aria-label="Mockup controls">
+    <div class="group" id="g-c"><span class="gl">Concepts</span></div>
+    <div class="group" id="g-s"><span class="gl">State</span></div>
+    <div class="group" id="g-x"><span class="gl">Page</span></div>
+  </nav>
+  <div class="legend"><span><i style="border-color:var(--today)"></i>Today: a part that ships now</span><span><i style="border-color:var(--new)"></i>New: a part this concept adds</span></div>
+
+  <section class="concept" id="concept-sum" data-concept="sum">
+    <div class="chead"><h2>Sum line</h2>
+      <p>Money stays on the rows, one figure each: what that card name cost you for the copies that came. The red outstanding line and the unit rate move one tap down, into the row. The head of Tally carries the ledger's one figure, ruled off like a sum.</p></div>
+    <div class="frames">
+      <figure><div class="dev fold" id="sum-fold" data-device="iphone-duo-folded"></div>
+        <figcaption><b>Duo, folded.</b> One screen, 466 by 678 pt, held in one hand.</figcaption></figure>
+      <div class="wide"><figure><div class="dev open" id="sum-open" data-device="iphone-duo-unfolded"></div>
+        <figcaption><b>Duo, open.</b> Two pages, 951 by 669 pt. The list stays on the left page; the right page holds the sum and how it adds up, always open. Nothing crosses the hinge strip; the tab bar sits under the right page.</figcaption></figure></div>
+      <figure><div class="dev phone" id="sum-phone" data-device="iphone-large"></div>
+        <figcaption><b>Large phone.</b> Drawn 375 pt wide, the width the repo checks. No height is written, so 760 pt is a guess, and nothing depends on it.</figcaption></figure>
+      <figure><div class="dev fold ax" id="sum-fold-ax" data-device="iphone-duo-folded" data-size="AX5"></div>
+        <figcaption><b>Duo, folded, at AX5.</b> The largest accessibility text size. Rows stack and the page scrolls. The tab bar labels stop at the default size, as built.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="concept" id="concept-scale" data-concept="scale">
+    <div class="chead"><h2>One scale</h2>
+      <p>Money lives in one place only. Rows carry counts, never money, and the masthead drops its money cell. A pinned scale at the top of Tally weighs whatever you have open: the whole ledger, or the one card name you tapped.</p></div>
+    <div class="frames">
+      <figure><div class="dev fold" id="scale-fold" data-device="iphone-duo-folded"></div>
+        <figcaption><b>Duo, folded.</b> The scale pins under the masthead. Open a row and the scale weighs that card name; close it, or press All cards, and it weighs the ledger again.</figcaption></figure>
+      <div class="wide"><figure><div class="dev open" id="scale-open" data-device="iphone-duo-unfolded"></div>
+        <figcaption><b>Duo, open.</b> A tap on a row on the left page weighs it on the right page, with each line behind the figure and its price. Nothing crosses the hinge strip.</figcaption></figure></div>
+      <figure><div class="dev phone" id="scale-phone" data-device="iphone-large"></div>
+        <figcaption><b>Large phone.</b> Drawn 375 pt wide, the width the repo checks. No height is written, so 760 pt is a guess.</figcaption></figure>
+      <figure><div class="dev fold ax" id="scale-fold-ax" data-device="iphone-duo-folded" data-size="AX5"></div>
+        <figcaption><b>Duo, folded, at AX5.</b> The scale stops pinning here, or it would fill the screen. It scrolls with the list.</figcaption></figure>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+/* ---------------- sample ledger: seeded, so every load draws the same figures ---------------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const R = mulberry32(20261121);
+const pick = (a) => a[Math.floor(R() * a.length)];
+const BASE = ["Lightning Bolt","Counterspell","Brainstorm","Swords to Plowshares","Llanowar Elves","Sol Ring","Arcane Signet","Command Tower","Cultivate","Kodama's Reach",
+ "Rampant Growth","Path to Exile","Dark Ritual","Ponder","Preordain","Thought Scour","Fatal Push","Unholy Heat","Mana Leak","Negate","Duress","Spell Pierce",
+ "Fiery Confluence","Chaos Warp","Beast Within","Swan Song","Generous Gift","Rhystic Study","Mystic Remora","Esper Sentinel","Birds of Paradise","Elvish Mystic",
+ "Fyndhorn Elves","Wall of Roots","Sakura-Tribe Elder","Farseek","Nature's Lore","Three Visits","Skyshroud Claim","Harmonize","Night's Whisper","Sign in Blood",
+ "Village Rites","Deadly Dispute","Infernal Grasp","Go for the Throat","Doom Blade","Murder","Feed the Swarm","Toxic Deluge","Blasphemous Act","Vandalblast",
+ "Austere Command","Wrath of God","Damnation","Anguished Unmaking","Assassin's Trophy","Putrefy","Mortify","Utter End","Despark","Kolaghan's Command",
+ "Lightning Helix","Electrolyze","Izzet Charm","Expressive Iteration","Fact or Fiction","Impulse","Opt","Consider","Faithless Looting","Tormenting Voice",
+ "Llanowar Wastes","Sulfurous Springs","Adarkar Wastes","Shivan Reef","Yavimaya Coast","Caves of Koilos","Battlefield Forge","Brushland","Karplusan Forest","Underground River",
+ "Evolving Wilds","Terramorphic Expanse","Exotic Orchard","Reliquary Tower","Rogue's Passage","Myriad Landscape","Ash Barrens","Fabled Passage","Path of Ancestry","Swiftfoot Boots",
+ "Lightning Greaves","Mind Stone","Fellwar Stone","Thought Vessel","Talisman of Dominance","Talisman of Progress","Wayfarer's Bauble","Commander's Sphere","Darksteel Ingot","Chromatic Lantern"];
+const VAR = ["", "", "", "", " (Showcase)", " (Borderless)", " (Extended Art)", " (Retro Frame)"];
+const SETS = ["Dominaria Remastered","Modern Horizons 3","Bloomburrow","Duskmourn","Foundations","Aetherdrift","Tarkir Dragonstorm","Edge of Eternities","Commander Masters","Double Masters"];
+const SA = ["Tidewater","Northgate","Copper Kettle","Lantern","Basilisk","Owl and Oak","Red Barn","Grey Heron","Sixpence","Harbor","Old Mill","Blue Fox","Ironwood","Quarry","Juniper","Wexford"];
+const SB = ["Cards","Games","Collectibles","TCG"];
+const SELLERS = []; for (const a of SA) for (const b of SB) SELLERS.push(a + " " + b);
+const NOW = Date.parse("2026-11-20");
+const DAY = 864e5;
+const START = Date.parse("2025-10-01");
+const ORDERS = [];
+const ITEMS = [];
+for (let o = 0; o < 236; o++) {
+  const date = new Date(START + Math.floor(Math.pow(R(), 0.8) * (NOW - START - 2 * DAY))).toISOString().slice(0, 10);
+  const id = "TCG-" + (260000 + Math.floor(R() * 99999)).toString(36).toUpperCase() + "-" + String(o).padStart(3, "0");
+  const seller = pick(SELLERS);
+  ORDERS.push({ id, seller, date, status: "" });
+  const n = 2 + Math.floor(R() * 13);
+  for (let i = 0; i < n; i++) {
+    const b = BASE[Math.floor(BASE.length * R() * R())];
+    const name = b + (R() < 0.3 ? pick(VAR) : "");
+    const qty = R() < 0.82 ? 1 : 2 + Math.floor(R() * 3);
+    const price = Math.round((0.1 + Math.pow(R(), 3.2) * 8.9) * 100) / 100;
+    ITEMS.push({ key: id + "|" + i, orderId: id, seller, name, set: pick(SETS), qty, price, date });
+  }
+}
+/* stamps and cancels, picked from the older orders so a refund reads as settled */
+const STAMP = {}; const CANCELED = new Set();
+{ const old = ORDERS.filter(o => NOW - Date.parse(o.date) > 40 * DAY);
+  for (let i = 0; i < 6; i++) STAMP[old[i * 7 + 1].id] = "refunded";
+  for (let i = 0; i < 3; i++) STAMP[old[i * 11 + 4].id] = "partial";
+  for (let i = 0; i < 4; i++) CANCELED.add(old[i * 13 + 6].id); }
+/* what arrived: old orders mostly, recent ones a little */
+const BASE_GOT = new Map();
+for (const it of ITEMS) {
+  const age = (NOW - Date.parse(it.date)) / DAY;
+  const p = age > 30 ? 0.975 : age > 12 ? 0.62 : 0.12;
+  const r = R();
+  BASE_GOT.set(it.key, r < p ? it.qty : (it.qty > 1 && r < p + 0.12 ? 1 : 0));
+}
+const LIVE = ITEMS.filter(it => !CANCELED.has(it.orderId) && !STAMP[it.orderId]);
+const SHIP = new Map(ORDERS.map(o => [o.id, [0.99, 1.31, 1.99, 2.99, 3.99, 4.99][Math.floor(R() * 6)]]));
+let ORDER = null;
+
+/* ---------------- figures ---------------- */
+const money = (n) => "$" + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+function compact(n) { if (n < 1000) return "$" + Math.round(n); const k = n / 1000; return k < 1000 ? "$" + (+k.toFixed(2)) + "k" : "$" + (+(k / 1000).toFixed(2)) + "M"; }
+const copies = (n) => n + (n === 1 ? " copy" : " copies");
+const plural = (n, w, ws) => n + " " + (n === 1 ? w : (ws || w + "s"));
+function groupsOf(items, got) {
+  const m = new Map();
+  for (const it of items) { if (!m.has(it.name)) m.set(it.name, { name: it.name, items: [] }); m.get(it.name).items.push(it); }
+  const out = [...m.values()];
+  for (const g of out) {
+    g.items.sort((a, b) => b.date.localeCompare(a.date) || a.seller.localeCompare(b.seller));
+    g.qty = 0; g.got = 0; g.basis = 0; g.mail = 0;
+    for (const it of g.items) { const k = Math.min(it.qty, got.get(it.key) || 0); g.qty += it.qty; g.got += k; g.basis += it.price * it.qty; g.mail += it.price * (it.qty - k); }
+    g.paid = g.basis - g.mail; g.avg = g.qty ? g.basis / g.qty : 0;
+    g.sellers = new Set(g.items.map(i => i.seller)).size; g.orders = new Set(g.items.map(i => i.orderId)).size;
+    g.sets = [...new Set(g.items.map(i => i.set))];
+  }
+  /* Most missing first (tally-sort-keys-are-six), then name. The order freezes while cards are checked in,
+     so a check-in never moves a row: it is taken once, from the ledger as loaded. */
+  if (!ORDER) out.sort((a, b) => (b.qty - b.got) - (a.qty - a.got) || a.name.localeCompare(b.name));
+  else out.sort((a, b) => (ORDER.get(a.name) ?? 1e9) - (ORDER.get(b.name) ?? 1e9) || a.name.localeCompare(b.name));
+  return out;
+}
+function totalsOf(groups) { let spent = 0, mail = 0, qty = 0, got = 0; for (const g of groups) { spent += g.basis; mail += g.mail; qty += g.qty; got += g.got; } return { spent, mail, paid: spent - mail, qty, got, left: qty - got }; }
+function leftOutOf(filterName, inRange) {
+  const r = { refunded: { pk: new Set(), v: 0 }, partial: { pk: new Set(), v: 0 }, canceled: { pk: new Set(), v: 0 } };
+  for (const it of ITEMS) {
+    if (filterName && it.name !== filterName) continue;
+    if (inRange && !inRange(it)) continue;
+    const k = CANCELED.has(it.orderId) ? "canceled" : STAMP[it.orderId];
+    if (!k) continue;
+    r[k].pk.add(it.orderId); r[k].v += it.price * it.qty;
+  }
+  return r;
+}
+function packagesOf(items, got) { const m = new Map(); for (const it of items) { const p = m.get(it.orderId) || { done: true }; if ((got.get(it.key) || 0) < it.qty) p.done = false; m.set(it.orderId, p); } let d = 0; for (const p of m.values()) if (p.done) d++; return { total: m.size, done: d }; }
+
+/* ---------------- state ---------------- */
+const STATES = [["loaded","Some in the mail"],["row","Row open"],["panel","How it adds up"],["sheet","Year-end summary"],["search","Search typed"],["arrived","All arrived"],["empty","Empty"],["loading","Loading"],["failed","Failed read"]];
+const H = Object.fromEntries(new URLSearchParams(location.hash.slice(1)));
+const pageState = STATES.some(s => s[0] === H.s) ? H.s : "loaded";
+const LEDGER = { sum: new Map(BASE_GOT), scale: new Map(BASE_GOT) };
+if (pageState === "arrived") for (const m of Object.values(LEDGER)) for (const it of ITEMS) m.set(it.key, it.qty);
+ORDER = new Map(groupsOf(LIVE, LEDGER.sum).map((g, i) => [g.name, i]));
+const FRAMES = [];
+for (const c of ["sum", "scale"]) for (const [dev, ax] of [["fold", false], ["open", false], ["phone", false], ["fold", true]]) {
+  FRAMES.push({ c, dev, ax, id: c + "-" + dev + (ax ? "-ax" : ""), ui: initUI(c) });
+}
+function initUI(c) {
+  return { open: null, panel: pageState === "panel", sheet: pageState === "sheet", q: pageState === "search" ? "bolt" : "", said: "", saidBad: false,
+           phase: ["empty","loading","failed"].includes(pageState) ? pageState : "ready", wantRow: pageState === "row" };
+}
+let tagsOn = H.g !== "0";
+/* The shipping-and-tax option (notes item 9): shown until hidden, here or with o=0 in the hash. */
+let shipOn = H.o !== "0";
+const hidden = new Set((H.h || "").split(",").filter(Boolean));
+
+/* ---------------- pieces ---------------- */
+const ICON = {
+  Ledger: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>',
+  Orphaned: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3.5 7l8.5 6 8.5-6"/></svg>',
+  Tally: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 4l-2 16M17 4l-2 16M4 9h16M3 15h16"/></svg>',
+  Packages: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7.5l9-4.5 9 4.5v9l-9 4.5-9-4.5z"/><path d="M3 7.5l9 4.5 9-4.5M12 12v9"/></svg>' };
+function tabbar() {
+  return '<nav class="tabbar" aria-label="Views">' + ["Ledger","Orphaned","Tally","Packages"].map(t =>
+    `<button class="tab${t === "Tally" ? " on" : ""}" ${t === "Tally" ? 'aria-current="page"' : ""} data-act="tab" data-tab="${t}">${ICON[t]}<span>${t}</span>${t === "Orphaned" ? '<span class="badge">2</span>' : ""}</button>`).join("") + "</nav>";
+}
+const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
+
+function masthead(f, T, pk) {
+  if (f.ui.phase !== "ready") return `<div class="mh"><div class="lh"><b>MANIFEST</b></div></div>`;
+  const moneyCell = f.c === "sum"
+    ? `<div class="w" data-tag="Today: value cell, rounded"><span class="micro">Value</span><b>${compact(T.paid)}<span>/${compact(T.spent)}</span></b></div>`
+    : "";
+  const foot = T.left === 0 ? `<span class="ok">ALL ACCOUNTED FOR ✓</span>`
+    : f.c === "sum" ? `<span class="miss" data-tag="Today: still missing">${T.left} still missing · ${money(T.mail)}</span>`
+    : `<span class="miss" data-tag="New: count only">${T.left} still missing</span>`;
+  return `<div class="mh"><div class="lh"><b>MANIFEST</b></div>
+    <div class="thirds" ${f.c === "scale" ? 'data-tag="New: counts only"' : ""}><div><span class="micro">Cards</span><b>${T.got}<span>/${T.qty}</span></b></div>
+    <div><span class="micro">Packages</span><b>${pk.done}<span>/${pk.total}</span></b></div>${moneyCell}</div>
+    <div class="mfoot"><span>${f.ui.groups.length} unique items · autosaves</span>${foot}</div></div>`;
+}
+
+function figureBlock(f, T, scopeG) {
+  const ui = f.ui, isScale = f.c === "scale";
+  const idAttr = (f.dev === "fold" && !f.ax) ? ` id="${f.c === "sum" ? "sum-line-figure" : "one-scale-figure"}"` : "";
+  let fig, scope, figCls = "fig";
+  if (ui.phase === "loading") { fig = "Reading…"; figCls += " wait"; scope = "Reading the ledger on this phone."; }
+  else if (ui.phase === "failed") { fig = "Not read"; figCls += " wait"; scope = "The ledger on this phone could not be read."; }
+  else if (ui.phase === "empty") { fig = "No orders"; figCls += " wait"; scope = "Nothing is on this phone yet."; }
+  else {
+    const v = scopeG ? scopeG.paid : T.paid;
+    fig = money(v);
+    const done = scopeG ? scopeG.got === scopeG.qty : T.left === 0;
+    scope = done ? "Everything you paid for has arrived." : "Card prices, before shipping and tax. All time.";
+  }
+  /* The figure sits inside a sentence: "You paid / $X / for the N of M copies that arrived." */
+  const g = scopeG || T;
+  const after = ui.phase === "ready" ? `<div class="after">for the ${g.got.toLocaleString("en-US")} of ${copies(g.qty).replace(/^\d+/, (d) => (+d).toLocaleString("en-US"))} that arrived.</div>` : "";
+  const label = scopeG
+    ? `<span class="scopeName">${esc(scopeG.name)}: you paid</span>`
+    : `<span>${ui.phase === "ready" ? "You paid" : "Paid for what arrived"}</span>`;
+  const back = isScale ? `<button class="back" data-act="all" ${scopeG ? "" : 'aria-hidden="true" tabindex="-1"'}>All cards</button>` : "";
+  const ready = ui.phase === "ready";
+  const done = ready && (scopeG ? scopeG.got === scopeG.qty : T.left === 0);
+  const cells = ready ? `<div class="cells">
+      ${f.dev === "open" ? "" : `<button class="dc" data-act="panel" aria-expanded="${ui.panel}">How it adds up</button>`}
+      ${f.dev === "open" && !isScale ? "" : `<button class="dc" data-act="sheet">Year-end summary</button>`}</div>`
+    : ui.phase === "failed" ? `<div class="cells"><button class="btn ghost" data-act="retry">Read again</button></div>`
+    : ui.phase === "empty" ? `<div class="cells"><button class="btn ghost" data-act="sync">Open Sync</button></div>` : "";
+  const panel = ui.panel && ready && !(f.dev === "open") ? `<div class="panel" role="region" aria-label="How it adds up">${breakdown(f, T, scopeG, true)}</div>` : "";
+  return `<section class="head${isScale ? " pin" : ""}"${idAttr} data-tag="New: the one number">
+    <div class="lab">${label}${back}</div>
+    ${ready ? `<button class="${figCls}" data-act="panel" aria-label="You paid ${fig} for what arrived. Show how it adds up.">${fig}</button>` : `<div class="${figCls}">${fig}</div>`}
+    <div class="rule2" aria-hidden="true"></div>
+    ${after}<div class="scope${done ? " good" : ""}">${scope}</div>
+    ${cells}${panel}</section>`;
+}
+
+function breakdown(f, T, g, closable) {
+  const lo = leftOutOf(g ? g.name : null);
+  const spent = g ? g.basis : T.spent, mail = g ? g.mail : T.mail, paid = spent - mail;
+  const qty = g ? g.qty : T.qty, got = g ? g.got : T.got;
+  const close = closable ? `<button data-act="panel">Close</button>` : "";
+  const loRows = [];
+  if (lo.refunded.pk.size) loRows.push(`<dt>Refunded<small>${plural(lo.refunded.pk.size, "package")}</small></dt><dd>${money(lo.refunded.v)}</dd>`);
+  if (lo.partial.pk.size) loRows.push(`<dt>Partial refund<small>${plural(lo.partial.pk.size, "package")}. The whole package leaves, the cards that came too.</small></dt><dd>${money(lo.partial.v)}</dd>`);
+  if (lo.canceled.pk.size) loRows.push(`<dt>Canceled<small>${plural(lo.canceled.pk.size, "order")}</small></dt><dd>${money(lo.canceled.v)}</dd>`);
+  loRows.push(`<dt>Shipping and tax<small>Per order in the file, never split onto cards.</small></dt><dd>not counted</dd>`);
+  const copyList = g && f.c === "scale" ? `<div class="ph">The ${copies(g.items.length === 1 ? 1 : g.items.length).replace("copy", "line").replace("copies", "lines")} behind it</div>${copyLines(f, g, true)}` : "";
+  return `<div class="ptitle"><span>How it adds up</span>${close}</div>
+    <dl class="sum">
+      <dt>Spent on cards<small class="note" style="display:block">${copies(qty)} ordered</small></dt><dd>${money(spent)}</dd>
+      <div class="minus" style="display:contents"><dt>Still in the mail<small class="note" style="display:block">${copies(qty - got)}</small></dt><dd>− ${money(mail)}</dd></div>
+      <div class="tot" style="display:contents"><dt class="tot">Equals</dt><dd class="tot">${money(paid)}</dd></div>
+      ${g ? `<dt>Per copy, on average</dt><dd>${money(g.avg)}</dd>` : ""}
+    </dl>
+    <div class="ph">Left out of every figure</div>
+    <dl class="out">${loRows.join("")}</dl>
+    <div class="note">Search and Showing never change these figures. The date range does.</div>${copyList}`;
+}
+
+const TICK = '<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 9.5l3.5 3.5 7.5-8"/></svg>';
+function copyLines(f, g, withPrice) {
+  const got = LEDGER[f.c];
+  return `<div class="copies">` + g.items.map(it => {
+    const k = Math.min(it.qty, got.get(it.key) || 0), full = k >= it.qty;
+    const ctl = it.qty === 1
+      ? `<button class="box" data-act="check" data-k="${esc(it.key)}" aria-pressed="${full}" aria-label="${full ? "Arrived" : "Not arrived"}: ${esc(it.seller)}"><i>${full ? TICK : ""}</i></button>`
+      : `<span class="box" aria-hidden="true"><i>${full ? TICK : ""}</i></span>`;
+    const step = it.qty > 1 ? `<span class="step"><button data-act="dec" data-k="${esc(it.key)}" aria-label="One fewer">−</button><span>${k}/${it.qty}</span><button data-act="inc" data-k="${esc(it.key)}" aria-label="One more">+</button></span>` : "";
+    return `<div class="cp${full ? " got" : ""}">${ctl}<span class="who"><b>${esc(it.seller)}</b><small>${it.date} · ${esc(it.set)} · ${it.orderId}</small></span>${withPrice ? `<span class="pr">${money(it.price)}</span>` : ""}${step}</div>`;
+  }).join("") + `</div>`;
+}
+
+function rowHtml(f, g, i) {
+  const ui = f.ui, open = ui.open === g.name, done = g.got >= g.qty;
+  const meta = `${plural(g.sellers, "seller")} · ${plural(g.orders, "order")} · ${g.sets.length === 1 ? esc(g.sets[0]) : g.sets.length + " sets"}`;
+  const right = f.c === "sum"
+    ? `<span class="ct${done ? " done" : ""}">${g.got}/${g.qty}${done ? " ✓" : ""}</span><span class="paid${g.got ? "" : " none"}">${money(g.paid)}</span>`
+    : `<span class="ct big${done ? " done" : ""}">${g.got}/${g.qty}${done ? " ✓" : ""}</span>`;
+  const tag = i === 0 ? ` data-tag="${f.c === "sum" ? "New: paid for what came, in place of rate and left" : "New: count only, no money"}"` : "";
+  let detail = "";
+  if (open && !(f.c === "scale" && f.dev === "open")) {
+    const mini = f.c === "sum" ? `<div class="mini" data-tag="New: row detail">
+        <span>Ordered</span><span>${copies(g.qty)}</span><span>${money(g.basis)}</span>
+        <span>Arrived</span><span>${g.got}</span><span>${money(g.paid)}</span>
+        <span class="rd-red">Still in the mail</span><span class="rd-red">${g.qty - g.got}</span><span class="rd-red">${money(g.mail)}</span>
+        <span>Per copy</span><span></span><span>${money(g.avg)}</span></div>` : "";
+    detail = `<div class="rd">${mini}${copyLines(f, g, f.c === "sum")}</div>`;
+  }
+  return `<div class="row${done ? " done" : ""}${open && f.c === "scale" ? " sel" : ""}"${tag}><button class="rh" data-act="row" data-n="${esc(g.name)}" aria-expanded="${open}">
+    <span class="l"><span class="nm">${esc(g.name)}</span><span class="meta">${meta}</span></span><span class="r">${right}</span></button>${detail}</div>`;
+}
+
+function listBlock(f) {
+  const ui = f.ui;
+  if (ui.phase === "loading") return `<div class="list" aria-busy="true"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>`;
+  if (ui.phase === "failed") return `<div class="blank"><p>Tally cannot show cards it could not read. Your check-ins are not lost; they stay in the ledger on this phone.</p></div>`;
+  if (ui.phase === "empty") return `<div class="blank"><p>Import an OrderWand CSV in the web app, and it syncs here.</p></div>`;
+  const q = ui.q.trim().toLowerCase();
+  const shown = q ? ui.groups.filter(g => g.name.toLowerCase().includes(q)) : ui.groups;
+  const cap = f.ax ? 6 : 40;
+  const found = q ? `<div class="found" data-tag="New: search note">${shown.length} of ${ui.groups.length} card names. The figure above still counts every card.</div>` : "";
+  const more = shown.length > cap ? `<div class="more">and ${shown.length - cap} more card names below</div>` : "";
+  const empty = q && !shown.length ? `<div class="blank"><p>No card name has “${esc(ui.q)}” in it.</p><button class="btn ghost" data-act="clear">Clear search</button></div>` : "";
+  return `<input class="find" type="search" data-in="q" value="${esc(ui.q)}" placeholder="Search card names" aria-label="Search card names">${found}${empty}
+    <div class="list">${shown.slice(0, cap).map((g, i) => rowHtml(f, g, i)).join("")}</div>${more}`;
+}
+
+function sheetHtml(f, T) {
+  const yr = (it) => it.date.startsWith("2026");
+  const gs = groupsOf(LIVE.filter(yr), LEDGER[f.c]);
+  const t = totalsOf(gs), lo = leftOutOf(null, yr);
+  const csv = csvOf(gs, t, lo).split("\n");
+  /* Sample per-order Shipping Amount and Tax Amount, as the CSV would carry them; the parser reads neither today. */
+  const st = { ship: 0, tax: 0, orders: 0 };
+  for (const o of ORDERS) if (o.date.startsWith("2026") && !CANCELED.has(o.id) && !STAMP[o.id]) {
+    const sub = LIVE.filter(it => it.orderId === o.id).reduce((s, it) => s + it.price * it.qty, 0);
+    st.orders++; st.ship += SHIP.get(o.id); st.tax += Math.round(sub * 0.0725 * 100) / 100;
+  }
+  return `<div class="scrim" data-act="sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Year-end summary" data-tag="New: Year-end summary">
+    <div class="grab" aria-hidden="true"></div>
+    <div class="tbar"><button data-act="sheet">Cancel</button><h3>Year-end summary</h3><button class="strong" data-act="csv">Save CSV</button></div>
+    <div class="sbody">
+      <div class="covers"><span>Covers 2026, January to December</span><button data-act="range">Change</button></div>
+      <dl class="sum">
+        <dt>Spent on cards</dt><dd>${money(t.spent)}</dd>
+        <div class="minus" style="display:contents"><dt>Still in the mail</dt><dd>− ${money(t.mail)}</dd></div>
+        <dt class="tot">Paid for what arrived</dt><dd class="tot">${money(t.paid)}</dd>
+        <dt>Left out: refunds and cancels</dt><dd>${money(lo.refunded.v + lo.partial.v + lo.canceled.v)}</dd>
+        <span class="soft">${gs.length} card names, ${copies(t.qty)}, card prices only. Shipping and tax are not in the file's line prices.</span>
+      </dl>
+      ${shipOn ? `<div class="opt" data-option="ship-tax" data-tag="New: option, shipping and tax totals">
+        <dl class="sum"><dt>Shipping, per order<small class="note" style="display:block">${plural(st.orders, "order")} in 2026, never split onto cards</small></dt><dd>${money(st.ship)}</dd>
+        <dt>Tax, per order</dt><dd>${money(st.tax)}</dd>
+        <dt class="tot">Spent in all</dt><dd class="tot">${money(t.spent + st.ship + st.tax)}</dd></dl>
+        <button class="dc" data-act="hideship">Hide this option</button></div>` : ""}
+      <div class="ph">The file, first lines</div>
+      <pre class="csv">${esc(csv.slice(0, 6).join("\n"))}\n…</pre>
+      <div class="acts"><button class="btn" data-act="csv">Save CSV</button><button class="btn ghost" data-act="copy">Copy summary</button></div>
+      <div class="said${f.ui.saidBad ? " bad" : ""}" role="status">${esc(f.ui.said)}</div>
+    </div></div>`;
+}
+function csvOf(gs, t, lo) {
+  const q = (s) => /[",]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  const rows = ["Card name,Copies ordered,Copies arrived,Paid for arrived,Still in the mail,Per copy,Sellers"];
+  for (const g of [...gs].sort((a, b) => a.name.localeCompare(b.name)))
+    rows.push([q(g.name), g.qty, g.got, g.paid.toFixed(2), g.mail.toFixed(2), g.avg.toFixed(2), g.sellers].join(","));
+  rows.push(["All cards", t.qty, t.got, t.paid.toFixed(2), t.mail.toFixed(2), (t.qty ? t.spent / t.qty : 0).toFixed(2), ""].join(","));
+  rows.push(`Left out: refunded (${lo.refunded.pk.size} packages),,,,${lo.refunded.v.toFixed(2)},,`);
+  rows.push(`Left out: partial refund (${lo.partial.pk.size} packages),,,,${lo.partial.v.toFixed(2)},,`);
+  rows.push(`Left out: canceled (${lo.canceled.pk.size} orders),,,,${lo.canceled.v.toFixed(2)},,`);
+  rows.push("Sample data: no figure in this file is real. Card prices only; shipping and tax not counted.,,,,,,");
+  return rows.join("\n");
+}
+function summaryText(f) {
+  const yr = (it) => it.date.startsWith("2026");
+  const gs = groupsOf(LIVE.filter(yr), LEDGER[f.c]); const t = totalsOf(gs);
+  return `MANIFEST, 2026 (sample)\nPaid for what arrived: ${money(t.paid)}\nSpent on cards: ${money(t.spent)}\nStill in the mail: ${money(t.mail)}\n${gs.length} card names, ${copies(t.qty)}. Card prices only, before shipping and tax.`;
+}
+
+/* ---------------- frames ---------------- */
+function render(f) {
+  const el = document.getElementById(f.id);
+  const keep = [...el.querySelectorAll(".scroll, .sbody")].map(s => s.scrollTop);
+  const active = document.activeElement && el.contains(document.activeElement) && document.activeElement.dataset.in ? document.activeElement.selectionStart : null;
+  const got = LEDGER[f.c];
+  f.ui.groups = f.ui.phase === "empty" ? [] : groupsOf(LIVE, got);
+  if (f.ui.wantRow && f.ui.groups.length) { f.ui.open = f.ui.groups[0].name; f.ui.wantRow = false; }
+  const T = totalsOf(f.ui.groups), pk = packagesOf(LIVE, got);
+  const scopeG = f.c === "scale" && f.ui.open ? f.ui.groups.find(g => g.name === f.ui.open) : null;
+  const status = `<div class="status" aria-hidden="true"><span>9:41</span><span>●●● ▮</span></div>`;
+  let html;
+  if (f.dev !== "open") {
+    html = `${status}<div class="pg"><div class="scroll">${masthead(f, T, pk)}${figureBlock(f, T, scopeG)}${listBlock(f)}</div></div>${tabbar()}${f.ui.sheet && f.ui.phase === "ready" ? sheetHtml(f, T) : ""}`;
+  } else {
+    const right = f.ui.phase !== "ready" ? figureBlock(f, T, null)
+      : `${figureBlock(f, T, scopeG)}<div class="panel inline-panel" data-tag="New: always open on the right page">${breakdown(f, T, scopeG, false)}</div>
+         ${f.c === "sum" ? `<button class="btn ghost" data-act="sheet" data-tag="New: export">Year-end summary</button>` : ""}`;
+    html = `${status}<div class="pg l"><div class="scroll">${masthead(f, T, pk)}${listBlock(f)}</div></div>
+      <div class="hinge" aria-hidden="true"><span>hinge 455.5 to 495.5</span></div>
+      <div class="pg r"><div class="scroll">${right}</div></div>${tabbar().replace('class="tabbar"', 'class="tabbar" style="left:calc(495.5px + 24px)"')}
+      ${f.ui.sheet && f.ui.phase === "ready" ? sheetHtml(f, T) : ""}`;
+  }
+  el.innerHTML = html;
+  el.querySelectorAll(".scroll, .sbody").forEach((s, i) => { if (keep[i] != null) s.scrollTop = keep[i]; });
+  if (active != null) { const inp = el.querySelector("[data-in]"); inp.focus(); inp.setSelectionRange(active, active); }
+}
+function renderConcept(c) { for (const f of FRAMES) if (f.c === c) render(f); }
+
+function onAct(f, b, ev) {
+  const a = b.dataset.act, ui = f.ui, got = LEDGER[f.c];
+  if (a === "row") { ui.open = ui.open === b.dataset.n ? null : b.dataset.n; render(f); return; }
+  if (a === "all") { ui.open = null; render(f); return; }
+  if (a === "panel") { ui.panel = !ui.panel; render(f); return; }
+  if (a === "sheet") { ui.sheet = !ui.sheet; ui.said = ""; render(f); return; }
+  if (a === "clear") { ui.q = ""; render(f); return; }
+  if (a === "retry") { ui.phase = "ready"; renderConcept(f.c); return; }
+  if (a === "sync") { b.textContent = "Opens Ledger, Sync (not drawn)"; return; }
+  if (a === "range") { ui.said = "Opens the date range, By month, set to January to December 2026 (not drawn)."; ui.saidBad = false; render(f); return; }
+  if (a === "tab") return;
+  if (a === "hideship") { shipOn = false; for (const x of FRAMES) render(x); return; }
+  const it = ITEMS.find(x => x.key === b.dataset.k);
+  if (a === "check") { got.set(it.key, (got.get(it.key) || 0) >= it.qty ? 0 : it.qty); renderConcept(f.c); return; }
+  if (a === "inc") { got.set(it.key, Math.min(it.qty, (got.get(it.key) || 0) + 1)); renderConcept(f.c); return; }
+  if (a === "dec") { got.set(it.key, Math.max(0, (got.get(it.key) || 0) - 1)); renderConcept(f.c); return; }
+  if (a === "csv") {
+    const yr = (x) => x.date.startsWith("2026");
+    const gs = groupsOf(LIVE.filter(yr), got);
+    const blob = new Blob([csvOf(gs, totalsOf(gs), leftOutOf(null, yr))], { type: "text/csv" });
+    const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "manifest-cost-basis-2026-sample.csv";
+    document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 4000);
+    ui.said = "Saved manifest-cost-basis-2026-sample.csv. On the phone this opens the share sheet with the file."; ui.saidBad = false; render(f); return;
+  }
+  if (a === "copy") {
+    const text = summaryText(f);
+    const done = () => { ui.said = "Copied the summary."; ui.saidBad = false; render(f); };
+    const fail = () => { ui.said = "Could not copy here. The summary is in the file instead."; ui.saidBad = true; render(f); };
+    try { navigator.clipboard.writeText(text).then(done, fail); } catch (e) { fail(); }
+  }
+}
+
+/* ---------------- page ---------------- */
+function build() {
+  /* The frames sit in the markup, folded first (ios-apps, Mockups); this fills and wires each one. */
+  for (const f of FRAMES) {
+    const dev = document.getElementById(f.id);
+    dev.addEventListener("click", (ev) => { const b = ev.target.closest("[data-act]"); if (b && dev.contains(b) && !b.disabled) onAct(f, b, ev); });
+    dev.addEventListener("input", (ev) => { if (ev.target.dataset.in === "q") { f.ui.q = ev.target.value; render(f); } });
+    render(f);
+  }
+  /* At AX5 the masthead stacks tall; start the frame at the figure, as a reader scrolled there would see it. */
+  for (const f of FRAMES.filter(x => x.ax)) { const s = document.querySelector("#" + f.id + " .head"); const sc = document.querySelector("#" + f.id + " .scroll"); if (s && sc) sc.scrollTop = s.offsetTop - 8; }
+}
+function controls() {
+  const cur = H.c || "both";
+  const link = (k, v, label, on) => { const p = new URLSearchParams(H); p.set(k, v); return `<a href="#${p}" ${on ? 'aria-current="true"' : ""}>${label}</a>`; };
+  document.getElementById("g-c").insertAdjacentHTML("beforeend",
+    link("c", "both", "Both", cur === "both") + link("c", "sum", "Sum line", cur === "sum") + link("c", "scale", "One scale", cur === "scale") +
+    `<button data-hide="sum">${hidden.has("sum") ? "Show" : "Hide"} Sum line</button><button data-hide="scale">${hidden.has("scale") ? "Show" : "Hide"} One scale</button>`);
+  document.getElementById("g-s").insertAdjacentHTML("beforeend", STATES.map(([k, l]) => link("s", k, l, pageState === k)).join(""));
+  document.getElementById("g-x").insertAdjacentHTML("beforeend", `<button id="tagbtn">${tagsOn ? "Hide" : "Show"} Today and New tags</button><a href="#">Reset the sample</a>`);
+  document.getElementById("tagbtn").onclick = (e) => { tagsOn = !tagsOn; document.body.classList.toggle("tags", tagsOn); e.target.textContent = (tagsOn ? "Hide" : "Show") + " Today and New tags"; };
+  document.querySelectorAll("[data-hide]").forEach(b => b.onclick = () => {
+    const k = b.dataset.hide; hidden.has(k) ? hidden.delete(k) : hidden.add(k); applyVis();
+    b.textContent = (hidden.has(k) ? "Show " : "Hide ") + (k === "sum" ? "Sum line" : "One scale"); });
+  applyVis();
+}
+function applyVis() {
+  const cur = H.c || "both";
+  document.getElementById("concept-sum").hidden = hidden.has("sum") || cur === "scale";
+  document.getElementById("concept-scale").hidden = hidden.has("scale") || cur === "sum";
+}
+document.body.classList.toggle("tags", tagsOn);
+controls(); build();
+window.addEventListener("hashchange", () => location.reload());
+</script>
+</body>
+</html>
