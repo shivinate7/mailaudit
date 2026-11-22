@@ -33,7 +33,7 @@ One known gap per file under `docs/debts/`. Each carries a Status line and a Dec
 - `recent-log-unbuilt` — The recent-actions log is not built in the native client.
 - `recent-log-unmeasured` — The recent-actions log has one measurement to take.
 - `recent-undo-under-bar` — A Recent UNDO cell can sit half under the bottom bar.
-- `reimport-refresh-stays-on-device` — A refreshed tracking stays on the importing device.
+- `reimport-refresh-stays-on-device` — A refreshed name stays on the importing device, and the cloud CSV route refreshes nothing.
 - `armed-reset-mistap-unmeasured` — A mis-tap beside the armed Reset box is unmeasured.
 - `orphaned-reach-unpinned` — Re-import, Backup and Reset on Orphaned have no test.
 - `panels-overlay-unbuilt` — Disclosure panels still push the list.
