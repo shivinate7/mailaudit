@@ -2,17 +2,17 @@
 
 Kind: process
 
-Home: .claude/rules/screens.md
+Home: docs/decisions/phone-forms-and-mockup-size.md
 
 **Status:** ruled 2026-11-21 19:57 CST. Owner, page item 109 (phone size), answer "none of these", relayed by triage: "just need to worry about iphone 18, iphone max, and iphone duo form factors frankly -- and mockups should all just be iphone duo folded size frankly".
 
-The app is designed for three phone forms: iPhone 18, iPhone Max and iPhone Duo. No other width is designed for, 320 px and 380 px included. No measurement in this repo gives a width for iPhone 18 or iPhone Max.
+The app is designed for three phone forms: iPhone 18, iPhone Max and iPhone Duo. The owner's words: "just need to worry about iphone 18, iphone max, and iphone duo form factors frankly" (page item 109, 2026-11-21 19:57 CST). No measurement in this repo gives a width for iPhone 18 or iPhone Max.
 
-Mockups draw the iPhone Duo at its folded size only: 466 by 678 pt, the outer screen with the fold closed (measurement `duo-fold-and-keyboard`). No mockup draws the unfolded Duo, and none draws another iPhone width.
+New mockups draw the iPhone Duo at its folded size only: 466 by 678 pt, the outer screen with the fold closed (measurement `duo-fold-and-keyboard`). Mockups made before this ruling are history. On main, `docs/design-churn` (measured 2026-11-22 at commit `622ee04b`) holds 140 HTML files. 133 of them carry `iphone-duo-unfolded`, and 38 mockups name 402 by 874, 440 by 956, 430 by 900 or 375 by 812 points. They stay there for review and culling.
 
 **Holds while:** `duo-fold-and-keyboard` gives the folded outer screen as 466 by 678 pt, and the ruling above stands.
 
-**Pinned by:** no test pins the forms. `npm run check:screens` runs at 375 px and 760 px (`test/screens.mjs`).
+**Pinned by:** no test pins the forms. `npm run check:screens` runs at 375 px and 760 px, and claim 17a also at 320 px (`test/screens.mjs`).
 
 **Not yet in line:**
 

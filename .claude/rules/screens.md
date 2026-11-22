@@ -64,7 +64,7 @@ House UX rules that govern the screens. Read these before changing a screen.
 - `ux-control-earns-place` — A control earns its place; the End of mail day view opens from the empty query.
 - `spacing-on-4px-grid` — Spacing moves to a 4px grid with an 8px card radius.
 - `phone-nav-is-bottom-bar` — Phone navigation is a bottom glass bar, built in L11a.
-- `phone-forms-and-mockup-size` — The app is designed for three phone forms, and mockups draw the folded Duo.
+- `phone-forms-and-mockup-size` — The app is designed for three phone forms, and new mockups draw the folded Duo (owner, page item 109, 2026-11-21 19:57 CST).
 - `ledger-tab-holds-options` — The Ledger tab holds the options, built in L11b.
 
 ## The ruled head
@@ -116,7 +116,7 @@ The register is stationery, not software. One rule governs all of it: nothing ma
 Where the page holds its shape, and where every colour comes from.
 
 - `card-tally-row-counts-first` — The Tally row degrades sets first, never counts.
-- `card-the-action-row-is-reserved` — The card action row reserves its tallest height. 320 px is not one of the three phone forms (owner, page item 109, 2026-11-21 19:57 CST).
+- `card-the-action-row-is-reserved` — The card action row reserves its tallest height. The three phone forms are set in `phone-forms-and-mockup-size` (owner, page item 109, 2026-11-21 19:57 CST), and 320 px is not one of them.
 - `card-the-bar-is-out-of-flow` — The package progress bar sits out of flow.
 - `design-form-controls-no-inherit` — Form controls need their own font rule.
 - `design-parchment-ledger` — The palette is parchment ledger.
