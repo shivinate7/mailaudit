@@ -4,6 +4,10 @@
   "home": "owner 2026-11-18 22:37 CST: visuals for items needing feedback; designer question on the Find pill item",
   "id": "find-band-solid-paper",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-22T01:55:00Z",
+    "note": "Closed as moot by triage; no owner pick."
+  },
   "n": 101,
   "options": [
     {
@@ -26,6 +30,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "a",
   "ref": "owner 2026-11-18 22:37 CST: visuals for items needing feedback; designer question on the Find pill item",
+  "replied": "2026-11-22T01:55:00Z",
+  "reply": "Moot: on the Find pill question (item 95) you chose to skip the contrast audit on the pill's frame, so no paper band is built and the band's look is not asked. Your saved answer is not built. Closed. 19:55 CST 2026-11-21.",
   "repo": "shivinate7/mailaudit",
   "short": "Find pill band: solid paper or a fade",
   "shown": [
@@ -40,7 +46,7 @@
       "label": "Fade into the list"
     }
   ],
-  "status": "open",
+  "status": "closed",
   "title": "Should the paper band under the Find pill be solid, or fade into the list?",
   "why": "It is what the picture shows and what the audit can pass for sure."
 }

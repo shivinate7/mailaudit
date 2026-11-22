@@ -1,0 +1,9 @@
+{
+  "at": "2026-11-22T01:54:52.309Z",
+  "choice": "b",
+  "item": "pr238-find-pill-band",
+  "label": "B: Skip the contrast audit on the pill's frame",
+  "n": 95,
+  "note": "",
+  "optionId": "skip-pill-audit"
+}
