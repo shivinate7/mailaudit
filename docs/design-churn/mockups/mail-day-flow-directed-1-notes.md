@@ -119,7 +119,7 @@ Invented. Six envelopes in two piles of three. Kestrel Card Co. comes short one 
     - What: "The pile is empty." Below it: "N of N envelopes accounted for", Today's pile, Not normal today, and Across all orders with the masthead's "still missing" line. "All is well." shows when nothing is short (`ux-all-is-well`; deep link `done-well`). Today's transit box follows as the past-transit rows. On the open Duo, Today's pile is on the left page and Not normal today on the right, as part 7 draws them. Card belt adds a double-ruled footing, the ledger sign for a closed sum.
     - Gain: a clear moment of done. It reuses the designed end-of-day view rather than adding a second one.
     - Loss: part 7 opens on an empty query. Here it opens only at the end of the path.
-    - Departs from: part 7's opener (the empty query, the pick in `duo-hand-gaps-notes`). Not blocking.
+    - Departs from: part 7's opener, which owner item 79 a ruled: the empty query (2026-11-19 23:23 CST; decision `ux-control-earns-place`).
 
 13. **Failure, empty and paused states.**
     - What: a failed save shows a red line over the top of the screen with Try Again. It adds no row, so nothing moves under the finger, as today's `hand-checkin-error` overlay works. With no order owed, the first screen says so in one sentence, with one control. Pause shows Packages with Resume Mail Day and a line that names the exact place.
