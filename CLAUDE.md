@@ -12,7 +12,7 @@ across every seller, which answers "did all four arrive" and carries the cost
 basis. **Orphaned** holds a package that arrives with no way to tell who sent it.
 
 The in-app masthead is MANIFEST. Home-screen labels read CH Post on iOS and web, and the
-extension reads CH Post (owner 2026-11-22 item 118 b). Project, repo, storage namespace follow neither. See `masthead-is-not-project-name`.
+extension reads CH Post (owner 2026-11-22, 118 b, extension name follows CH Post). Project, repo, storage namespace follow neither. See `masthead-is-not-project-name`.
 
 ## How to read this file
 
