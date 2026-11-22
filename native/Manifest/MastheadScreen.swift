@@ -16,11 +16,14 @@ struct MastheadScreen<Content: View>: View {
     var ruledRow: AnyView?
     /// A drag on the scroll hides the keys at once (`.immediately`: `.interactively` waits for the finger to reach the keys). Off by default: only the Orphaned tab, whose composer's keys cover the tab bar, asks for it.
     var dismissesKeyboard = false
+    /// Clear room after the content, so a scroll can reach a place the content alone ends short of (the Orphaned composer's keyboard margin).
+    var bottomMargin: CGFloat = 0
     @ViewBuilder let content: Content
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var headHeight: CGFloat = 0
     @State private var pinned = false
+    @State private var position = ScrollPosition()
 
     /// The web's in-flow `.mdl-sticky`: the 46pt running head and its 1pt rule. A height, not a spacing.
     private static var slot: CGFloat { RunningHead.height + 1 }
@@ -39,11 +42,15 @@ struct MastheadScreen<Content: View>: View {
                 if let ruledRow { ruledRow }
                 if let sync { SyncAdvisoryLine(sync: sync, open: openSync) }
                 content
+                if bottomMargin > 0 { Color.clear.frame(height: bottomMargin).accessibilityHidden(true) }
             }
         }
+        .scrollPosition($position)
         .scrollDismissesKeyboard(dismissesKeyboard ? .immediately : .automatic)
         // A tab's content asks for a view by id (a focused field, its Save) to be kept above the keyboard.
         .environment(\.scrollTo, { id in withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { proxy.scrollTo(id, anchor: .bottom) } })
+        // A tab's content asks to be moved by a distance: it knows where its view lies and where the keys start, which an id cannot say.
+        .environment(\.scrollBy, { dy in withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { position.scrollBy(y: dy) } })
         // Pinned once the slot's top has passed the scroll view's top edge. A short tab never scrolls that far.
         .onScrollGeometryChange(for: Bool.self, of: { pinAt > 0 && $0.contentOffset.y + $0.contentInsets.top >= pinAt }) { pinned = $1 }
         .overlay(alignment: .top) {
@@ -62,6 +69,8 @@ struct MastheadScreen<Content: View>: View {
 extension EnvironmentValues {
     /// Scrolls the enclosing MastheadScreen so the view with this id sits at the bottom of the space above the keyboard.
     @Entry var scrollTo: (String) -> Void = { _ in }
+    /// Scrolls the enclosing MastheadScreen's content up by this many points (down when negative). Call it on the main actor.
+    @Entry var scrollBy: @MainActor (CGFloat) -> Void = { _ in }
 }
 
 /// The letterhead's short form: seal, name and the two figures that matter, pinned over the scrolled list.

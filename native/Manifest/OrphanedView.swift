@@ -66,7 +66,8 @@ struct OrphanedView: View {
     private var list: some View {
         // A drag on the list hides the composer's keys, so the tab bar under them can be reached. Only this tab asks, so the other tabs keep
         // their keys. Owner ruling: `ux-house-rules-govern`, section "Orphaned composer keys".
-        MastheadScreen(masthead: masthead, tab: .orphaned, sync: sync, openSync: openSync, dismissesKeyboard: true) {
+        MastheadScreen(masthead: masthead, tab: .orphaned, sync: sync, openSync: openSync, dismissesKeyboard: true,
+                       bottomMargin: model.composing == nil ? 0 : ComposerView.reach) {
             VStack(alignment: .leading, spacing: 12) {
                 if model.composing == .new {
                     ComposerView(model: model, target: .new, onChange: onChange)
@@ -166,6 +167,13 @@ private struct UndoNoticeView: View {
     }
 }
 
+/// Where the Save row ends and where the keys start, both in window points. A reference box, so a scroll frame that moves the row
+/// redraws nothing.
+private final class KeyGauge {
+    var rowBottom: CGFloat?
+    var keysTop: CGFloat?
+}
+
 private struct ComposerView: View {
     let model: OrphanedModel
     let target: ComposerTarget
@@ -173,10 +181,21 @@ private struct ComposerView: View {
     @State private var found: [Suggestion] = []
     private enum Field { case name, note }
     @FocusState private var focused: Field?
-    @Environment(\.scrollTo) private var scrollTo
+    @Environment(\.scrollBy) private var scrollBy
     @Environment(\.dynamicTypeSize) private var typeSize
+    @State private var gauge = KeyGauge()
 
-    private static let saveRow = "orphaned-composer-save-row"
+    /// The keys draw this far above the frame they report (`keyboardDrawnAbove` in DuoHandUITests, measurement `duo-fold-and-keyboard`).
+    /// Measured on the open Duo only; the folded Duo and the 18 Pro are unmeasured.
+    private static let keysDrawnAbove: CGFloat = 44
+    /// The clear space kept above the drawn strip. A choice (the mockup `orphaned-composer-contrast`), not a measurement.
+    private static let clearance: CGFloat = 12
+    /// The Save row's bottom stays this far above the keys' reported top.
+    private static let keyMargin = keysDrawnAbove + clearance
+    /// Content that lies under the Save row with an empty pile and nothing after the composer: its 12pt padding and the list's 16pt bottom padding.
+    private static let contentBelowSave: CGFloat = 12 + 16
+    /// Extra room the screen adds after its content while composing, so a scroll can reach `keyMargin`. 28pt.
+    static let reach = keyMargin - contentBelowSave
     private var draft: EnvelopeDraft { model.draft(for: target) }
 
     var body: some View {
@@ -267,18 +286,45 @@ private struct ComposerView: View {
                 .buttonStyle(.plain).disabled(!ready).accessibilityIdentifier("orphaned-save")
             }
             .padding(.top, 4)
-            .id(Self.saveRow)
+            .onGeometryChange(for: CGFloat.self, of: { $0.frame(in: .global).maxY }) { gauge.rowBottom = $0 }
         }
         .padding(12)
         .modifier(CardChrome(border: .composerBorder))
         // The masthead puts the composer low on the page, so the keyboard would cover the lower fields and Save. A scroll
-        // view does not follow focus, so on a focus change, and again once the keyboard has opened, bring the Save row up.
-        .onChange(of: focused) { _, f in if f != nil { scrollTo(Self.saveRow) } }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in
-            if focused != nil { scrollTo(Self.saveRow) }
+        // view does not follow focus, so the composer keeps Save clear itself: on a focus change, when the keys change frame or
+        // finish opening, and when its own height changes (an entry added or removed, the suggestions opening or closing, a field
+        // growing). Never on a scroll, so a drag is not fought.
+        .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { _ in keepSaveClear() }
+        .onChange(of: focused) { _, f in if f != nil { keepSaveClear() } }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { note in
+            gauge.keysTop = Self.keysTop(note)
+            keepSaveClear()
         }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in keepSaveClear() }
         .task(id: d.input) { found = await model.suggestions(for: d.input) }
         .onAppear { focused = .name }
+    }
+
+    /// Scrolls up by the distance the Save row lies inside `keyMargin` of the keys' reported top, and does nothing when it is clear,
+    /// so the composer moves only when it must (no-layout-shift-under-pointer, the owner's exception for this move). It waits one turn,
+    /// so the row's new place has been read when it measures.
+    private func keepSaveClear() {
+        Task { @MainActor in
+            await Task.yield()
+            guard focused != nil, let keys = gauge.keysTop, let row = gauge.rowBottom else { return }
+            let over = row - (keys - Self.keyMargin)
+            if over > 0.5 { scrollBy(over) }
+        }
+    }
+
+    /// The keys' reported top in window points, nil when they are down. The frame arrives in screen points.
+    private static func keysTop(_ note: Notification) -> CGFloat? {
+        guard let end = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue,
+              let window = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene })
+                .flatMap(\.windows).first(where: \.isKeyWindow)
+        else { return nil }
+        let top = window.convert(end, from: window.screen.coordinateSpace).minY
+        return top < window.bounds.maxY ? top : nil
     }
 
     /// A bare glyph in a 44pt hit frame, as the web stepper draws it.
