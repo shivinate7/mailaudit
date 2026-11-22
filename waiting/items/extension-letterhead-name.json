@@ -1,0 +1,46 @@
+{
+  "added": "2026-11-22T03:34:00Z",
+  "context": "Goal: the Chrome extension says CH Post wherever it names itself.\nProblem (rule): the extension's options page has a letterhead line that reads MANIFEST (extension/options.html, line 21); your ruling renames the extension's MANIFEST name, but a decision keeps the in-app masthead as MANIFEST, and this page uses the app's letterhead layout, so only you can say which this line is.\nBased on (ruling): your 2026-11-21 19:54 CST answer on the leftover names: rename every leftover name to CH Post (filed in git).\nBased on (ruling): decision masthead-is-not-project-name keeps the in-app masthead as MANIFEST.\nBased on (read): a reviewer of the rename found this one line; two tests pin the change.\nDeparts from: main shows MANIFEST on that line \u2014 option b changes it to CH Post, option a leaves it.\nWaiting on: your answer; the rename stays a draft meanwhile and the other lanes run.",
+  "home": "decision masthead-is-not-project-name",
+  "id": "extension-letterhead-name",
+  "kind": "decision",
+  "n": 118,
+  "options": [
+    {
+      "gain": "One house look.",
+      "how": "The options page letterhead keeps MANIFEST.",
+      "id": "letterhead-is-masthead",
+      "key": "a",
+      "label": "It is the masthead: it stays MANIFEST",
+      "lose": "One place inside the extension still says MANIFEST."
+    },
+    {
+      "gain": "The extension never says MANIFEST.",
+      "how": "The options page letterhead line says CH Post.",
+      "id": "letterhead-is-name",
+      "key": "b",
+      "label": "It is the extension's name: it becomes CH Post",
+      "lose": "The options page and the app's letterhead differ, and the masthead decision gets an exception."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "a",
+  "ref": "decision masthead-is-not-project-name",
+  "repo": "shivinate7/mailaudit",
+  "short": "Extension letterhead: MANIFEST or CH Post",
+  "shown": [
+    {
+      "id": "letterhead-is-masthead",
+      "key": "a",
+      "label": "It is the masthead: it stays MANIFEST"
+    },
+    {
+      "id": "letterhead-is-name",
+      "key": "b",
+      "label": "It is the extension's name: it becomes CH Post"
+    }
+  ],
+  "status": "open",
+  "title": "Should the extension's options page letterhead say MANIFEST or CH Post?",
+  "why": "The letterhead copies the app's masthead look, so leaving it matches the masthead decision (coordinator's recommendation)."
+}
