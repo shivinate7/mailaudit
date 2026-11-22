@@ -46,7 +46,10 @@ table.ratios { border-collapse:collapse; font-size:13.5px; background:var(--card
 /* ---- Frames: three phones side by side, each the folded Duo outer screen at 1 CSS px = 1 pt ---- */
 .frames { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
 .frames figure { margin:0; width:466px; max-width:100%; }
-.frames figcaption { font-size:13px; margin-top:8px; }
+/* The caption sits on card: green text on paper is 4.29:1, on card 4.8:1. */
+.frames figcaption { font-size:13px; margin-top:8px; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
+.drawing { margin:0 0 12px; font-size:14px; min-height:1.4em; }
+.drawing a { color:var(--accent); }
 .frames figcaption b { font-family:var(--cochin); font-size:16px; display:block; margin-bottom:2px; }
 .fitbox { width:100%; overflow-x:auto; }
 .phone { position:relative; width:466px; height:678px; background:var(--paper); border:1px solid var(--ink); border-radius:20px; overflow:hidden;
@@ -122,7 +125,8 @@ table.ratios { border-collapse:collapse; font-size:13.5px; background:var(--card
 .pick { display:inline-block; font-size:12px; font-weight:600; padding:1px 8px; border-radius:6px; border:1px solid var(--green); color:var(--green); margin-left:6px; vertical-align:2px; }
 .grant { display:inline-block; font-size:12px; font-weight:600; padding:1px 8px; border-radius:6px; border:1px solid var(--manilaInk); color:var(--manilaInk); margin-left:6px; vertical-align:2px; }
 .sources li { margin:4px 0; max-width:110ch; }
-@media (max-width:520px) { h1 { font-size:22px; } .frames figure { width:100%; } }
+/* On a phone the 466 pt frame is drawn at 72%, so the whole Save row shows without a sideways scroll. */
+@media (max-width:520px) { h1 { font-size:22px; } .frames figure { width:100%; } .phone { zoom:0.72; } }
 </style>
 </head>
 <body>
@@ -149,6 +153,7 @@ table.ratios { border-collapse:collapse; font-size:13.5px; background:var(--card
 </nav>
 
 <!-- Folded only: owner page item 109, decision phone-forms-and-mockup-size. No unfolded frame is drawn. -->
+<p class="drawing" id="drawing" aria-live="polite"></p>
 <div class="frames" id="frames" data-device="iphone-duo-folded"></div>
 
 <h2>Contrast by the tokens</h2>
@@ -240,7 +245,9 @@ function frame(kind) {
   else { rowBottom = keysTop - margin; title = kind === "keys" ? "New, keys up" : "New, keys closed"; tag = `<span class="tagname new">New: Save row ${margin} pt above the keyboard top</span>`; }
   const compBottom = rowBottom + PAD, compTop = compBottom - COMPOSER_READY;
   const headBottom = compTop - 47;  // the 46 pt running-head slot and its rule sit clear between masthead and content
-  const o = { count: state("count"), save: state("save"), focus: focusPart(), ids: kind === "keys" };
+  // The Today frame always draws today's paint; only the New frames take an option.
+  const o = kind === "today" ? { count:"count-inksoft", save:"save-pill", focus:null, ids:false }
+    : { count: state("count"), save: state("save"), focus: focusPart(), ids: kind === "keys" };
   const rowTop = rowBottom - ROW;
   let read, verdict;
   if (kind === "today") {
@@ -278,6 +285,10 @@ function focusPart() { const f = S.o && OPTS.find(x => x.id === S.o); return f ?
 function render() {
   const kinds = S.show === "all" ? ["today", "keys", "closed"] : [S.show];
   document.getElementById("frames").innerHTML = kinds.map(frame).join("");
+  const cur = S.o && OPTS.find(x => x.id === S.o);
+  document.getElementById("drawing").innerHTML = cur
+    ? `Drawing the option <b>${cur.title}</b>, ringed in violet. <a href="#s=${S.show}&k=${S.k}">Back to the picks</a>`
+    : "Drawing the picks: clear the drawn strip, count stays inkSoft, Save pill stays as today.";
   const part = focusPart();
   if (part) { const el = document.getElementById(part === "row" ? "save-row" : part); if (el) el.classList.add("focus"); }
   document.getElementById("opts").innerHTML = OPTS.filter(o => !hidden.has(o.id)).map(o => `
@@ -285,7 +296,7 @@ function render() {
       <span class="grp">${({ margin:"Margin above the keys", count:"Count colour", save:"Save frame" })[o.grp]}</span>
       <h3>${o.title}${o.pick ? '<span class="pick">Pick</span>' : ""}${o.grant ? '<span class="grant">Owner grant</span>' : ""}</h3>
       <p>${o.how}</p><p><b>Gain:</b> ${o.gain}</p><p><b>Loss:</b> ${o.loss}</p>
-      <div class="row"><a href="#o=${o.id}&k=${S.k}">Draw it</a><button type="button" data-hide="${o.id}">Hide</button></div>
+      <div class="row"><a href="#o=${o.id}&k=${S.k}&s=${S.show}">Draw it</a><button type="button" data-hide="${o.id}">Hide</button></div>
     </section>`).join("");
   document.querySelectorAll("[data-hide]").forEach(b => b.addEventListener("click", () => { hidden.add(b.dataset.hide); render(); }));
   document.querySelectorAll("[data-k]").forEach(a => { a.setAttribute("aria-current", String(+a.dataset.k === S.k)); a.href = `#k=${a.dataset.k}&s=${S.show}${S.o ? "&o=" + S.o : ""}`; });
@@ -299,7 +310,7 @@ function readHash() {
   S.o = OPTS.some(o => o.id === h.get("o")) ? h.get("o") : null;
   if (S.o && S.show === "all") S.show = "all";
   render();
-  if (S.o) { const el = document.querySelector(".focus"); if (el) el.scrollIntoView({ block:"center" }); }
+  if (S.o) { const el = document.querySelector(".focus"); if (el) el.closest("figure").scrollIntoView({ block:"start" }); }
 }
 
 function toggle(id, cls) {
