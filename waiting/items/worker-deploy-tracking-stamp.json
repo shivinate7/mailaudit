@@ -1,0 +1,46 @@
+{
+  "added": "2026-11-22T18:29:00Z",
+  "context": "Goal: the tracking-stamp merge (the later tracking time wins) and the restore-stamp change work on the real Worker that holds your check-in data.\nProblem (risk): a live Worker deploy changes real check-in data and needs your word; the tracking-stamp merge is on main with tests, nothing is deployed to the live Worker, and the restore-stamp change is not built yet.\nBased on (read): the records, tests and code for the tracking-stamp merge are on main; the restore-stamp change builds after the Hand end-of-day change (PR 390), which is parked behind the red Pro-phone shards.\nBased on (ruling): your 2026-11-21 20:27 CST answers: the latest tracking wins, and restore stamps are ignored.\nDeparts from: main has no live deploy of the tracking-stamp merge \u2014 the Worker would run the new merge.\nWaiting on: your answer; the other lanes run, and the deploy waits.\nUnvetted: the question reviewer's check against past rulings could not run (its answer did not parse), so none of this was checked against them.",
+  "home": "decision live-verification",
+  "id": "worker-deploy-tracking-stamp",
+  "kind": "decision",
+  "n": 124,
+  "options": [
+    {
+      "gain": "Your phone and the Worker agree on tracking stamps sooner.",
+      "how": "The coordinator deploys the tracking-stamp merge to the live Worker; the restore-stamp change deploys after it builds.",
+      "id": "deploy-94-now",
+      "key": "a",
+      "label": "Deploy the tracking-stamp merge now",
+      "lose": "A live change to real check-in data with no macOS-proven app build behind it, and a second deploy later for the restore-stamp change."
+    },
+    {
+      "gain": "One change, tested together.",
+      "how": "The coordinator deploys the tracking-stamp merge and the restore-stamp change in one live deploy once PR 390 merges.",
+      "id": "deploy-together",
+      "key": "b",
+      "label": "Deploy both together after PR 390 merges",
+      "lose": "The tracking-stamp merge waits for the parked Hand end-of-day change, for a time nobody can state yet."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "b",
+  "ref": "coordinator 2026-11-22 12:31 CST: live Worker deploy",
+  "repo": "shivinate7/mailaudit",
+  "short": "Live Worker deploy: tracking-stamp merge now, or both together later",
+  "shown": [
+    {
+      "id": "deploy-94-now",
+      "key": "a",
+      "label": "Deploy the tracking-stamp merge now"
+    },
+    {
+      "id": "deploy-together",
+      "key": "b",
+      "label": "Deploy both together after PR 390 merges"
+    }
+  ],
+  "status": "open",
+  "title": "When should the tracking-stamp merge go to the live Worker?",
+  "why": "Deploying both together means one live change to your data, tested as a pair (coordinator's recommendation)."
+}
