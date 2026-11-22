@@ -1,0 +1,46 @@
+{
+  "added": "2026-11-22T18:26:00Z",
+  "context": "Goal: the Orphaned composer sits the right distance above the keyboard.\nProblem (goal): your ruling set a 56 pt gap above the keys, but the build on PR 389 ships 12 pt, while the invariant and a debt record still say 56, so only you can say which number is right.\nBased on (ruling): your 2026-11-21 20:27 CST answer: build the Orphaned composer margin as drawn.\nBased on (read): on the iPhone the reported keyboard top already includes the 44 pt strip, so 56 pt above it was about 100 pt above the keys; the Duo gap is unmeasured.\nDeparts from: main and your ruling say 56 pt above the keys \u2014 the build ships 12 pt.\nWaiting on: your answer; PR 389 waits, the other lanes run.",
+  "home": "invariant no-layout-shift-under-pointer; debt orphaned-composer-contrast",
+  "id": "orphaned-margin-12-or-56",
+  "kind": "decision",
+  "n": 123,
+  "options": [
+    {
+      "gain": "The composer sits close to the keys and matches the iPhone as measured.",
+      "how": "The coordinator changes the rule that the screen never moves under your finger and the open note on the composer to 12 pt, and PR 389 merges.",
+      "id": "accept-12",
+      "key": "a",
+      "label": "Accept 12 pt",
+      "lose": "The 56 pt you drew is no longer the rule, and the Duo gap stays unmeasured."
+    },
+    {
+      "gain": "Your ruling stands as drawn.",
+      "how": "A builder restores the 56 pt margin on PR 389.",
+      "id": "return-56",
+      "key": "b",
+      "label": "Bring back 56 pt",
+      "lose": "The composer floats about 100 pt above the keys on the iPhone, as the read shows."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "a",
+  "ref": "coordinator 2026-11-22 12:27 CST: PR 389 ships 12 pt",
+  "repo": "shivinate7/mailaudit",
+  "short": "Orphaned composer margin: accept 12 pt or bring back 56 pt",
+  "shown": [
+    {
+      "id": "accept-12",
+      "key": "a",
+      "label": "Accept 12 pt"
+    },
+    {
+      "id": "return-56",
+      "key": "b",
+      "label": "Bring back 56 pt"
+    }
+  ],
+  "status": "open",
+  "title": "Is a 12 pt gap above the keys accepted for the Orphaned composer, or must 56 pt return?",
+  "why": "On the iPhone 56 pt above the reported keyboard top already measured about 100 pt above the keys; this is my reading, and the Duo is unmeasured."
+}
