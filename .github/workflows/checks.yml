@@ -46,6 +46,11 @@ on:
   schedule:
     - cron: "17 5 * * *"
   workflow_dispatch:
+    inputs:
+      record:
+        description: Record test/a11y-base-boxes.json on the macOS screens job and upload it as an artifact
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -255,6 +260,8 @@ jobs:
     runs-on: ${{ (needs.scope.result != 'success' || needs.scope.outputs.screens == 'true') && 'macos-26' || 'ubuntu-latest' }}
     env:
       WORK: ${{ needs.scope.result != 'success' || needs.scope.outputs.screens == 'true' }}
+      # screens.mjs records the base boxes only when this is exactly "1".
+      A11Y_RECORD: ${{ inputs.record && '1' || '' }}
     # About 2.7x the slowest green run (670 s, 26 runs); it stops a hang (decision above).
     timeout-minutes: 30
     # Cancel a superseded run on a PR ref (draft state in the group); never cancel a run on main, where
@@ -282,6 +289,14 @@ jobs:
         if: env.WORK == 'true'
       - run: npm run check:screens
         if: env.WORK == 'true'
+      # A run with floor failures is red but still writes the file, so upload even then.
+      - name: keep the recorded base boxes
+        if: ${{ !cancelled() && inputs.record }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: a11y-base-boxes
+          path: test/a11y-base-boxes.json
+          if-no-files-found: error
 
   # Decision native-ci-on-hosted-macos: says whether the native and screens jobs have work.
   # Nightly and dispatch run both; so does a PR diff that cannot be read (fail safe). A push to main runs neither.
