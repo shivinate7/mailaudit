@@ -1,0 +1,46 @@
+{
+  "added": "2026-11-22T02:17:00Z",
+  "context": "Goal: the Orphaned composer passes the contrast audit.\nProblem (rule): the audit flags Save envelope and the 1 card count, but both colours already clear the floor (12.17:1 and 5.24:1); the likely cause is placement, since adding a card drops the Save row 62 pt under the keyboard with no re-scroll, and the fix re-scrolls the input after a suggestion tap while your rule says nothing moves under your finger, so only you can allow it.\nBased on (measured): the two colour pairs, 12.17:1 and 5.24:1, from the colour tokens.\nBased on (read): the designer's mockup at the folded Duo size, 466 by 678 pt: keep the colours and add a margin so the Save row sits 56 pt above the keyboard top, re-scrolled on each height change (branch design-orphaned-contrast, docs/design/orphaned-composer-contrast.html).\nUnmeasured: the 44 pt strip on the folded Duo and the 12 pt clearance.\nDeparts from: main has no re-scroll on the composer \u2014 option a adds one.\nWaiting on: your answer; both Save and the count stay red under the existing debt meanwhile.",
+  "home": "audit-skips-measured-flags; branch design-orphaned-contrast",
+  "id": "orphaned-composer-margin",
+  "kind": "decision",
+  "n": 116,
+  "options": [
+    {
+      "gain": "The audit passes with no skip.",
+      "how": "The Save row sits 56 pt above the keyboard top and is re-scrolled when the keyboard height changes.",
+      "id": "build-margin",
+      "key": "a",
+      "label": "Build the margin as drawn",
+      "lose": "The input can move once after you tap a suggestion."
+    },
+    {
+      "gain": "Nothing moves.",
+      "how": "The audit skips the contrast check on Save envelope.",
+      "id": "skip-save-frame",
+      "key": "b",
+      "label": "Keep today's layout and skip the audit on the Save frame",
+      "lose": "Save's contrast goes unchecked; this is another named skip."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "a",
+  "ref": "audit-skips-measured-flags",
+  "repo": "shivinate7/mailaudit",
+  "short": "Orphaned composer: add a margin or skip Save",
+  "shown": [
+    {
+      "id": "build-margin",
+      "key": "a",
+      "label": "Build the margin as drawn"
+    },
+    {
+      "id": "skip-save-frame",
+      "key": "b",
+      "label": "Keep today's layout and skip the audit on the Save frame"
+    }
+  ],
+  "status": "open",
+  "title": "Should the Orphaned composer get a margin above the keyboard so the audit passes?",
+  "why": "It fixes the cause with no skip, at the cost of one possible move after a suggestion tap (coordinator's recommendation)."
+}

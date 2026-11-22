@@ -31,8 +31,8 @@
   "id": "orphaned-composer-skip",
   "kind": "decision",
   "lastAnswer": {
-    "at": "2026-11-22T02:01:00Z",
-    "note": "throw me a mockup/pass that would pass the contrast audit"
+    "at": "2026-11-22T02:18:00Z",
+    "note": "Replaced by item 116 after the owner's request for a passing mockup."
   },
   "n": 84,
   "options": [
@@ -58,8 +58,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "pick": "a",
   "ref": "decision audit-skips-measured-flags (audit skips only for measured false flags); debt orphaned-composer-contrast (the ready Orphaned composer fails contrast); debt tally-audit-contrast-flags (the audit flags pairs above 4.5:1); step pro-ui-main-reds (the iPhone UI test reds on main)",
-  "replied": "2026-11-22T02:01:00Z",
-  "reply": "You asked for a mockup that would pass the contrast audit (2026-11-21 20:00 CST). Filed in git. I asked the coordinator to start a designer for the Save envelope button and the 1 card count at the folded Duo size (your phone-size answer on item 109); the picture lands on this item when it is drawn. Your choices a and b stay open until then. 20:01 CST.",
+  "replied": "2026-11-22T02:18:00Z",
+  "reply": "Replaced by the new question, item 116 (Orphaned composer margin): you asked for a mockup that passes the contrast audit, and the designer drew one. It found both colours already clear the floor and the likely cause is placement, so the question is now margin or skip. Closed. 20:18 CST 2026-11-21.",
   "repo": "shivinate7/mailaudit",
   "short": "Orphaned composer skips",
   "shown": [
@@ -74,7 +74,7 @@
       "label": "Skip nothing: both stay red until a measured fix exists"
     }
   ],
-  "status": "open",
+  "status": "closed",
   "title": "The Orphaned composer's Save button and card count fail Apple's contrast audit, but their colours measure clear. Add two named skips?",
   "why": "Both elements measure clear (12.17:1 and 5.24:1), so the flags are false; two named contrast-only skips match how Cancel, Edit and Discard were handled on this form."
 }
