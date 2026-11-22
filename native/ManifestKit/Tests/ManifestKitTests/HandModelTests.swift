@@ -607,19 +607,12 @@ final class HandModelTests: XCTestCase {
         XCTAssertEqual(h.model.offer?.heldCopies, 0, "the offer carries no held copy")
     }
 
-    // MARK: Today's pile and Not normal today (owner ruling item 79 a, 2026-11-19 23:23 CST)
+    // MARK: Today's pile and Not normal today (duo-card-in-hand)
     //
-    // The contract these cases name. The builder adds it; the names are the test-author's choice.
-    //   public struct HandDayRow: Equatable, Sendable { gk, seller: String; got, qty: Int; var short: Bool { got < qty } }
-    //       got and qty are the whole envelope's copies in now and copies ordered, not today's alone.
-    //   public struct HandShortRow: Equatable, Sendable { gk, seller: String; missing: [String]; left: Int }
-    //       missing names each card with copies still owed; left counts those copies.
-    //   public struct HandNotNormal: Equatable, Sendable { rows: [HandShortRow]; allWell: Bool }
-    //   HandModel.todaysPile(now: Date, calendar: Calendar) async throws -> [HandDayRow]
-    //       The envelopes with a line whose count is above 0 and whose stamp is at or after local midnight of `now`.
-    //   HandModel.notNormalToday(now: Date, calendar: Calendar, pastCount: Int) async throws -> HandNotNormal
-    //       rows: the short envelopes of today's pile. allWell: no row and pastCount is 0 ("All is well.").
-    //   Reading taken here: an envelope with no check-in today is not in the pile, so it is never listed as short.
+    // The pile lists each envelope with a copy checked in since local midnight. A row totals the whole envelope, so a copy
+    // checked in yesterday counts toward today's row. An envelope with no check-in today is not in the pile, so it is never
+    // listed as short. Not normal today lists the short rows with the copies still owed, and says All is well only when no
+    // row is short and no envelope is past 14 days. An unknown past count is never All is well (ux-unknown-is-not-empty).
 
     /// A fixed UTC-6 calendar, so no case reads the machine's zone.
     static let fixtureCalendar: Calendar = {
@@ -632,10 +625,16 @@ final class HandModelTests: XCTestCase {
     /// 00:00 at UTC-6 on the fixture day, in the store's milliseconds: 28 980 000 ms before t0.
     static let localMidnight: Double = HandModelTests.t0 - 28_980_000
     static let ponder = "S4|0|pPonder"
+    static let tomb = "S4|1|pAncient Tomb"
 
     /// Delta Cards holds four copies of Ponder: the one multi-copy line the envelope totals need.
     static func deltaPonder() -> [[String: Any]] {
         [item("S4", "Delta Cards", 0, "Ponder", date: "2026-07-01", qty: 4)]
+    }
+
+    /// Delta Cards also holds two copies of Ancient Tomb, so one envelope can owe two cards at once.
+    static func deltaTomb() -> [[String: Any]] {
+        [item("S4", "Delta Cards", 1, "Ancient Tomb", date: "2026-07-01", qty: 2)]
     }
 
     /// Stamps a line's check-in at `ms`, as a write in the store would. Nothing is saved: the pile reads the store's memory.
@@ -659,7 +658,7 @@ final class HandModelTests: XCTestCase {
         try await h.model.todaysPile(now: Self.fixtureDate, calendar: Self.fixtureCalendar)
     }
 
-    func notNormal(_ h: HandFixture, pastCount: Int = 0) async throws -> HandNotNormal {
+    func notNormal(_ h: HandFixture, pastCount: Int? = 0) async throws -> HandNotNormal {
         try await h.model.notNormalToday(now: Self.fixtureDate, calendar: Self.fixtureCalendar, pastCount: pastCount)
     }
 
@@ -771,6 +770,57 @@ final class HandModelTests: XCTestCase {
         let delta = try XCTUnwrap(nn.rows.first)
         XCTAssertEqual(delta.left, 3, "the short row counts lines, not the copies still owed")
         XCTAssertEqual(delta.missing, ["Ponder"], "the short row does not name Ponder as the card still owed")
+    }
+
+    /// Each owed card is one line, "<copies owed> <card name>". Path to Exile is checked in, so it owes nothing and gets no line.
+    /// The lines compare as a set: the rules list an envelope's cards by name, and the order is not what this case checks.
+    func testOwedLinesNameEachCardStillOwed() async throws {
+        let h = try await makeHand()
+        Self.checkIn(h, Self.path, 1, at: Self.localMidnight + 60_000)
+        let nn = try await notNormal(h)
+        let alpha = try XCTUnwrap(nn.rows.first)
+        XCTAssertEqual(alpha.owedLines.count, 2, "the envelope does not owe one line per card still owed")
+        XCTAssertEqual(Set(alpha.owedLines), ["1 Lightning Bolt", "1 Counterspell"],
+                       "the owed lines are not one line per card still owed, each with its copies")
+    }
+
+    /// A partly received card owes the copies still out, not its whole quantity: one of Delta's four Ponder is in, so three are owed.
+    func testOwedLinesCountTheCopiesOwedOfAPartlyReceivedCard() async throws {
+        let h = try await makeHand(extra: Self.deltaPonder())
+        Self.checkIn(h, Self.ponder, 1, at: Self.localMidnight + 60_000)
+        let nn = try await notNormal(h)
+        let delta = try XCTUnwrap(nn.rows.first)
+        XCTAssertEqual(delta.owedLines, ["3 Ponder"], "the owed line counts the four copies ordered, not the three still out")
+    }
+
+    /// Several short cards in one envelope, each partly received: one of four Ponder and one of two Ancient Tomb are in.
+    /// Each card keeps its own line with its own copies owed, and the envelope's left is the sum of both.
+    func testOwedLinesGiveEachOfSeveralCardsItsOwnCopies() async throws {
+        let h = try await makeHand(extra: Self.deltaPonder() + Self.deltaTomb())
+        Self.checkIn(h, Self.ponder, 1, at: Self.localMidnight + 60_000)
+        Self.checkIn(h, Self.tomb, 1, at: Self.localMidnight + 60_000)
+        let nn = try await notNormal(h)
+        let delta = try XCTUnwrap(nn.rows.first)
+        XCTAssertEqual(Set(delta.owedLines), ["3 Ponder", "1 Ancient Tomb"], "the owed lines do not give each card its own copies still owed")
+        XCTAssertEqual(delta.left, 4, "the row's left is not the six ordered less the two checked in")
+    }
+
+    /// A card with every copy in owes nothing, so it gets no line: Ponder is whole and Ancient Tomb owes both its copies.
+    func testOwedLinesLeaveOutACardWithEveryCopyIn() async throws {
+        let h = try await makeHand(extra: Self.deltaPonder() + Self.deltaTomb())
+        Self.checkIn(h, Self.ponder, 4, at: Self.localMidnight + 60_000)
+        let nn = try await notNormal(h)
+        let delta = try XCTUnwrap(nn.rows.first)
+        XCTAssertEqual(delta.owedLines, ["2 Ancient Tomb"], "a card with every copy in still gets an owed line")
+    }
+
+    /// Full-size state with every envelope whole, but the past-14-days count is unknown (nil): the page must not say All is well.
+    func testUnknownPastCountIsNeverAllWell() async throws {
+        let h = try await makeHand(extra: Self.deltaPonder())
+        Self.checkEverythingInToday(h)
+        let nn = try await notNormal(h, pastCount: nil)
+        XCTAssertEqual(nn.rows, [], "a whole envelope is listed under Not normal today")
+        XCTAssertFalse(nn.allWell, "the past-14-days count is unknown, but the page says All is well.")
     }
 
     /// Full-size state: every line checked in today, every envelope whole, nothing past 14 days. The page says All is well.
