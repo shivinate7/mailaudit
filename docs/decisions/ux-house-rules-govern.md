@@ -72,7 +72,7 @@ Tests 21.4 and 62.1 to 62.10 pin the bar. Tests 63.4 to 63.7 pin the Ledger tab'
 
 ## Orphaned composer keys
 
-Owner, page item 86 a, 2026-11-18 23:22 CST: the Orphaned form gets a drag on the list that hides the keys. Option b (leave it as it is) and option c (point the test at the Return key) are not chosen. The gap is `composer-keys-cover-tab-bar`, and it stays open until the test is green on the iPhone 18 Pro.
+Owner, page item 86 a, 2026-11-18 23:22 CST: the Orphaned form gets a drag on the list that hides the keys. Option b (leave it as it is) and option c (point the test at the Return key) are not chosen. The drag is built, and both `OrphanedUITests` tests that pin it (`testDraggingTheListHidesTheComposerKeysAndKeepsTheDraft`, `testComposerDraftSurvivesAViewChange`) are green on the iPhone 18 Pro in run 44959141568 (job 137014856223, pro-ui-a). The drag ends at y=393 and the keys' top edge sits at y=590, so the mode is `.immediately`. That run's two contrast audit failures belong to debts `orphaned-composer-contrast` and `tally-audit-contrast-flags`.
 
 ## Holes, named
 
