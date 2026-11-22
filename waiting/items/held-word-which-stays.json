@@ -1,0 +1,46 @@
+{
+  "added": "2026-11-22T00:22:00Z",
+  "context": "Goal: a held card reads clearly, with one word for one thing.\nProblem (goal): you chose one word only for a held card, but no question yet asks which word stays, \"held\" or \"Suspense\", so the build cannot start; only you pick the word.\nBased on (ruling): your 2026-11-19 19:28 CST answer on the held-words question: one word only (filed in docs/decisions/duo-card-in-hand.md).\nBased on (read): the built Card in Hand screen says \"1 held\" on the card line and titles the box \"Suspense\".\nDeparts from: main uses both words, held for a card's state and Suspense for the place \u2014 this picks one word for both.\nWaiting on: your answer; the how-far-it-reaches question waits on this word.",
+  "home": "decision duo-card-in-hand",
+  "id": "held-word-which-stays",
+  "kind": "decision",
+  "n": 113,
+  "options": [
+    {
+      "gain": "One short word you already see on the card line.",
+      "how": "The box title and place name become held; Suspense goes away.",
+      "id": "word-held",
+      "key": "a",
+      "label": "Held, everywhere",
+      "lose": "The box and its title change from Suspense to a held word."
+    },
+    {
+      "gain": "One word for the place and the card in it.",
+      "how": "The card line, chip, offer and Post button say Suspense; held goes away.",
+      "id": "word-suspense",
+      "key": "b",
+      "label": "Suspense, everywhere",
+      "lose": "The card line changes from 1 held to a Suspense word."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "a",
+  "ref": "decision duo-card-in-hand",
+  "repo": "shivinate7/mailaudit",
+  "short": "Which one word: held or Suspense",
+  "shown": [
+    {
+      "id": "word-held",
+      "key": "a",
+      "label": "Held, everywhere"
+    },
+    {
+      "id": "word-suspense",
+      "key": "b",
+      "label": "Suspense, everywhere"
+    }
+  ],
+  "status": "open",
+  "title": "If a held card keeps one word only, is it held or Suspense?",
+  "why": "Held already shows on the card line, the chip, the offer and Post, so it renames only the box and its title; this is read from the built strings, not measured."
+}
