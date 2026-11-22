@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// The search pill of the Packages and Tally tabs (src/app.jsx `.mdl-pill`; phone-nav-is-bottom-bar, Find). On one page it sits in a
-/// band under the list, so the list ends above it (`findPill`, notes item 17). One
+/// The floating search pill of the Packages and Tally tabs (src/app.jsx `.mdl-pill`; phone-nav-is-bottom-bar, Find). One
 /// query serves both tabs, so the text follows `query` and reports each change. A clear button shows while the field holds text
 /// (owner item 46, answer a, 2026-11-08 10:55 CST; departs from the web's `.mdl-pill`, whose input has none). It does what the web's
 /// empty-state "Clear search" does, `setQuery("")` (src/app.jsx MailDayLedger), and the empty list keeps its own Clear search.
@@ -82,28 +81,12 @@ enum FindPillMetrics {
 }
 
 extension View {
-    /// The Find pill in a band under the list, 8pt above the tab bar. The list ends at the band's top rule, so row text and controls
-    /// (a stamp editor's Save, the Tally "+") never sit under the pill at rest; with a bottom inset the scroll view ran full height
-    /// under it, rows passed under the opaque pill and failed the contrast audit (notes item 17). The band is in the keyboard-avoiding
-    /// safe area, so it lifts with the keys and the list shrinks from its bottom. `show` is false on a screen with no items and on the
-    /// open Duo, where the pill is `findPillOnDuo`. Apply an error bar to the list before this, so it sits on the list's edge.
+    /// The Find pill 8pt above the tab bar, and a clear stretch of list above it. The bottom inset moves the last card clear of the
+    /// pill, and the pill lifts above the keyboard with it. `show` is false on a screen with no items and on the open Duo.
     func findPill(show: Bool, query: String, change: @escaping (String) -> Void) -> some View {
-        VStack(spacing: 0) {
-            self
-            if show {
-                FindPill(query: query, change: change)
-                    .padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 8)
-                    .frame(maxWidth: .infinity)
-                    .background(Parchment.paper, ignoresSafeAreaEdges: .bottom)
-                    .findPillRule()
-            }
+        safeAreaInset(edge: .bottom, spacing: 0) {
+            if show { FindPill(query: query, change: change).padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 8) }
         }
-    }
-
-    /// The 1pt `Parchment.line` rule on a view's top edge, full width: the top of the Find pill's band (the same rule closes the
-    /// running head, `RunningHead`). The one home for it.
-    func findPillRule() -> some View {
-        overlay(alignment: .top) { Rectangle().fill(Parchment.line).frame(height: 1) }
     }
 
     /// The pill on the open Duo: on the right page, 8 pt above the custom bar (`DuoBarMetrics.height` up from the window's bottom),
