@@ -1,6 +1,6 @@
 // The words the Post bar speaks (decision duo-card-in-hand). They live in HandPostBar so these tests can read them:
-// XCUITest reads no hint, so the Post button's hint is pinned here. The wording is as built; item 80 (the held-card
-// words) is open, so a change to these strings needs the owner's ruling first.
+// XCUITest reads no hint, so the Post button's hint is pinned here. The wording is as built. Item 80 (held-card words, `hand-held-words`) is ruled in part: "one word only", 2026-11-19 19:28 CST.
+// Which word stays waits on item 113 (`held-word-which-stays`); how far the change reaches waits on item 97 (`held-words-one-word-scope`). The held-card words hold until both are answered.
 
 import XCTest
 @testable import ManifestKit
