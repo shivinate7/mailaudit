@@ -23,7 +23,7 @@ Cancel on the leading edge of a sheet.
 
 Sizes: Duo folded 466 x 678 and open 951 x 669 (hinge x 455.5 to 495.5) come from the brief.
 `layout.py devices` prints `unknown` for this repo, and no size is written for any device.
-The brief gives no size for the large phone. It is drawn 375 pt wide (the `check:screens` phone width that
+The brief gives no size for the large phone. It is drawn 375 pt wide (the `check:screens` phone width before the three forms, that
 `phone-nav-is-bottom-bar` names) and 678 pt tall (borrowed from the folded Duo). The real size is unmeasured.
 Status bar: 20 pt, as `duo-hand-held-box` draws it. Bottom safe area: unmeasured; drawn as 0 plus the bar's 12 pt.
 Theme: light only. The web app and the native client ship light (`design-parchment-ledger`), so there is no

@@ -199,7 +199,7 @@ Every figure is sample data: a seeded ledger of about 2,000 lines, 255 card name
     - `layout.py devices` answers "unknown" for this repo.
     - The folded pose is drawn at the brief's 466 × 678 pt. The record `duo-fold-and-keyboard` reads the
       outer screen as 382 × 644 pt of safe content. The two do not agree.
-    - No phone size is written. The phone is drawn 375 pt wide, the width `check:screens` and
+    - No phone size is written. The phone is drawn 375 pt wide, the width `check:screens` used before the three forms, and
       `testTalliesAreUnequalThirdsAt375pt` use, and 760 pt tall as a guess.
     - The status bar is the 20 pt UI-test floor, as `duo-hand-tap-shift.html` draws it.
     - There is one theme: native is held to light, and the dark tokens belong to the extension.

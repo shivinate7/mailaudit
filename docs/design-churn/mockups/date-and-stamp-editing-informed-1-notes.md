@@ -13,7 +13,7 @@ Designer kind: informed. Mockup: `date-and-stamp-editing-informed-1.html` beside
 ## Devices, sizes and themes
 
 - iPhone Duo folded, 466 × 678 pt, then open, 951 × 669 pt, with the fold from x 455.5 to 495.5. `layout.py devices` printed `unknown` for this repo, so both sizes come from the brief. Nothing sits across the fold.
-- Large phone, drawn at 375 × 812. No size is written for it anywhere: not in the brief, not in `layout.py`, not in the repo. 375 × 812 is the phone size `test/screens.mjs` checks (as `recent-log-notes.md` records). A real large phone is wider, so this is the worst case for width.
+- Large phone, drawn at 375 × 812. No size is written for it anywhere: not in the brief, not in `layout.py`, not in the repo. 375 × 812 was the phone size `test/screens.mjs` checked before the three forms (as `recent-log-notes.md` records). A real large phone is wider, so this is the worst case for width.
 - Folded at AX5. Body 53 pt against 17 pt at the default size, from the typography page. Every Cochin and mono size is scaled by 53/17. The tab bar labels stay at the default size, as `duo-card-in-hand` caps them.
 - One theme, light. The app has no dark palette (`design-parchment-ledger`), and the native client is held to light.
 - Status bar and home-indicator bands: no Apple page I read gives them. Both are drawn at the 20 pt floor the Duo UI tests use (`DuoHandUITests.statusBarFloor`). Unmeasured.

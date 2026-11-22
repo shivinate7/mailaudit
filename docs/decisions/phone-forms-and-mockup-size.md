@@ -24,7 +24,7 @@ git grep -l -P "$TWO" origin/main -- 'docs/design-churn/*.html' | wc -l         
 
 **Holds while:** `duo-fold-and-keyboard` gives the folded outer screen as 466 by 678 pt, and the ruling above stands.
 
-**Pinned by:** no test pins the forms. `npm run check:screens` runs at 375 px and 760 px, and claim 17a also at 320 px (`test/screens.mjs`).
+**Pinned by:** no test pins the forms. `npm run check:screens` runs at 402 px, 440 px and 466 px, the three forms, and claim 17a runs at each form too (`test/screens.mjs`).
 
 **Not yet in line:**
 

@@ -98,7 +98,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `ruled-head-masthead-vocabulary` | Kind: build | [`docs/decisions/ruled-head-masthead-vocabulary.md`](../docs/decisions/ruled-head-masthead-vocabulary.md) |
 | `ruled-head-one-advisory-entrance` | Kind: build | [`docs/decisions/ruled-head-one-advisory-entrance.md`](../docs/decisions/ruled-head-one-advisory-entrance.md) |
 | `rules-run-in-javascriptcore` | **Status:** ruled. | [`docs/decisions/rules-run-in-javascriptcore.md`](../docs/decisions/rules-run-in-javascriptcore.md) |
-| `screens-checked-headless-in-ci` | Each view (Ledger tab, Orphaned, Tally, Packages) is checked in a headless browser at 375px and 760px. | [`docs/decisions/screens-checked-headless-in-ci.md`](../docs/decisions/screens-checked-headless-in-ci.md) |
+| `screens-checked-headless-in-ci` | Each view (Ledger tab, Orphaned, Tally, Packages) is checked in a headless browser at 402px, 440px and 466px, the three phone forms. | [`docs/decisions/screens-checked-headless-in-ci.md`](../docs/decisions/screens-checked-headless-in-ci.md) |
 | `seed-load-guards` | Kind: build | [`docs/decisions/seed-load-guards.md`](../docs/decisions/seed-load-guards.md) |
 | `spacing-on-4px-grid` | Kind: build | [`docs/decisions/spacing-on-4px-grid.md`](../docs/decisions/spacing-on-4px-grid.md) |
 | `sync-revamp-cloudflare` | Kind: build | [`docs/decisions/sync-revamp-cloudflare.md`](../docs/decisions/sync-revamp-cloudflare.md) |

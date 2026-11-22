@@ -26,7 +26,7 @@ Owner ruling, 2026-10-12 ("make it exact fix then"): a closed draft holds the ph
 
 Discard sits on each saved envelope. Its ask arms in place. The ask reads "Tap again to discard N cards", where N is the envelope's cards. Cancel takes first focus. The ask hangs below the row, so the arm does not shrink or move the envelope header or the Edit control (ux-press-moves-nothing). The count and the arm are built. The count is an orchestrator default of 2026-10-11.
 
-**Pinned by:** tests 61.8 and 61.9 (the Discard ask names the cards, first focus on Cancel), 61.43 to 61.46 (the arm keeps the header row's nodes), 61.47 to 61.53 (Cancel keeps a draft, and drafts are held per composer), and 61.54 to 61.57 (61.54 is the control, with no draft, so an unused blob is swept; 61.55 a closed composer keeps its draft; 61.56 a closed draft keeps its photo and the sweep takes the rest; 61.57 an open composer holds the sweep off). Geometry is not pinned here. Check 3 of `check:screens` measures it at 375px.
+**Pinned by:** tests 61.8 and 61.9 (the Discard ask names the cards, first focus on Cancel), 61.43 to 61.46 (the arm keeps the header row's nodes), 61.47 to 61.53 (Cancel keeps a draft, and drafts are held per composer), and 61.54 to 61.57 (61.54 is the control, with no draft, so an unused blob is swept; 61.55 a closed composer keeps its draft; 61.56 a closed draft keeps its photo and the sweep takes the rest; 61.57 an open composer holds the sweep off). Geometry is not pinned here. Check 3 of `check:screens` measures it at 402px, 440px and 466px.
 
 ## See also
 
