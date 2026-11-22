@@ -368,19 +368,20 @@ const extFile = (rel) => readFileSync(new URL(`../extension/${rel}`, import.meta
 await test("10.1", async () => {
   const name = JSON.parse(extFile("manifest.json")).name;
   eq(typeof name, "string", "scope, the manifest has a name string");
-  eq(name.includes("CH Post"), true, "the manifest name says CH Post, the product name, not MANIFEST");
+  eq(name, "CH Post orders", "the manifest name is CH Post orders, the product name, not MANIFEST");
 });
 
 await test("10.2", async () => {
   const description = JSON.parse(extFile("manifest.json")).description;
   eq(typeof description, "string", "scope, the manifest has a description string");
-  eq(description.includes("CH Post"), true, "the manifest description says CH Post");
+  eq(description, "Reads your TCGplayer order history from a signed-in tab and adds new orders to your CH Post ledger.",
+    "the manifest description is the CH Post sentence");
 });
 
 await test("10.3", async () => {
   const title = JSON.parse(extFile("manifest.json")).action?.default_title;
   eq(typeof title, "string", "scope, the action has a default_title string");
-  eq(title.includes("CH Post"), true, "the action default_title says CH Post, the toolbar hover");
+  eq(title, "CH Post orders", "the action default_title is CH Post orders, the toolbar hover");
 });
 
 await test("10.4", async () =>
@@ -390,18 +391,21 @@ await test("10.4", async () =>
 await test("10.5", async () => {
   const m = /<title>([^<]*)<\/title>/.exec(extFile("options.html"));
   eq(!!m, true, "scope, options.html has a title element");
-  eq(m[1].includes("CH Post"), true, "the options page title says CH Post");
+  eq(m[1], "CH Post orders", "the options page title is CH Post orders");
 });
 
+/* The letterhead is the masthead and stays MANIFEST (records masthead-is-not-project-name and
+   masthead-is-one-letterhead). The title keeps the product name, CH Post orders. */
 await test("10.6", async () => {
   const m = /<div class="t">([^<]*)<\/div>/.exec(extFile("options.html"));
   eq(!!m, true, "scope, options.html has a letterhead div of class t");
-  eq(m[1].includes("CH Post"), true, "the options page letterhead says CH Post");
+  eq(m[1], "MANIFEST", "the options page letterhead says MANIFEST, the masthead");
 });
 
-await test("10.7", async () =>
-  eq(extFile("options.html").includes("MANIFEST"), false,
-    "the options page holds no MANIFEST anywhere, title or letterhead"));
+await test("10.7", async () => {
+  const hits = extFile("options.html").match(/MANIFEST/g) ?? [];
+  eq(hits.length, 1, "the options page carries MANIFEST once, on the letterhead");
+});
 
 /* ---------- report ---------- */
 if (loadNote) console.log(`note: extension/core.mjs did not load (${loadNote}); each case reads undefined from it`);
