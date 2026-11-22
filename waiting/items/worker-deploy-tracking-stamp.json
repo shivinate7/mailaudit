@@ -4,6 +4,10 @@
   "home": "decision live-verification",
   "id": "worker-deploy-tracking-stamp",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-22T18:32:00Z",
+    "note": "b: deploy both together after PR 390 merges (saved in git)."
+  },
   "n": 124,
   "options": [
     {
@@ -26,6 +30,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "b",
   "ref": "coordinator 2026-11-22 12:31 CST: live Worker deploy",
+  "replied": "2026-11-22T18:34:00Z",
+  "reply": "You picked b (saved in git, 2026-11-22 12:32 CST): the tracking-stamp merge and the restore-stamp change go to the live Worker together, after the Hand end-of-day change (PR 390) merges. Nothing deploys before then. I told the coordinator. 12:34 CST.",
   "repo": "shivinate7/mailaudit",
   "short": "Live Worker deploy: tracking-stamp merge now, or both together later",
   "shown": [
