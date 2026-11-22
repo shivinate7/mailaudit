@@ -255,14 +255,15 @@ function frame(kind) {
   } else if (kind === "keys") {
     const clearDrawn = drawnTop - rowBottom;
     verdict = clearDrawn >= 0
-      ? `<span class="ok">Save row y ${rowTop}–${rowBottom}. ${clearDrawn} pt above the drawn top (y ${drawnTop}), ${keysTop - rowBottom} pt above the reported top (y ${keysTop}).</span>`
+      ? `<span class="ok">Save row y ${rowTop}–${rowBottom}. ${clearDrawn} pt above the drawn top (y ${drawnTop}), ${keysTop - rowBottom} pt above the reported top (y ${keysTop}).</span> With an empty pile, only 28 pt of content lies below the row, so the scroll needs a bottom content margin of ${Math.max(0, keysTop - rowBottom - 28)} pt while composing to get here.`
       : `<span class="bad">Save row y ${rowTop}–${rowBottom}. ${-clearDrawn} pt inside the drawn strip (from y ${drawnTop}), if the folded keys draw one.</span>`;
   } else {
     verdict = `<span class="ok">Save row y ${rowTop}–${rowBottom}, ${TAB_TOP - rowBottom} pt above the tab bar (y ${TAB_TOP}), so the audit checks it: no overlap, no skip.</span>`;
   }
   read = `<div class="read">Keys ${keys ? k + " pt, reported top y " + keysTop : "closed"} · composer y ${compTop}–${compBottom}<br>${verdict}</div>`;
   const head = headBottom > 0 ? `<div class="zone head" style="top:0;height:${headBottom}px">Masthead, scrolled up. Folded height and top inset not measured.</div>` : "";
-  const below = kind === "closed" ? `<div class="below"><div class="micro">Envelope · 2026-01-01 · 2 cards</div><div class="e">Sample Card Name</div><div class="e">Sample Card Name</div></div>` : `<div class="below"><div class="micro">Envelope · 2026-01-01 · 2 cards</div><div class="e">Sample Card Name</div></div>`;
+  // The audited run starts with an empty pile, and the composer hides the empty line, so nothing is drawn below it.
+  const below = "";
   const keyLayer = keys ? `
       <div class="strip" style="top:${drawnTop}px;height:${STRIP}px">Drawn strip, 44 pt above the frame: measured on the open Duo only</div>
       <div class="keys" style="height:${k}px">System keyboard, not drawn. Reported frame ${k} pt.</div>` : `
