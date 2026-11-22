@@ -1,5 +1,9 @@
 {
   "added": "2026-11-21T06:36:00Z",
+  "command": {
+    "mac": "gh auth switch -u shivinate7 && git push origin --delete archive-duo-round2-records design-duo-post-bar-53 design-duo-post-pins red/duo-post-pins red/orphaned-composer-dismiss red/post-pins design/duo-round2",
+    "powershell": "gh auth switch -u shivinate7; git push origin --delete archive-duo-round2-records design-duo-post-bar-53 design-duo-post-pins red/duo-post-pins red/orphaned-composer-dismiss red/post-pins design/duo-round2"
+  },
   "context": "Goal: sessions can delete merged and temporary branches on their own.\nProblem (rule): you already ruled that the cloud environment carries a GitHub token named SHIV_GITHUB_TOKEN, it is still not set (checked in two sessions), and branch deletes return 403; only you can create the token.\nBased on (ruling): r45, your ruling of 2026-11-11 14:25 CST in claude-settings: you approve a GitHub token in the cloud environment as SHIV_GITHUB_TOKEN, which you create, so sessions can delete branches.\nBased on (read): seven branches wait for deletion: ideas/mock-delight, ideas/mock-deputy, ideas/mock-money, ideas/mock-say-it-back, red/duo-post-pins, design-duo-post-pins, design-duo-post-bar-53 (checked 2026-11-21 17:15 CST CST: duo-post-pins, duo-post-bar-53 and red/duo-post-bar-53 are already gone).\nDeparts from: main has no such token in the cloud environment \u2014 this adds one cloud environment variable.\nWaiting on: your answer; the branches stay until then.",
   "home": "claude-settings ruling r45; cloud environment settings",
   "id": "cloud-env-branch-delete-token",
@@ -36,8 +40,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "a",
   "ref": "claude-settings ruling r45",
-  "replied": "2026-11-22T02:01:00Z",
-  "reply": "You asked if this is real and if you would need a GitHub app (2026-11-21 20:00 CST, saved in git). No app: ruling r45 is your own, 2026-11-11 14:25 CST: a personal access token you create and save in the cloud environment as SHIV_GITHUB_TOKEN. But whether it works is unproven. I have not tried it, the cloud rules refuse direct GitHub writes from a session, and the GitHub tools a session has include no delete-branch. So even with the token, a session may still not be able to delete. A cheaper route: a session on your Mac deletes the seven branches with one command. Say which you want: drop the token and use the Mac, or keep the token. 20:01 CST.",
+  "replied": "2026-11-22T02:04:00Z",
+  "reply": "You asked if this is real and if you would need a GitHub app (2026-11-21 20:00 CST, saved in git). No app: ruling r45 is your own, 2026-11-11 14:25 CST: a personal access token you create and save in the cloud environment as SHIV_GITHUB_TOKEN, and it stands. Whether it works is unproven: I have not tried it, the cloud rules refuse direct GitHub writes from a session, and the GitHub tools a session has include no delete-branch. So the coordinator made a command you can paste instead (the command box below) in any checkout of shivinate7/mailaudit. It deletes seven branches, each already copied on origin (merged to main, or archived under archive/...). Left out on purpose: red/hand-end-of-day (a lane is open) and design-explore and ideas branches (not checked). 20:04 CST.",
   "repo": "shivinate7/mailaudit",
   "short": "Create the branch-delete token (r45)",
   "shown": [
