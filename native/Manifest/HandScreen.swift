@@ -134,7 +134,7 @@ struct HandScreen: View {
                     Text(e).font(.cochin(13, relativeTo: .footnote)).foregroundStyle(Parchment.red).accessibilityIdentifier("hand-error")
                 }
                 matches
-                if let h = hand.held { notice(id: "hand-held", title: "Suspense", line: h.localizedCapitalized, foot: "Not checked in.") }
+                if let h = hand.held { notice(id: "hand-held", title: "held", line: h.localizedCapitalized, foot: "Not checked in.") }
                 if !hand.strays.isEmpty {
                     notice(id: "hand-strays", title: "Released, not checked in",
                            line: hand.strays.map(\.localizedCapitalized).joined(separator: ", "),
@@ -148,11 +148,11 @@ struct HandScreen: View {
 
     /// The names the typed text matches, under their own heading, so a card you only released does not read as part of the
     /// envelope. The matches sit below the envelope row because no-layout-shift-under-pointer outranks mockup pose 2: a
-    /// list above would lift New envelope from under the finger. The Suspense and Released boxes sit below the matches too:
+    /// list above would lift New envelope from under the finger. The held and Released boxes sit below the matches too:
     /// a box above would push the only match under the keys, and a box that changes height on New envelope would move the
     /// button under the finger.
     /// A tap on a match holds the list: every row keeps its place until the next keystroke, so no row slides under the
-    /// finger and the Suspense box of a shared name does not rise into the freed space. The tapped row is bold with an
+    /// finger and the held box of a shared name does not rise into the freed space. The tapped row is bold with an
     /// accent bar; the others stay tappable in inkSoft, and a tap on one moves the mark. Every row has the same 10 pt leading
     /// inset, so the bar sits in a gutter and no label moves on a tap.
     /// Departs from: mockup pose 2 (matches above the envelope), and a list that collapses to the tapped row (default, not owner).
@@ -180,7 +180,7 @@ struct HandScreen: View {
         }
     }
 
-    /// A short pointer to the Suspense and Released boxes, which can sit under the keys (hand-held-box-under-keys). It shows
+    /// A short pointer to the held and Released boxes, which can sit under the keys (hand-held-box-under-keys). It shows
     /// while a card is held or released and is not a control. Manila, not the card colour, so it does not read as a button.
     /// Capped at xxxLarge: uncapped at the largest sizes it would fill the field and leave no room to type; the large-content
     /// viewer shows it large on a long press. The boxes below still scale in full.
