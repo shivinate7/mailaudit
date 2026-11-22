@@ -1271,6 +1271,7 @@ if (cell(/^Re-import CSV/)?.getAttribute("aria-expanded") !== "true")
   await click(btn(/Re-import CSV/), "open the upload zone");
 await dropFile("backup.json", JSON.stringify({ hello: "world" }));
 await act(async () => await sleep(0));
+// Copy names CH Post: owner ruling 114 b (2026-11-21 19:54 CST).
 ok(/isn’t a CH Post backup/.test(text()), "26.20 a non-ledger JSON is refused on the restore path");
 ok(text().includes("CH Post"), "26.20a the refusal copy names CH Post");
 ok(!text().includes("Mail Day"), "26.20b and no Mail Day copy is left on the page");
@@ -7905,6 +7906,7 @@ await tapL1(/Load older versions/, "ask for the older versions when the reply is
 await settle();
 const badRespL1 = leafL1(/^That isn’t a .+ ledger\. Nothing on this device was changed\.$/);
 ok(!!badRespL1, "61.39b the bad-response line is on screen, with its nothing-changed sentence");
+// Copy names CH Post: owner ruling 114 b (2026-11-21 19:54 CST).
 ok(/CH Post ledger/.test(badRespL1?.textContent ?? ""), "61.39c and it names CH Post, not Mail Day");
 remote.fail = null;
 
@@ -9155,6 +9157,7 @@ try {
    native-ledger-is-raw-json, milestones-taken-before-risk. */
 const KEY68 = "device-68-key";
 const COPY68 = /A copy of that file could not be saved to History, so nothing was changed\./;
+// Copy names CH Post: owner ruling 114 b (2026-11-21 19:54 CST).
 const NOT_BACKUP68 = /isn[’']t a CH Post backup/;
 
 /* 68.1 a file restore from a refused load: when the raw text cannot be copied, the restore changes nothing. */
@@ -9200,6 +9203,7 @@ try {
   await click(btn(/Re-import CSV/), "show upload zone");
   await dropFile("mailday-backup.json", JSON.stringify({ ...withField67("received", "x"), items: ITEMS }));
   await sleep(SAVE_WAIT);
+  // Copy names CH Post: owner ruling 114 b (2026-11-21 19:54 CST).
   ok(!NOT_BACKUP68.test(text()), "68.2 a damaged file whose copy cannot be saved is not called “not a CH Post backup”");
   ok(COPY68.test(text()), "68.2a the line says a copy could not be saved, and nothing was changed");
   eq(savedText(), savedBefore68, "68.2b the saved text is unchanged");
