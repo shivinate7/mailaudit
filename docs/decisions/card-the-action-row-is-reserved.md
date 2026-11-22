@@ -22,7 +22,7 @@ At the 46px reservation, the first check-in moves no item row at 360, 375 or 390
 
 ## The 320px exception
 
-**320px is the one width this does not fully fix.** Three buttons wrap to a *third* line there, and the row still steps 11px. The bar half is width-independent, so at 320px the shift falls from 28px to 11px. This is left deliberately. 320px is not one of the three phone forms (`phone-forms-and-mockup-size`). It is not a viewport that current iOS runs. Reserving 57px would fix 320px by spending 26px of dead space in every expanded card at the widths that are real.
+**320px is the one width this does not fully fix.** Three buttons wrap to a *third* line there, and the row still steps 11px. The bar half is width-independent, so at 320px the shift falls from 28px to 11px. This is left deliberately. 320px is not one of the three named phone forms (`phone-forms-and-mockup-size`). It is not a viewport that current iOS runs. Reserving 57px would fix 320px by spending 26px of dead space in every expanded card at the widths that are real.
 
 If the fix is ever wanted, get it without dead space. Keep all three buttons mounted and hide the inapplicable one. The row then measures itself at every width. The cost is that the visible label wraps at rest. That is a look, so it is a decision for the owner, not a fix to apply.
 
