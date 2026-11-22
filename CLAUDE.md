@@ -40,7 +40,7 @@ Eight rules. Breaking one costs the owner months of check-in data.
 - `parser-filters` — Parser keeps only TCG purchases.
 - `saved-state-shape` — Saved-state shape is fixed.
 - `storage-keys-are-frozen` — Storage keys are frozen.
-- `the-token-is-a-credential` — The device key and any stored GitHub token are credentials.
+- `the-token-is-a-credential`
 
 ## Storage and the platform layer
 
@@ -80,9 +80,9 @@ A question this repo has not closed, or a risk it accepted on purpose. Each reco
 - `ci-runs-in-utc` — CI runs the suite outside UTC, so test 38.9 runs there.
 - `itp-may-clear-storage` — ITP may clear storage after seven idle days.
 - `nothing-recovers-without-the-key` — A fresh device needs its device key to recover.
-- `photos-in-git-are-permanent` — Photos are permanent in git and in the Worker.
-- `ledger-private-source-public` — The ledger repo is private, the source repo is public.
-- `token-sits-on-shared-origin` — The device key sits on a shared origin.
+- `photos-in-git-are-permanent`
+- `ledger-private-source-public`
+- `token-sits-on-shared-origin`
 - `vendor-toggle-undecided` — The vendor toggle stays undecided.
 - `merge-later-change-wins` — Clock skew can pin a merge key, including a line's tracking stamp. Accepted risk.
 

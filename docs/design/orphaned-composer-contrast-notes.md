@@ -4,6 +4,8 @@ Mockup: `orphaned-composer-contrast.html`. Designer kind: informed. Owner page i
 
 Deep links: `#s=all` (default: Today keys up, New keys up, New keys closed), `#s=today`, `#s=keys`, `#s=closed`. `#k=250` draws the 250 pt keyboard, and `#k=289` (default) the 289 pt one. `#o=<option id>` draws an option and rings the element it changes: `margin-strip`, `margin-clear`, `count-inksoft`, `count-ink`, `save-pill`, `save-fills`. The parts combine, as in `#s=keys&k=250&o=margin-clear`.
 
+Option ids: `margin-clear` is item 1 (12 pt, picked); `margin-strip` is item 2 (56 pt, not picked).
+
 Size and theme: iPhone Duo folded, 466 x 678 pt only (owner page item 109, decision `phone-forms-and-mockup-size`, still on branch `ruling-109-phone-forms`). Default text size. Light only: `native/project.yml` sets `UIUserInterfaceStyle: Light`.
 
 ## The cause the mockup draws
@@ -32,16 +34,16 @@ The last column is the share of a pixel that must be the text colour, the rest c
 
 ## Items
 
-1. **Margin: the Save row's bottom 56 pt above the keyboard's reported top.** Pick. The 56 pt is 44 pt for the strip the keys drew above their frame on the open Duo (`DuoHandUITests.keyboardDrawnAbove`, measurement `duo-fold-and-keyboard`), plus a 12 pt clearance, which is my choice. Re-scroll each time the composer's height changes: an entry added or removed, the suggestion list opened or closed, a field growing to its third line. Do it as well as the focus and keys-shown scrolls. Folded, with the 289 pt keys: the row lies at y 289 to 333, the composer at y 78 to 345. With the 250 pt keys: the row lies at y 328 to 372.
-   - Gain: the row clears the keys even if the folded screen and the 18 Pro draw the same strip. It also fixes what a person sees: today the first card puts Save out of sight under the keys.
-   - Loss: 44 pt less of the page shows above the composer. The strip is measured on the open Duo only. On the folded screen and the 18 Pro it is unmeasured.
+1. **Margin: the Save row's bottom 12 pt above the keyboard's reported top.** Pick (owner ruling 123 a, 2026-11-22). Re-scroll each time the composer's height changes: an entry added or removed, the suggestion list opened or closed, a field growing to its third line. Do it as well as the focus and keys-shown scrolls. Folded, with the 289 pt keys: the row lies at y 333 to 377, the composer at y 122 to 389. With the 250 pt keys: the row lies at y 372 to 416.
+   - Gain: the row clears the keys' reported top. It also fixes what a person sees: today the first card puts Save out of sight under the keys. 44 pt more of the page shows than at 56 pt.
+   - Loss: the keys drew a 44 pt strip above their frame on the open Duo (`DuoHandUITests.keyboardDrawnAbove`, measurement `duo-fold-and-keyboard`). If they draw it here too, the row sits inside the strip, and the audit still reads keyboard pixels. The strip is measured on the open Duo only. On the folded screen and the 18 Pro it is unmeasured.
    - Departs from: `ComposerView` `.onChange(of: focused)` and the `keyboardDidShowNotification` handler, which scroll on focus and keys only, and `MastheadScreen` `scrollTo(anchor: .bottom)`, which leaves no margin. Not blocking.
-   - Reach: `scrollTo` cannot scroll past the end of the content. The audited run starts with an empty pile, since the seed fixture `shared/fixtures/ledger.json` holds items only. The composer hides the empty line, so only the composer's 12 pt padding and the list's 16 pt bottom padding lie below the Save row, 28 pt in all. To reach the 56 pt margin, the scroll needs 28 pt more content below while the composer is open, for example a bottom content margin. Item 2 needs none.
+   - Reach: `scrollTo` cannot scroll past the end of the content. The audited run starts with an empty pile, since the seed fixture `shared/fixtures/ledger.json` holds items only. The composer hides the empty line, so only the composer's 12 pt padding and the list's 16 pt bottom padding lie below the Save row, 28 pt in all. That covers the 12 pt margin, so the scroll needs no extra content below. Item 2 would need 28 pt more.
    - Pointer: the re-scroll moves the composer about 62 pt up just after a tap on a suggestion row. Invariant `no-layout-shift-under-pointer` forbids a row moving under the thumb after a press. Today the same tap already moves every row below the input by 62 pt as the list closes and the entry lands, but the re-scroll moves the input itself, which today stays still. To keep the move small, scroll only when the Save row lies below the keys' drawn top, and only by the distance needed. Owner grant: yes.
-   - Builder: give the check an outcome, not a picture. With the keys up and one card added, Save's frame `maxY` ≤ the keyboard's `minY` − `keyboardDrawnAbove` − 12. The test reads that constant and never copies it, as the Post test in `DuoHandUITests` does.
-2. **Margin: 12 pt above the reported top only.** The same re-scroll without the strip.
-   - Gain: 44 pt more of the page shows.
-   - Loss: if the keys draw a strip here too, the row sits inside it, and the audit still reads keyboard pixels. Not picked.
+   - Builder: give the check an outcome, not a picture. With the keys up and one card added, Save's frame `maxY` ≤ the keyboard's `minY` − 12. The test reads the 12 pt margin from one constant and never copies it.
+2. **Margin: 56 pt above the reported top.** The same re-scroll with the strip added: 44 pt for the strip plus the 12 pt clearance. Not picked.
+   - Gain: the row clears the keys even if the folded screen and the 18 Pro draw the same strip.
+   - Loss: 44 pt less of the page shows above the composer.
 3. **Count stays inkSoft.** Pick. No colour change, at 5.24:1.
    - Gain: keeps the note meaning (decision `orphaned-colours-by-meaning`) and the web's count (`src/app.jsx` `EnvelopeComposer`).
    - Loss: thin headroom. A glyph pixel with less than 93% inkSoft falls under 4.5:1. The empty audit shows that this does not flag the count today.
@@ -58,8 +60,8 @@ The last column is the share of a pixel that must be the text colour, the rest c
 
 ## What moves compared with today
 
-- With the keys up, the composer scrolls up after each card is added. With the 289 pt keys it moves 118 pt: from y 196–463 to y 78–345. Today the row is 62 pt under the keys' top, and the pick puts it 56 pt above that top.
-- With the keys closed, nothing moves that does not move today. The scroll offset stays where the last re-scroll left it. That is my reading of SwiftUI's scroll view, and it is unmeasured. The row then lies 262 pt above the tab bar, so the audit checks it, with no overlap and no skip.
+- With the keys up, the composer scrolls up after each card is added. With the 289 pt keys it moves 74 pt: from y 196–463 to y 122–389. Today the row is 62 pt under the keys' top, and the pick puts it 12 pt above that top.
+- With the keys closed, nothing moves that does not move today. The scroll offset stays where the last re-scroll left it. That is my reading of SwiftUI's scroll view, and it is unmeasured. The row then lies 218 pt above the tab bar (179 pt with the 250 pt keys), so the audit checks it, with no overlap and no skip.
 - No colour, size, font or control changes in the picks.
 
 ## The fix check
