@@ -24,7 +24,7 @@ Packages, Tally and Orphaned read one check-in map. These records say what each 
 - `tally-pools-on-the-exact-name` — Tally pools by exact product name.
 - `search-filters-inside-package` — A search result needs a way back.
 - `a-reveal-ignores-hidedone-too` — A reveal ignores hideDone too.
-- `order-id-button-stops-propagate` — Order id controls stop their clicks.
+- `order-id-button-stops-propagate` — Order id links to TCGplayer and stops its clicks.
 - `lost-mail-flags-use-order-date` — Lost-mail flags count from the order date.
 - `orphaned-colours-by-meaning` — Orphaned uses colour for the same meanings.
 - `undo-removes-only-its-delta` — Undo subtracts its own delta, not a snapshot.
