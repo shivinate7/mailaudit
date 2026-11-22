@@ -1,6 +1,6 @@
 # The native job runs on a hosted macOS runner
 
-**Status:** ruled. The owner accepted this on 2026-10-11 with the plan. Owner ruling, 2026-11-08 16:50 CST: hosted macOS CI is the only place native work runs. The whole team moves to the cloud, with no Mac simulators. Lane C1 landed the job in PR #76. The `all-jobs-passed` rollup needs it, so it is required, see Required check. Its unmeasured facts are debts, see Unmeasured: `native-runner-image-unverified`, `native-runner-keychain-unverified` and `native-job-hosted-time-unmeasured`.
+**Status:** ruled. The owner accepted this on 2026-10-11 with the plan. Owner ruling, 2026-11-08 16:50 CST: native work runs in hosted macOS CI. Owner ruling, 2026-11-22 about 17:45 CST, given in chat: native UI tests may also run locally on this Mac through the shared `sim-test` (`~/.claude/bin/sim-test`), which takes and gives the shared simulator lease (`~/.claude/bin/sim-lease`). A local run is proof before a PR's own hosted run. See `one-simulator-per-mac` for the lease and boot rules. Hosted macOS CI stays the required check (`all-jobs-passed`). Lane C1 landed the job in PR #76. The `all-jobs-passed` rollup needs it, so it is required, see Required check. Its unmeasured facts are debts, see Unmeasured: `native-runner-image-unverified`, `native-runner-keychain-unverified` and `native-job-hosted-time-unmeasured`.
 
 The native job in `.github/workflows/checks.yml` runs the Swift package tests on a hosted macOS runner. Degen's self-hosted runner is not copied. Native builds, simulator and UI tests, and screenshots move into macOS CI jobs, see Still open.
 
@@ -45,7 +45,7 @@ Degen's self-hosted runner. On a public repo, a fork PR would run on the owner's
 ## Still open
 
 - The native job runs ST only (`checks.yml`). The UI tests run in other jobs: the Duo classes in `duo-ui-runs-on-pr-label`, the other classes at milestones in `milestone-runs-full-suite`. Debt: `native-ui-tests-not-in-ci`.
-- Owner ruling, 2026-11-08 16:50 CST: native UI tests and screenshots run in macOS CI jobs, with no Mac simulators. Debt: `native-ui-tests-not-in-ci`.
+- Owner ruling, 2026-11-08 16:50 CST: native UI tests and screenshots run in macOS CI jobs. Owner ruling, 2026-11-22 about 17:45 CST, allows a local run through `sim-test` as proof, see Status. Debt: `native-ui-tests-not-in-ci`.
 - Home measured a hosted route for the Duo: the xcode-27 macOS runner image has the iPhone Duo device type, and `hinge` works there (run 42522664456 and PR 588 in the home repo). `duo-ui-runs-on-pr-label` builds that route.
 
 ## See also
