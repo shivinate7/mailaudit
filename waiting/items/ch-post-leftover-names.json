@@ -1,0 +1,46 @@
+{
+  "added": "2026-11-22T01:13:00Z",
+  "context": "Goal: the app has one name wherever you read it.\nProblem (goal): only the home-screen label now says CH Post; the app's own messages, the Hand screen and the Chrome extension still use older names, and only you say whether they should match.\nBased on (read): the leftover names on main: \"Mail Day\" in two web messages (src/app.jsx lines 2023 and 3878) and \"Mail day\" on the phone Hand screen (HandScreen.swift line 88); \"MANIFEST orders\" in the Chrome extension (manifest.json line 3, options.html line 7, core.mjs line 239).\nBased on (read): the coordinator's note of 2026-11-21 19:11 CST: the in-app masthead stays MANIFEST either way, as the masthead-is-not-project-name record says.\nDeparts from: main shows Mail Day, Mail day and MANIFEST orders beside CH Post \u2014 this renames them all to CH Post (option b); option a leaves them.\nWaiting on: your answer; nothing changes meanwhile.",
+  "home": "decision masthead-is-not-project-name",
+  "id": "ch-post-leftover-names",
+  "kind": "decision",
+  "n": 114,
+  "options": [
+    {
+      "gain": "No churn; the extension and masthead keep their names.",
+      "how": "Only the home-screen label says CH Post.",
+      "id": "leave-names",
+      "key": "a",
+      "label": "Leave them as they are",
+      "lose": "The app keeps a mix of names: CH Post, Mail Day and MANIFEST."
+    },
+    {
+      "gain": "One name everywhere you read it.",
+      "how": "The web messages, the Hand screen and the extension take the new name.",
+      "id": "rename-all",
+      "key": "b",
+      "label": "Rename them all to CH Post",
+      "lose": "The Chrome extension's name changes from MANIFEST orders, so it no longer matches the MANIFEST masthead inside the app."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "a",
+  "ref": "decision masthead-is-not-project-name",
+  "repo": "shivinate7/mailaudit",
+  "short": "Leftover names: leave or rename to CH Post",
+  "shown": [
+    {
+      "id": "leave-names",
+      "key": "a",
+      "label": "Leave them as they are"
+    },
+    {
+      "id": "rename-all",
+      "key": "b",
+      "label": "Rename them all to CH Post"
+    }
+  ],
+  "status": "open",
+  "title": "Should the leftover Mail Day and MANIFEST names follow CH Post?",
+  "why": "Only the home-screen label changed; renaming the rest touches the extension and the masthead the record keeps, so leaving them is the smaller step (coordinator's recommendation)."
+}
