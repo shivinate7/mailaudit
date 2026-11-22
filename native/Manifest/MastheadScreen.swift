@@ -24,6 +24,8 @@ struct MastheadScreen<Content: View>: View {
     @State private var headHeight: CGFloat = 0
     @State private var pinned = false
     @State private var position = ScrollPosition()
+    // The live content offset. A box, so a write each scroll frame does not redraw the content.
+    @State private var offset = ScrollOffset()
 
     /// The web's in-flow `.mdl-sticky`: the 46pt running head and its 1pt rule. A height, not a spacing.
     private static var slot: CGFloat { RunningHead.height + 1 }
@@ -50,7 +52,8 @@ struct MastheadScreen<Content: View>: View {
         // A tab's content asks for a view by id (a focused field, its Save) to be kept above the keyboard.
         .environment(\.scrollTo, { id in withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { proxy.scrollTo(id, anchor: .bottom) } })
         // A tab's content asks to be moved by a distance: it knows where its view lies and where the keys start, which an id cannot say.
-        .environment(\.scrollBy, { dy in withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { position.scrollBy(y: dy) } })
+        .environment(\.scrollBy, { dy in withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { position.scrollTo(y: offset.y + dy) } })
+        .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y }) { offset.y = $1 }
         // Pinned once the slot's top has passed the scroll view's top edge. A short tab never scrolls that far.
         .onScrollGeometryChange(for: Bool.self, of: { pinAt > 0 && $0.contentOffset.y + $0.contentInsets.top >= pinAt }) { pinned = $1 }
         .overlay(alignment: .top) {
@@ -65,6 +68,9 @@ struct MastheadScreen<Content: View>: View {
         }
     }
 }
+
+/// A reference to the scroll view's current offset: ScrollPosition has no relative scroll, so scrollBy adds to this.
+private final class ScrollOffset { var y: CGFloat = 0 }
 
 extension EnvironmentValues {
     /// Scrolls the enclosing MastheadScreen so the view with this id sits at the bottom of the space above the keyboard.
