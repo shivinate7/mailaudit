@@ -145,10 +145,10 @@ const PAGE = path.resolve(process.argv[2] || path.join(ROOT, "index.html"));
 /* The app's own key is `mailday:v1`; window.storage namespaces it under
    `mailday:`, so the literal localStorage key is `mailday:mailday:v1`. */
 const STORE_KEY = "mailday:mailday:v1";
-/* The three forms the owner checks (item 109 ruling; item 117, option a): the iPhone 18 Pro, the
-   iPhone 18 Pro Max and the folded Duo. Each runs at its own width and viewport height. 402 by 874
-   and 440 by 956 are Apple's pixel counts at 3x, unmeasured on a simulator; the folded Duo's 466 by
-   678 is measured. */
+/* The three forms the owner checks (item 109 ruling, 2026-11-21 19:57 CST; item 117, option a): the
+   iPhone 18 Pro, the iPhone 18 Pro Max and the folded Duo. Each runs at its own width and viewport
+   height. 402 by 874 and 440 by 956 are Apple's point sizes, unmeasured on a simulator; the folded
+   Duo's 466 by 678 is measured. */
 const FORMS = [
   { width: 402, height: 874 },
   { width: 440, height: 956 },
