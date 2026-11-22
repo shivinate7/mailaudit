@@ -32,7 +32,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `one-simulator-per-mac` — Simulator boots and load follow the global machine rules.
 - `native-ships-via-testflight` — The iOS app ships Mac first, TestFlight as the fallback.
 - `duo-card-in-hand` — On the iPhone Duo, Card in Hand checks cards in by name.
-- `audit-skips-measured-flags` — The native audits skip only named, owner-ruled findings.
+- `audit-skips-measured-flags` — The native audits skip only named, owner-ruled findings. Any new skip goes in the shared skip area.
 
 ## Native debts
 
