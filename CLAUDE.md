@@ -67,7 +67,7 @@ A fact an agent needs, that argues nothing. Read the CSV record before touching 
 
 - `assets-and-icons` — Icon files and how to export them.
 - `build-and-deploy` — Build, test and deploy commands, and `ios-ship testflight`.
-- `cloud-session-reach` — What a cloud session can reach: the Worker, GitHub and the Mac, with a probe for each.
+- `cloud-session-reach` — What a cloud session can reach: the Worker, GitHub and the Mac, with a probe for each. Its CSV route adds new lines and refreshes no tracking.
 - `live-verification` — What has run against real GitHub, a real device or a Worker probe.
 - `orderwand-csv` — The OrderWand CSV schema and quirks.
 
@@ -84,7 +84,7 @@ A question this repo has not closed, or a risk it accepted on purpose. Each reco
 - `ledger-private-source-public` — The ledger repo is private, the source repo is public.
 - `token-sits-on-shared-origin` — The device key sits on a shared origin.
 - `vendor-toggle-undecided` — The vendor toggle stays undecided.
-- `merge-later-change-wins` — Clock skew can pin a merge key. Accepted risk.
+- `merge-later-change-wins` — Clock skew can pin a merge key, including a line's tracking stamp. Accepted risk.
 
 ## Measurements
 

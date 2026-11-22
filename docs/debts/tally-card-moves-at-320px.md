@@ -4,4 +4,4 @@
 
 **Status:** closed by the owner's answer, item 62. Kept until a pull request that deletes this file cites a passing run as `Retire-run:`.
 
-**Decision:** `card-reserved-geometry`.
+**Decision:** `card-the-action-row-is-reserved`.

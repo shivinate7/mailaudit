@@ -14,7 +14,7 @@ So the colours are not the likely cause.
 
 **Open route.** A named skip is the open route, and it needs an owner grant. The coordinator sends the question to the owner as waiting-page item 84, which cites decision `audit-skips-measured-flags`. The designer's mockup and its size and frame picks are parked on branch `lane/orphaned-composer-contrast` at `99e1b30`. None is built, and no Mac runs are spent. The "1 card" count has no id, so a skip for it needs one first (designer's notes).
 
-**Status:** open. The test stays red under this debt, by coordinator ruling (2026-11-09 12:01 CST). The open route waits on an owner grant (waiting-page item 84). Tracked at roadmap step `orphaned-composer-colours`, the roadmap item for this debt.
+**Status:** open. The test stays red under this debt, by coordinator ruling (2026-11-09 12:01 CST). The open route waits on an owner grant (waiting-page item 84). Tracked at roadmap step `orphaned-composer-colours`, the roadmap item for this debt. The owner ruled the Save margin (waiting-page item 116, answer a, 2026-11-21 20:26 to 20:28 CST: build it as drawn). The margin is ruled and being built. This debt stays until a green audit run retires it.
 
 **Assigned:** the mailaudit coordinator session.
 
