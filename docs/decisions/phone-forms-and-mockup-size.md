@@ -1,0 +1,28 @@
+# The app is designed for three phone forms
+
+Kind: process
+
+Home: .claude/rules/screens.md
+
+**Status:** ruled 2026-11-21 19:57 CST. Owner, page item 109 (phone size), answer "none of these", relayed by triage: "just need to worry about iphone 18, iphone max, and iphone duo form factors frankly -- and mockups should all just be iphone duo folded size frankly".
+
+The app is designed for three phone forms: iPhone 18, iPhone Max and iPhone Duo. No other width is designed for, 320 px and 380 px included. No measurement in this repo gives a width for iPhone 18 or iPhone Max.
+
+Mockups draw the iPhone Duo at its folded size only: 466 by 678 pt, the outer screen with the fold closed (measurement `duo-fold-and-keyboard`). No mockup draws the unfolded Duo, and none draws another iPhone width.
+
+**Holds while:** `duo-fold-and-keyboard` gives the folded outer screen as 466 by 678 pt, and the ruling above stands.
+
+**Pinned by:** no test pins the forms. `npm run check:screens` runs at 375 px and 760 px (`test/screens.mjs`).
+
+**Not yet in line:**
+
+- The shared iOS skill (`ios-apps`, Mockups) still asks for the unfolded Duo pose too. It lives outside this repo.
+- The Duo mockups in `docs/design/` (the `duo-hand-*` pages) draw the open pose.
+- `native-build-lanes` (N14 notes) names screenshots at 320 px and 375 px.
+
+## See also
+
+- `duo-fold-and-keyboard` — the measured folded and open Duo figures.
+- `duo-card-in-hand` — the Duo layout and its mockup poses.
+- `design-view-switch-equal-thirds` — holds the phone-width sentence that points here.
+- `card-the-action-row-is-reserved` — the 320 px case this ruling leaves out.
