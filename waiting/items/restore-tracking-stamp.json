@@ -26,6 +26,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "a",
   "ref": "decision a-restore-is-not-local",
+  "replied": "2026-11-22T02:27:00Z",
+  "reply": "You chose a, leave the restore alone, so the latest tracking wins (recorded at your chat request, 2026-11-21 20:26 CST). Filed in git. The coordinator files the ruling and the route c lane builds with a. I close this item when it lands. 20:27 CST.",
   "repo": "shivinate7/mailaudit",
   "short": "Restore and tracking: let newer win or stamp it",
   "shown": [

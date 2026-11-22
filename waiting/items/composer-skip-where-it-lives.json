@@ -4,6 +4,10 @@
   "home": "owner 2026-11-18 22:37 CST: visuals for items needing feedback; designer question on the Orphaned composer contrast item",
   "id": "composer-skip-where-it-lives",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-22T02:27:00Z",
+    "note": "have on shared skip area only by the way"
+  },
   "n": 99,
   "options": [
     {
@@ -26,6 +30,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "a",
   "ref": "owner 2026-11-18 22:37 CST: visuals for items needing feedback; designer question on the Orphaned composer contrast item",
+  "replied": "2026-11-22T02:27:00Z",
+  "reply": "Moot: you chose the margin on item 116, so no skip is added and this question no longer applies. Noted for later: if a skip is ever needed, you want it in the shared skip list only. Saved in git. Closed. 20:27 CST 2026-11-21.",
   "repo": "shivinate7/mailaudit",
   "short": "Where the composer contrast skip lives",
   "shown": [
@@ -40,7 +46,7 @@
       "label": "Skip them in the shared list"
     }
   ],
-  "status": "open",
+  "status": "closed",
   "title": "Should the Save button and card count skip the contrast audit in the composer only, or in the shared list that the ready screen also uses?",
   "why": "It matches the option text you read and cannot weaken the ready screen audit."
 }

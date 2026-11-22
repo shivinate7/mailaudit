@@ -30,8 +30,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "a",
   "ref": "decision duo-card-in-hand; lane hand-end-of-day",
-  "replied": "2026-11-22T01:58:00Z",
-  "reply": "You asked why b seems more correct and how much work it is.\n\nWhy b is more correct: after a restore from backup, every checked card gets the restore's time. With a, the End of mail day view then shows all of them as checked in today, and lists every short envelope under Not normal today until midnight, so the view is wrong for a day. With b, the view tells a real check-in from a restore, so it stays true.\n\nHow much work and what problem: b needs a second time stamp on each checked line, one for the real check-in and one for the restore. That adds a field to the saved data on the phone and in the web app (the web app has no such stamp today) and a merge rule for two devices. The saved-state rule does allow a new field if it is optional and defaulted when an older save loads, so b does not break it, but the saved data's layout still changes and your frozen-layout rule must agree. The size of the work is unmeasured: I have not counted the places that write the saved data. A restore is rare, so a costs one noisy day each time you restore.\n\nMy recommendation stays a, because it is small and the noise is rare; b is right if you want the view always true. Please pick a or b. 19:58 CST 2026-11-21.",
+  "replied": "2026-11-22T02:27:00Z",
+  "reply": "You chose b, ignore restore stamps (2026-11-21 20:27 CST). Filed in git. It adds a second time stamp to each checked line, optional and defaulted when an older save loads, which the saved-state rule allows; the web app gets it too. The coordinator files the ruling and moves the build from a to b. I close this item when it lands. 20:27 CST.",
   "repo": "shivinate7/mailaudit",
   "short": "End of mail day after a restore",
   "shown": [
