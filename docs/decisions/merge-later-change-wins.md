@@ -16,7 +16,7 @@ A merge never drops a line from `items`. A check-in or an envelope goes only whe
 
 - `mergeItems` unions by `it.key`. The CSV import path calls it too, so there is one definition of "union line items".
 - `mergeReceived` takes the later time per key, from `receivedAt`. A timed absence beats an untimed count, because only an un-check makes one. With no time on either side, it takes the per-key **max**.
-- A line's `tracking` takes the later `trackingAt`, as `receivedAt` takes the later time. A line with no stamp reads as 0. A refresh sets the stamp on each line it changes, and the orders job's refresh does the same (owner item 94, route c, 2026-11-21 20:00 CST; built on branch `tracking-stamp-build`, commit 4326160d, not on main).
+- A line's `tracking` takes the later `trackingAt`, as `receivedAt` takes the later time. A line with no stamp reads as 0. A refresh sets the stamp on each line it changes, and the orders job's refresh does the same (owner item 94, route c, 2026-11-21 20:00 CST; built in item 94's PR).
 - The cost of that rule: an old build writes no times. So its later check-in loses to a timed un-check. Update both devices first, as `saved-state-shape` says.
 - `mergeEnvelopes` unions by id. The freshest `updatedAt` wins. A `deletedAt` tombstone competes the same way.
 - `mergeStamps` works per package. The freshest `updatedAt` wins, and tombstones are included.
@@ -30,7 +30,7 @@ Removals are the exceptions. A removed stamp travels as a tombstone, and it beat
 
 **Pinned by:** groups 33, 34 and 49. Group 33 is pure, like groups 27 and 31. It imports `merge-rules.mjs` directly. A merge that dropped lines would make a plausible ledger, not an error. Its symmetry assertions are the ones to keep. Merging A into B and B into A must give the same counts. Merging twice must add nothing. Those two claims show that the merge does not prefer either device. They also show that a retry after a half-failed sync is harmless. Group 49 pins the un-check and tombstone merges. The tracking stamp is pinned by 33.80 to 33.90 and 33b.1 to 33b.4 in `test/app.test.mjs`, by R4.8 and R4.8a in `test/recent-rules.test.mjs`, and by 73.1 to 73.4 in `worker/core.test.mjs` (the app file also uses 73.x ids for its photo tests, so cite the file).
 
-**Not live yet.** The stamp rule is on branch `tracking-stamp-build`, not on main. The live Worker needs a deploy for this rule to reach the phone. That deploy waits for the owner's word. Status as of 2026-11-21 21:03 CST.
+**Not live yet.** The stamp rule is built in item 94's PR. The live Worker needs a deploy for this rule to reach the phone. That deploy waits for the owner's word. Status as of 2026-11-21 21:03 CST.
 
 Mutants confirmed red:
 - `mergeReceived` using incoming-wins instead of `max`;
