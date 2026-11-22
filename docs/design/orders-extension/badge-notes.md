@@ -18,12 +18,12 @@ Themes: a light and a dark Chrome toolbar. Deep links: `#t=both`, `#t=light`, `#
 
    | state | title |
    |---|---|
-   | count | MANIFEST orders: 12 new lines. Pulled Sun, Nov 8, 9:14 AM. |
-   | 0 | MANIFEST orders: no new lines. Pulled Sun, Nov 8, 9:14 AM. |
-   | `in` | MANIFEST orders: signed out of TCGplayer. Sign in, then load any store page. |
-   | `!` | MANIFEST orders: the last pull failed. Open Options for the fix. |
-   | no key | MANIFEST orders: no device key. Open Options to paste one. |
-   | pulling | MANIFEST orders: pulling order pages. |
+   | count | CH Post orders: 12 new lines. Pulled Sun, Nov 8, 9:14 AM. |
+   | 0 | CH Post orders: no new lines. Pulled Sun, Nov 8, 9:14 AM. |
+   | `in` | CH Post orders: signed out of TCGplayer. Sign in, then load any store page. |
+   | `!` | CH Post orders: the last pull failed. Open Options for the fix. |
+   | no key | CH Post orders: no device key. Open Options to paste one. |
+   | pulling | CH Post orders: pulling order pages. |
 
    Times in the title use the owner's local time, in the options page's format.
 

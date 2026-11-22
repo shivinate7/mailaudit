@@ -9,7 +9,7 @@ Deep links: `#p=sort` or `#p=history` for the panel, `w=375` or `w=760` for the 
 
 - Every frame is a headless Chromium screenshot of `index.html` (built from `src/`), device scale 2. The four `inflow` frames show the state before the build (no fill, card-coloured panel); the others are overlay frames drawn by the capture script. The page was seeded with `shared/fixtures/ledger.json` under the storage key `STORE_KEY` in `test/screens.mjs`, as `openSeeded` does. The capture script is `shots/panel-paper-fill/capture.mjs`. A second run gave the same readings for all 16 frames.
 - Sample data: the fixture's counts and dollar figures are not real. The px readings are real measurements of the built page.
-- `layout.py devices` gives `unknown` for this repo. Widths 375 and 760 px at height 812 come from `WIDTHS` and `openSeeded` in `test/screens.mjs`.
+- `layout.py devices` gives `unknown` for this repo. Widths 375 and 760 px at height 812 came from `WIDTHS` and `openSeeded` in `test/screens.mjs` before the three forms.
 - One theme, light. `shared/tokens.json` holds one palette and `src/app.jsx` has no dark rule. The brief named light and dark tokens; there are no dark tokens.
 - Panel style: `panelWrap` in `src/app.jsx` (padding 4px 8px 12px, a 1px `line` top rule, `background: paper`; the frames are none, paper and rule). Its callers: the Sorted by and Orders from panels in the View card, and `RecentPanel`, the Sync panel and the History panel in the Data card. All five open inside an `.mdl-lcard`, which paints `card`.
 - Fill: `paper` #F2E9DA. Card: `card` #FCF6EA. So a paper panel reads darker than the card it opens from. Rule: `line` #DCCDB6.

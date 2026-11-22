@@ -4,7 +4,7 @@ Mockup: `undo-recent-informed-1.html` beside this file. Open it from disk. Desig
 
 Deep links (add to the file URL): `#c=bounded|daybook`, `&d=all|folded|open|ax5|web`, `&s=closed|open|undone|inert|nothing|hidden`, `&dev=on|off`, `&ord=on|off`, `&ax=grow|cap`. Example: `#c=daybook&d=folded&s=open`. Each option below gives its full hash and focus. A headless check from a scratchpad script found every focus visible, and found the two pictures of each option pair different. Every frame shares one state. A tap on UNDO in one frame changes that row in every frame, as a synced undo does.
 
-Sizes: Duo folded 466 x 678 pt and Duo open 951 x 669 pt (brief, and `measurements/duo-fold-and-keyboard`). Duo folded again at AX5. Large phone: the brief and `layout.py devices` give no size, and no 18 Pro size is written in the repo, so it is drawn at 375 x 812, the screens-check viewport (`test/screens.mjs`), as the web client. Theme: light only. The native app is held to light (`Info.plist` `UIUserInterfaceStyle`, `InterfaceStyleTests`), and `src/app.jsx` has no `prefers-color-scheme` rule.
+Sizes: Duo folded 466 x 678 pt and Duo open 951 x 669 pt (brief, and `measurements/duo-fold-and-keyboard`). Duo folded again at AX5. Large phone: the brief and `layout.py devices` give no size, and no 18 Pro size is written in the repo, so it is drawn at 375 x 812, the screens-check viewport before the three forms (`test/screens.mjs`), as the web client. Theme: light only. The native app is held to light (`Info.plist` `UIUserInterfaceStyle`, `InterfaceStyleTests`), and `src/app.jsx` has no `prefers-color-scheme` rule.
 
 ## The pain
 

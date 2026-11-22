@@ -15,7 +15,7 @@ One known gap per file under `docs/debts/`. Each carries a Status line and a Dec
 - `claim-11-fixed-edge-taps` — Claim 11 skips taps at a fixed control's edge.
 - `chip-gap-tolerance-at-12px` — The chip-gap tolerance needs a 12px re-measure.
 - `claim-9-fractional-box-edges` — Claim 9 can pass a box just under 44px.
-- `tally-card-moves-at-320px` — The Tally card moves 14px at 320px.
+- `tally-card-moves-at-320px` — Closed by the owner (item 62): no fix at 320px; decision `card-the-action-row-is-reserved`.
 - `key-re-accepts-token-shape` — The key check accepts a GitHub token's shape.
 - `received-at-size-unmeasured` — The size of receivedAt is unmeasured.
 - `suite-hang-cause-unmeasured` — The 13-minute hang after the suite summary is unexplained.
@@ -33,12 +33,12 @@ One known gap per file under `docs/debts/`. Each carries a Status line and a Dec
 - `recent-log-unbuilt` — The recent-actions log is not built in the native client.
 - `recent-log-unmeasured` — The recent-actions log has one measurement to take.
 - `recent-undo-under-bar` — A Recent UNDO cell can sit half under the bottom bar.
-- `reimport-refresh-stays-on-device` — A refreshed tracking stays on the importing device.
+- `reimport-refresh-stays-on-device` — A refreshed name stays on the importing device, and the cloud CSV route refreshes nothing.
 - `armed-reset-mistap-unmeasured` — A mis-tap beside the armed Reset box is unmeasured.
 - `orphaned-reach-unpinned` — Re-import, Backup and Reset on Orphaned have no test.
 - `panels-overlay-unbuilt` — Disclosure panels still push the list.
 - `order-id-visible-unbuilt` — The Tally order id has no narrow-width rule.
-- `tcgplayer-link-opens-history-list` — The TCGplayer link may not search by order id.
+- `tcgplayer-link-opens-history-list` — Closed by the owner (item 61): the link opens the exact order; decision `order-id-button-stops-propagate`.
 - `header-gestures-unmeasured` — Header gestures are unmeasured.
 - `ios-touch-adjust-unmeasured` — iOS touch adjustment near the order id link is unmeasured.
 - `discard-keeps-draft` — Discard does not end a composer draft.

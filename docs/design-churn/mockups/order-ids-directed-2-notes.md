@@ -1,7 +1,7 @@
 # Order numbers: one tap lands on the order
 
 Mockup: `order-ids-directed-2.html`. Designer kind: directed. Direction: link-first: one tap opens that exact order at the seller.
-Debts: `order-id-visible-unbuilt` (the Tally number ends in an ellipsis), `tcgplayer-link-opens-history-list` (the link may open the order list). Decision: `order-id-button-stops-propagate`. Waits on item 61.
+Debts: `order-id-visible-unbuilt` (the Tally number ends in an ellipsis), `tcgplayer-link-opens-history-list` (the link may open the order list). Decision: `order-id-button-stops-propagate`. Answered, item 61 (owner, 2026-11-21 19:56 CST).
 
 Deep links: `#s=today`, `#s=slip`, `#s=carry`; `#d=folded`, `#d=ax5`, `#d=open`, `#d=phone`; `#st=rest`, `#st=copied`, `#st=menu`, `#st=opened`, `#st=ask&chk=on`; `#t=light`, `#t=dark`. Join with `&`, for example `#s=slip&d=folded&st=copied`. No hash shows all. Focus ids for the waiting page: `choice-slip-folded` and `choice-carry-folded` (and `-ax5`, `-open`, `-phone`).
 

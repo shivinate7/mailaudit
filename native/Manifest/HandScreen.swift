@@ -111,7 +111,7 @@ struct HandScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("Mail day").font(.cochin(17, relativeTo: .headline).weight(.bold)).foregroundStyle(Parchment.ink)
+                    Text("CH Post").font(.cochin(17, relativeTo: .headline).weight(.bold)).foregroundStyle(Parchment.ink)
                         .accessibilityAddTraits(.isHeader)
                     Spacer(minLength: 8)
                     Text("\(counts.inCount) in \u{00B7} \(counts.out) out").font(.mono(12, relativeTo: .caption))

@@ -2,7 +2,7 @@
 
 Mockup: `recent-log.html` beside this file. Open it from disk. Plan: `recent-log-web`. Decision: `recent-checks-can-be-undone`.
 
-Sizes: 375 and 760 wide, 812 tall, from `WIDTHS` in `test/screens.mjs`. `layout.py devices` printed `unknown` for this repo, so the sizes come from the screens check. Theme: one. The app has no dark palette and no `prefers-color-scheme` rule, so the mockup draws light only.
+Sizes: 375 and 760 wide, 812 tall, from `WIDTHS` in `test/screens.mjs` before the three forms. `layout.py devices` printed `unknown` for this repo, so the sizes come from the screens check. Theme: one. The app has no dark palette and no `prefers-color-scheme` rule, so the mockup draws light only.
 
 Deep links: `#s=closed`, `#s=open`, `#s=long`, `#s=all-inert`, `#s=closing-empty`, `#s=hidden`. Add `&w=375`, `&w=760` or `&w=both`. Options: `&v=static|count|time`, `&photo=line|cell`, `&mode=inflow|overlay`, `&strike=on|off`, `&hide=close|tab`.
 

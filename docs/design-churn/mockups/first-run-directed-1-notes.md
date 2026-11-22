@@ -160,7 +160,7 @@ Every figure, seller, card and file name in the mockup is sample data.
     - The folded Duo is drawn at the brief's 466 x 678 pt. The records `duo-card-in-hand` and
       `duo-fold-and-keyboard` give 382 x 644 pt of safe content for the outer screen. The two disagree.
     - The open Duo is drawn at 951 x 669 pt, with the hinge at 455.5 to 495.5 pt (the brief).
-    - The phone is drawn at 375 x 812, the viewport of `test/screens.mjs`. No large-phone size is written
+    - The phone is drawn at 375 x 812, the viewport `test/screens.mjs` used before the three forms. No large-phone size is written
       anywhere. The HIG layout page, read 2026-11-21, gives no device sizes.
     - The status bar and the home indicator are drawn at 20 pt each, unmeasured. The tab bar is drawn at
       the web bar's 64 pt (`phone-nav-is-bottom-bar`). The native system bar is unmeasured.

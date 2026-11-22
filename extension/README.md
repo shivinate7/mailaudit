@@ -1,4 +1,4 @@
-# MANIFEST orders (Chrome extension)
+# CH Post orders (Chrome extension)
 
 Reads your TCGplayer order history from a signed-in tab and sends it to the ledger Worker. Plan: `docs/plans/orders-extension.md`.
 

@@ -6,9 +6,9 @@
 
 ## What still holds
 
-The outstanding "N left · $Y" pill is the one deliberate exception to "mono for numbers". It is set in `serif`, so it reads in the letterhead voice rather than as tabular data. The only emoji in chrome is the 📬 in the empty state. Dot indicators are typographic, not icons. Max content width is 760px. The app must work at 380px, the iPhone width. Touch targets are a whole-row tap, a 30px check indicator, and 34px steppers. The bar's tabs are 44px, as L6 requires.
+The outstanding "N left · $Y" pill is the one deliberate exception to "mono for numbers". It is set in `serif`, so it reads in the letterhead voice rather than as tabular data. The only emoji in chrome is the 📬 in the empty state. Dot indicators are typographic, not icons. Max content width is 760px. The phone forms are set in `phone-forms-and-mockup-size`. Touch targets are a whole-row tap, a 30px check indicator, and 34px steppers. The bar's tabs are 44px, as L6 requires.
 
-**Pinned by:** 62.8 (no in-page switch). The other rules in this section have no test. `npm run check:screens` checks 375px and 760px, not 380px.
+**Pinned by:** 62.8 (no in-page switch). The other rules in this section have no test. `npm run check:screens` checks 402px, 440px and 466px, and claim 17a runs at each form too.
 
 ## See also
 

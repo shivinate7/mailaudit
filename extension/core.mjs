@@ -236,7 +236,7 @@ export function failureOf(outcome, now) {
 /* The toolbar for a state: badge text, kind (picks the fill), and the icon title, set in every
    state. run is the stored last attempt: {at, ok, added} or {at, ok: false, kind}. */
 export function displayFor({ hasKey, pulling, run }) {
-  const lead = "MANIFEST orders: ";
+  const lead = "CH Post orders: ";
   if (!hasKey) return { text: "", kind: "none", title: `${lead}no device key. Open Options to paste one.` };
   if (pulling) return { text: "…", kind: "pulling", title: `${lead}pulling order pages.` };
   if (!run) return { text: "", kind: "none", title: `${lead}no pull yet. It runs when a store page loads.` };

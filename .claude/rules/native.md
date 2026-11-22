@@ -31,8 +31,8 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `csv-import-stays-web` — CSV import stays on the web app.
 - `one-simulator-per-mac` — Simulator boots and load follow the global machine rules.
 - `native-ships-via-testflight` — The iOS app ships Mac first, TestFlight as the fallback.
-- `duo-card-in-hand` — On the iPhone Duo, Card in Hand checks cards in by name.
-- `audit-skips-measured-flags` — The native audits skip only named, owner-ruled findings.
+- `duo-card-in-hand` — On the iPhone Duo, Card in Hand checks cards in by name. The owner ruled "held" the one word for a held card (page items 113 and 97, 2026-11-21 19:54 and 19:58 CST).
+- `audit-skips-measured-flags` — The native audits skip only named, owner-ruled findings. The Find pill's frame skip is ruled, not yet built (page item 95, option b, 2026-11-21 19:54 CST). Any new skip goes in the shared skip area.
 
 ## Native debts
 
@@ -90,7 +90,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `duo-bar-dynamic-type-clips` — The Duo tab bar labels clip at every accessibility text size.
 - `duo-stacked-poses-unbuilt` — The Duo has no stacked poses.
 - `duo-hand-mockup-gaps` — Eight parts of the Card in Hand mockup are not built.
-- `duo-post-bar-unmeasured-s-m` — The pinned Post bar of Card in Hand is read at L and AX5 (`duo-card-in-hand`), the slim head at AX3 and AX5; the bar at S, M and AX3 is unmeasured.
+- `duo-post-bar-unmeasured-s-m` — The pinned Post bar of Card in Hand is read at L and AX5 (`duo-card-in-hand`), the slim head at AX3 and AX5; the bar at S, M and AX3 is unmeasured, and its offer word is ruled "held" (page item 97, option b, 2026-11-21 19:58 CST).
 - `hand-stale-checkin-error` — A good post leaves an old check-in error showing.
 - `stamped-toggle-clears-error` — The stamped toggle clears a failed check-in's error.
 - `checkin-error-bar-is-sans` — The native check-in error bar is set in sans on material.

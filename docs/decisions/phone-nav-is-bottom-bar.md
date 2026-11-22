@@ -52,7 +52,7 @@ The canceled-orders reference and the stamped filter keep their own ruled row. T
 - The Ledger icon is a gear, as in mockup G. `BAR_ICONS.ledger` in `src/app.jsx` draws a gear outline around a centre circle. It replaced the circle with eight rays. Orchestrator default, 2026-10-12. Unpinned: no test reads the icon.
 - The bar shows on an empty ledger, so Re-import CSV and Reset stay one tap away. Orchestrator default, 2026-10-12. It follows `recovery-control-not-state-gated`. Pinned by 62.9 (the four tabs on an empty ledger) and 63.16 to 63.20 (the Ledger tab reaches Sync, History, Re-import CSV, Backup and Reset on an empty ledger).
 
-**Pinned by:** 21.4 (tab order, Ledger first), 62.1 to 62.10 (the nav landmark, the current tab, the Ledger tab without a package, the pill, the retired switch, four tabs on an empty ledger, the Orphaned count), 63.4 to 63.7 (the Ledger tab's options and its current tab), 63.16 to 63.20 (the Ledger tab is reachable on an empty ledger), 43.1 and 43.2 (the current tab follows the view), and `npm run check:screens` (claim 5, the bar's geometry at 375px and 760px).
+**Pinned by:** 21.4 (tab order, Ledger first), 62.1 to 62.10 (the nav landmark, the current tab, the Ledger tab without a package, the pill, the retired switch, four tabs on an empty ledger, the Orphaned count), 63.4 to 63.7 (the Ledger tab's options and its current tab), 63.16 to 63.20 (the Ledger tab is reachable on an empty ledger), 43.1 and 43.2 (the current tab follows the view), and `npm run check:screens` (claim 5, the bar's geometry at 402px, 440px and 466px).
 
 ## See also
 
