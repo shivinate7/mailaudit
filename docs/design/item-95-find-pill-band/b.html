@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pill Floats Over List</title>
+<style>
+/* Tokens: shared/tokens.json, light keys (paper, card, ink, inkSoft, line, gold, silver, accent, green, red, manila, manilaInk), read
+   through Parchment (native/Manifest/Theme.swift). The native app is held to light, so the phone frame keeps light tokens in every
+   theme; the dark keys below repaint the page around it only. --new and --today are page chrome (green and red). */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961; --silver:#C4C3C0;
+  --accent:#6F5CA6; --manila:#EADBBA; --manilaInk:#695832; --shadow:rgba(28,43,36,0.06);
+  --new:#2E7A5E; --today:#A8443C;
+  --cochin: Cochin, Georgia, serif; --mono: Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --paper:#1E1B24; --card:#27232E; --ink:#EFE6D6; --inkSoft:#B1A6BB; --line:#443D4D; --accent:#A796DA;
+    --manila:#3A3122; --manilaInk:#E2CB96; --new:#6DBB98; --today:#E3857B; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --paper:#1E1B24; --card:#27232E; --ink:#EFE6D6; --inkSoft:#B1A6BB; --line:#443D4D; --accent:#A796DA;
+  --manila:#3A3122; --manilaInk:#E2CB96; --new:#6DBB98; --today:#E3857B; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.45; }
+main { max-width:760px; margin:0 auto; padding:calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-size:22px; line-height:1.25; margin:0; }
+.intro { display:flex; flex-direction:column; gap:8px; }
+.intro p { margin:0; max-width:68ch; color:var(--inkSoft); }
+.intro p b { color:var(--ink); }
+nav { display:flex; flex-wrap:wrap; gap:8px; }
+nav a, nav button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+nav a:focus-visible, nav button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+figure { margin:0; display:flex; flex-direction:column; gap:12px; }
+figure[hidden] { display:none; }
+figcaption { font-size:14px; color:var(--inkSoft); max-width:68ch; }
+figcaption ul { margin:4px 0 0; padding-left:18px; }
+figcaption b { color:var(--ink); }
+.fit { width:100%; max-width:402px; }
+/* At the drawn width (402) the phone sits at x 0 to 402, so the page's focus box is the phone alone. */
+@media (max-width:440px) {
+  main { padding:0 0 16px; }
+  .banner { border-radius:0; border-left:0; border-right:0; }
+  .intro, figcaption { padding:0 16px; }
+}
+
+/* ---- the phone: iPhone 18 Pro, 402 x 874 pt, 1 CSS px = 1 pt. Light tokens always (the app is held to light). ---- */
+.dev { --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961; --silver:#C4C3C0; --accent:#6F5CA6;
+  --redSoft:#F4E4D9; --red:#A8443C; --new:#2E7A5E; --today:#A8443C;
+  --sat: max(env(safe-area-inset-top), 54px);  /* top safe area: unmeasured on the 18 Pro, drawn at 54 pt */
+  position:relative; width:402px; height:874px; background:var(--paper); color:var(--ink); border-radius:44px; overflow:hidden;
+  box-shadow:0 0 0 1px var(--ink); font-family:var(--cochin); transform-origin:0 0; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 32px; font:600 15px -apple-system, system-ui, sans-serif; z-index:4; }
+.status .isl { width:124px; height:36px; border-radius:18px; background:#000; }
+
+/* the scroll view (MastheadScreen). --vp is where it ends: 723 pt with the band (measured), the screen foot when the pill floats. */
+.vp { position:absolute; left:0; right:0; top:0; height:var(--vp); overflow:hidden; }
+/* masthead, running-head slot and ruled row: drawn to fill 54 to 321 pt; their inner layout is unmeasured */
+.mast { position:absolute; left:16px; right:16px; top:var(--sat); height:158px; display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding:6px 0 4px; }
+.mast .seal { display:flex; align-items:center; gap:10px; align-self:stretch; }
+.mast .seal i { flex:1; height:1px; background:var(--gold); }
+.mast .seal s { width:24px; height:24px; border-radius:50%; background:#A8443C; box-shadow:inset 0 -3px 0 #66231D; }
+.mast .ttl { font-size:31px; line-height:34px; letter-spacing:5px; font-weight:700; }
+.mast .house { font:10px/12px var(--cochin); letter-spacing:2px; color:var(--inkSoft); }
+.mast .tallies { display:grid; grid-template-columns:1fr 1fr 1.7fr; align-self:stretch; text-align:center; }
+.mast .tallies span { display:flex; flex-direction:column; font:10px/13px var(--cochin); color:var(--inkSoft); }
+.mast .tallies b { font:700 13px/17px var(--mono); color:var(--accent); }
+.mast .tallies b em { font-style:normal; font-weight:400; color:var(--inkSoft); }
+.mast .bar { align-self:stretch; height:8px; border-radius:4px; background:var(--silver); overflow:hidden; }
+.mast .bar i { display:block; width:38%; height:100%; background:var(--accent); }
+.mast .foot { align-self:stretch; display:flex; justify-content:space-between; font:10.5px/14px var(--mono); color:var(--inkSoft); }
+.ruled { position:absolute; left:16px; right:16px; top:259px; height:46px; border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+  display:flex; justify-content:flex-end; }
+.ruled span { min-width:44px; padding:0 12px; display:flex; align-items:center; gap:6px; border-left:1px solid var(--line); font:11px var(--mono); color:var(--inkSoft); }
+
+/* the list (PackagesView): starts at 321 pt (723 less the measured 401.7 pt of visible list). Heights are fixed so the
+   "Test Set · Near Mint" line of the second card lands on the measured frame 73, 723, 102 x 14. */
+.list { position:absolute; left:16px; right:16px; top:321px; display:flex; flex-direction:column; gap:8px; }
+.pcard { background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 1px var(--shadow); display:flex; flex-direction:column; overflow:hidden; }
+.phead { height:70px; padding:10px 12px 0; display:flex; flex-direction:column; }
+.phead .top { display:flex; align-items:center; gap:8px; }
+.phead .who { flex:1; display:flex; flex-direction:column; }
+.phead .who b { font-size:15px; line-height:20px; }
+.phead .who span { font:11px/14px var(--mono); color:var(--inkSoft); }
+.spill { font:700 12.5px var(--cochin); padding:4px 8px; border-radius:999px; background:var(--redSoft); color:var(--red); }
+.phead .oid { font:11px/22px var(--mono); color:var(--inkSoft); text-decoration:underline; }
+.srow, .brow { height:48px; display:flex; align-items:center; padding:0 12px; gap:8px; }
+.brow { justify-content:flex-end; }
+.mini { font:11.5px var(--mono); background:var(--card); border:1px solid var(--line); border-radius:5px; padding:8px 12px; white-space:nowrap; }
+.ln { height:60px; display:flex; gap:8px; padding:0 12px 0 3px; border-top:1px solid var(--line); }
+.ln .box { flex:0 0 45px; height:59px; display:grid; place-items:center; }
+.ln .box i { width:30px; height:30px; border:2px solid var(--inkSoft); border-radius:8px; }
+.ln .t { flex:1; min-width:0; padding-top:12px; display:flex; flex-direction:column; gap:4px; }
+.ln .t b { font-size:14px; line-height:18px; font-weight:600; display:flex; justify-content:space-between; }
+.ln .t b span { font:12px/18px var(--mono); font-weight:400; color:var(--inkSoft); }
+.ln .t small { display:block; width:102px; height:14px; font-size:12px; line-height:14px; color:var(--inkSoft); white-space:nowrap; }
+
+/* the Find pill (FindPill.body): opaque paper capsule, magnifier, Cochin 16 prompt, 44 x 44 clear slot. Top 731 pt (measured). */
+.find { position:absolute; z-index:3; left:16px; right:16px; top:731px; height:51px; display:flex; align-items:center; gap:8px;
+  padding:4px 6px 4px 16px; border-radius:999px; border:1px solid var(--line); background:var(--paper); }
+.find svg { flex:none; width:20px; height:20px; fill:none; stroke:var(--inkSoft); stroke-width:1.8; stroke-linecap:round; }
+.find .q { flex:1; font-size:16px; color:var(--inkSoft); white-space:nowrap; overflow:hidden; }
+.find .clr { flex:none; width:44px; height:44px; }
+
+/* the band (findPill): paper from the list's edge to the screen foot, a 1 pt Parchment.line rule on its top */
+.band { position:absolute; z-index:2; left:0; right:0; top:723px; bottom:0; background:var(--paper); border-top:1px solid var(--line); }
+
+/* system tab bar: top 791 pt (PR 238's screen check); its capsule is drawn, not measured */
+.sysbar { position:absolute; z-index:5; left:0; right:0; top:791px; height:83px; display:flex; justify-content:center; padding-top:8px; }
+.sysbar .cap { width:calc(100% - 32px); height:56px; border-radius:28px; border:1px solid var(--line);
+  background:color-mix(in srgb, var(--paper) 62%, transparent); -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px);
+  display:grid; grid-template-columns:repeat(4,1fr); align-items:center; }
+.sysbar span { display:flex; flex-direction:column; align-items:center; gap:2px; font:11px -apple-system, system-ui, sans-serif; color:var(--inkSoft); }
+.sysbar span i { width:22px; height:22px; border:1.5px solid currentColor; border-radius:6px; }
+.sysbar span.on { color:var(--accent); }
+.home { position:absolute; z-index:6; left:50%; bottom:8px; width:140px; height:5px; margin-left:-70px; border-radius:3px; background:var(--ink); }
+
+/* labels: dashed outline on what exists today (red) and on what this option adds (green) */
+.mark { position:absolute; z-index:7; pointer-events:none; border:2px dashed; border-radius:6px; }
+.tag { position:absolute; z-index:8; font:600 11px/14px -apple-system, system-ui, sans-serif; padding:1px 5px; border:1.5px dashed; border-radius:4px;
+  background:var(--card); white-space:nowrap; }
+.mark.new, .tag.new { color:var(--new); border-color:var(--new); }
+.mark.today, .tag.today { color:var(--today); border-color:var(--today); }
+body.hide-labels .mark, body.hide-labels .tag { display:none; }
+</style>
+</head>
+<body>
+<main>
+  <div class="banner" role="note">Sample: no seller, card, order, date, price or count on this page is real.</div>
+  <div class="intro">
+    <h1>Skip the contrast audit on the pill's frame</h1>
+    <p>Waiting-page item 95, PR 238 (restyle step 8). <b>How:</b> the Find pill keeps floating over the list, as FindPill.swift line 3 does today. The phone audit skips the contrast check on the pill's frame, by name; every other check stays on. <b>Gain:</b> the list looks as it does now and loses no room. <b>Loss:</b> row text under the pill goes unchecked, and can go unread.</p>
+    <p>Designer kind: informed. iPhone 18 Pro, 402 x 874 pt, light theme, normal text size, Packages at rest.</p>
+    <nav aria-label="States">
+      <a href="#s=float">Pill floats, at rest</a>
+      <button type="button" id="hide-labels" aria-pressed="false">Hide labels</button>
+    </nav>
+  </div>
+
+  <figure id="s-float" data-state="float">
+    <div class="fit">
+      <div class="dev" id="phone" data-device="iphone-18-pro" role="img" aria-label="iPhone 18 Pro, Packages: the Find pill floats over the list and covers row text">
+        <div class="status"><span>9:41</span><span class="isl"></span><span>100%</span></div>
+        <div class="vp" style="--vp:874px">
+          <div class="mast">
+            <span class="seal"><i></i><s></s><i></i></span>
+            <span class="ttl">MANIFEST</span>
+            <span class="house">C.H POSTAL COMPANY</span>
+            <span class="tallies"><span>cards<b>4<em>/11</em></b></span><span>packages<b>1<em>/4</em></b></span><span>value<b>$3.10<em>/$8.20</em></b></span></span>
+            <span class="bar"><i></i></span>
+            <span class="foot"><span>4 packages · 11 cards</span><span>7 out</span></span>
+          </div>
+          <div class="ruled"><span>1 stamped ○</span></div>
+          <div class="list">
+            <div class="pcard">
+              <div class="phead"><div class="top"><span class="who"><b>Gamma Cards</b><span>2026-07-01</span></span><span class="spill">2 left · $0.73</span></div><span class="oid">SAMPLE-0003-C</span></div>
+              <div class="srow"><span class="mini">Stamp</span></div>
+              <div class="brow"><span class="mini">Mark All Received</span><span class="mini">Clear Check-ins</span></div>
+              <div class="ln"><span class="box"><i></i></span><span class="t"><b>Lightning Bolt<span>$0.42</span></b><small>Test Set · Near Mint</small></span></div>
+              <div class="ln"><span class="box"><i></i></span><span class="t"><b>Path to Exile<span>$0.31</span></b><small>Test Set · Near Mint</small></span></div>
+            </div>
+            <div class="pcard">
+              <div class="phead"><div class="top"><span class="who"><b>Beta Games</b><span>2026-07-29</span></span><span class="spill">3 left · $3.50</span></div><span class="oid">SAMPLE-0002-B</span></div>
+              <div class="ln"><span class="box"><i></i></span><span class="t"><b>Brainstorm<span>$0.50</span></b><small>Test Set · Near Mint</small></span></div>
+              <div class="ln"><span class="box"><i></i></span><span class="t"><b>Counterspell<span>$2.00</span></b><small>Test Set · Near Mint</small></span></div>
+              <div class="ln"><span class="box"><i></i></span><span class="t"><b>Swords to Plowshares<span>$1.00</span></b><small>Test Set · Near Mint</small></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="find" id="find-pill">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6"/><path d="M13 13l5 5"/></svg>
+          <span class="q">Find card, set, seller, order</span><span class="clr"></span>
+        </div>
+        <div class="sysbar"><div class="cap"><span><i></i>Ledger</span><span><i></i>Orphaned</span><span><i></i>Tally</span><span class="on"><i></i>Packages</span></div></div>
+        <div class="home"></div>
+
+        <!-- labels -->
+        <div class="mark today" style="left:10px; right:10px; top:56px; height:252px"></div>
+        <span class="tag today" style="right:16px; top:216px">Today: masthead (layout drawn)</span>
+        <div class="mark today" style="left:19px; right:19px; top:691px; height:40px; border-bottom:0; border-radius:4px 4px 0 0"></div>
+        <span class="tag today" style="left:28px; top:851px">Today: row text at 723 runs under the pill</span>
+        <div class="mark new" style="left:20px; right:20px; top:735px; height:43px; border-radius:22px"></div>
+        <span class="tag new" style="right:28px; top:749px">New: audit skip</span>
+      </div>
+    </div>
+    <figcaption>
+      <b>Measured</b> (lane restyle-step8's screen check of PR 238; coordinator, 2026-11-18 15:31 CST): the pill top at 731 pt. The item names the failing text frame: "Test Set · Near Mint" at 73, 723, 102 x 14, so its lower 6 pt sit under the pill.
+      <ul>
+        <li>From PR 238's body (screen-check run 43952443921), not the brief: pill bottom 782 pt, tab bar top 791 pt, 401.7 pt of visible list (so the list starts near 321 pt).</li>
+        <li>Drawn, unmeasured: the status bar and top safe area (54 pt), the masthead's inner layout, the card and row heights, the tab bar capsule, every name and figure.</li>
+        <li>The pill is drawn at 731 pt, its place on the band build. Its place once it floats again is unmeasured. The list runs to the screen foot, under the pill and the tab bar.</li>
+      </ul>
+    </figcaption>
+  </figure>
+</main>
+<script>
+// Deep links: #s=float (the one state), t=light|dark (page chrome only; the phone stays light). Join with &.
+function route() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  const s = h.get('s'), t = h.get('t');
+  if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+  const states = [...document.querySelectorAll('[data-state]')];
+  const hit = states.some(e => e.dataset.state === s);
+  states.forEach(e => { e.hidden = hit && e.dataset.state !== s; });
+  document.querySelectorAll('nav a').forEach(a => a.setAttribute('aria-current', String(a.getAttribute('href') === '#s=' + s)));
+  fit();
+}
+// Below 360 px of room the phone scales down whole; from 360 up it is drawn 1 px to 1 pt, so a host that scales the page
+// itself (a 402 frame less a scrollbar) never meets a phone that has already shrunk.
+function fit() {
+  document.querySelectorAll('.fit').forEach(w => { const d = w.firstElementChild; const k = w.clientWidth < 360 ? w.clientWidth / 402 : 1;
+    d.style.transform = k < 1 ? `scale(${k})` : ''; w.style.height = k < 1 ? (874 * k) + 'px' : ''; });
+}
+const hide = document.getElementById('hide-labels');
+hide.addEventListener('click', () => { const on = document.body.classList.toggle('hide-labels');
+  hide.setAttribute('aria-pressed', String(on)); hide.textContent = on ? 'Show labels' : 'Hide labels'; });
+addEventListener('hashchange', route); addEventListener('resize', fit); route();
+</script>
+</body>
+</html>
