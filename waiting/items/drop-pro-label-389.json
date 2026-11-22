@@ -4,6 +4,10 @@
   "home": "debt pro-ui-standing-red",
   "id": "drop-pro-label-389",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-22T19:45:00Z",
+    "note": "a: drop the Pro label on PR 389 too (saved in git)."
+  },
   "n": 125,
   "options": [
     {
@@ -34,6 +38,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "a",
   "ref": "coordinator 2026-11-22 13:42 CST: PR 389 Pro shards red",
+  "replied": "2026-11-22T19:48:00Z",
+  "reply": "You picked a (saved in git, 2026-11-22 13:45 CST): the Pro label is dropped on PR 389 too, so it merges on its green Duo shards. I told the coordinator. 13:48 CST.",
   "repo": "shivinate7/mailaudit",
   "short": "PR 389: drop the Pro label too, wait, or drop and test in a local session",
   "shown": [
