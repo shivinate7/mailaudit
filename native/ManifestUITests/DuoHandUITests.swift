@@ -29,8 +29,8 @@
 //             "On the open Duo, Card in Hand is the Packages tab", its Defaults say Packages keeps one page, and HandModel
 //             speaks of a sheet. Either entry passes. Neither passes if hand-query never shows.
 //   Left page hand-query (the text field, placeholder "Type the card in hand"), hand-count (the "N in . M out" line;
-//             its label is the text), hand-held (the Suspense line; present only while a name is held; its label holds
-//             the held name, any case), hand-strays (the strays list; present only while a stray exists; its label holds
+//             its label is the text), hand-held (the held box; present only while a name is held; its label starts with
+//             its title "held", then the held name, any case), hand-strays (the strays list; present only while a stray exists; its label holds
 //             each stray name, any case), hand-new-envelope (the New envelope button).
 //   Held chip hand-held-chip (inside the search field, on the left page; present while a card is held or released; its label
 //             is the spoken line "Held: <name>. Released: <names>. Not checked in.", which the chip cases read whole; the visible
@@ -122,6 +122,15 @@ final class DuoHandUITests: XCTestCase {
         return el
     }
 
+    /// The held box, which must show within 5 s, with its title "held": the one word a held name is called. The box's label
+    /// starts with its title (the screen sets it in capitals), then the held name, so the title is the label's first word.
+    func needHeldBox(_ app: XCUIApplication, _ what: String) -> XCUIElement {
+        let box = need(app, "hand-held", what)
+        let title = box.label.components(separatedBy: CharacterSet.alphanumerics.inverted).first { !$0.isEmpty }?.lowercased() ?? ""
+        XCTAssertEqual(title, "held", "the held box's title is \"\(title)\", not \"held\": its label is \"\(box.label)\" (\(what))")
+        return box
+    }
+
     /// The open Duo with Card in Hand showing. Packages in the bar first; if the query is not there, the hand-open button.
     func openHand(_ app: XCUIApplication) {
         let bar = need(app, "duo-tab-bar", "the custom tab bar of the open Duo")
@@ -188,7 +197,7 @@ final class DuoHandUITests: XCTestCase {
     /// Holds Lightning Bolt, then names Path to Exile: the next card offers a post. Returns the Post button, unscrolled and untapped.
     func offerPost(_ app: XCUIApplication) -> XCUIElement {
         typeCard(app, "Lightning Bolt")
-        _ = need(app, "hand-held", "the Suspense line of a held name")
+        _ = needHeldBox(app, "the held box of a held name")
         typeCard(app, "Path to Exile")
         return need(app, "hand-post", "the post the next card offers")
     }
@@ -314,15 +323,27 @@ final class DuoHandUITests: XCTestCase {
         let count = need(app, "hand-count", "the left page's count line").label
 
         typeCard(app, "Lightning Bolt")
-        let held = need(app, "hand-held", "the Suspense line of a held name")
-        XCTAssertTrue(held.label.lowercased().contains("lightning bolt"), "the Suspense line does not name Lightning Bolt: \"\(held.label)\"")
-        onLeftPage(held, app, "the Suspense line")
+        let held = needHeldBox(app, "the held box of a held name")
+        XCTAssertTrue(held.label.lowercased().contains("lightning bolt"), "the held box does not name Lightning Bolt: \"\(held.label)\"")
+        onLeftPage(held, app, "the held box")
         let tie = need(app, "hand-tie", "the envelopes that hold the shared name")
         onRightPage(tie, app, "the tie")
         XCTAssertFalse(app.element("hand-who").exists, "a tie named one envelope")
         XCTAssertFalse(app.element("hand-post").exists, "a held shared name offered a post")
         XCTAssertEqual(app.element("hand-count").label, count, "holding a name changed the count: it saved something")
         keepShot(app, "hand-tie")
+    }
+
+    /// Pose: flat. A held name with a post offered: the held box, the held chip and the Post button all show. The held state has one
+    /// word, "held", on every surface, so no element on the screen is labelled with any other word for it.
+    func testHeldNameIsCalledHeldOnEverySurface() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        _ = offerPost(app)
+        _ = need(app, "hand-held-chip", "the held chip, which shows while a card is held")
+        let other = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS[c] %@", "suspense")).allElementsBoundByIndex.map(\.label)
+        XCTAssertEqual(other, [], "an element on the held screen names a held name in a word other than \"held\": \(other)")
     }
 
     /// Pose: flat. The next card, unique to one envelope that also holds the held name, offers a post. Nothing is
@@ -359,7 +380,7 @@ final class DuoHandUITests: XCTestCase {
         let count = need(app, "hand-count", "the left page's count line").label
 
         typeCard(app, "Lightning Bolt")
-        _ = need(app, "hand-held", "the Suspense line of a held name")
+        _ = needHeldBox(app, "the held box of a held name")
         let newEnvelope = need(app, "hand-new-envelope", "the New envelope button")
         onLeftPage(newEnvelope, app, "the New envelope button")
         newEnvelope.tap()
@@ -390,7 +411,7 @@ final class DuoHandUITests: XCTestCase {
         openHand(app)
 
         typeCard(app, "Counterspell")
-        _ = need(app, "hand-held", "the Suspense line of a held name")
+        _ = needHeldBox(app, "the held box of a held name")
         _ = need(app, "hand-tie", "the tie of the envelopes that hold Counterspell, shown before New envelope")
         let newEnvelope = need(app, "hand-new-envelope", "the New envelope button")
         newEnvelope.tap()
@@ -409,24 +430,24 @@ final class DuoHandUITests: XCTestCase {
                        "New envelope left the no-match line \"No open envelope holds\" on the answer page for the typed card")
     }
 
-    /// Pose: flat. New envelope ends the envelope while a Suspense box shows, with a Released box already shown:
-    /// an earlier New envelope released Lightning Bolt, then Brainstorm is held. The Suspense box leaves when New envelope is
+    /// Pose: flat. New envelope ends the envelope while a held box shows, with a Released box already shown:
+    /// an earlier New envelope released Lightning Bolt, then Brainstorm is held. The held box leaves when New envelope is
     /// pressed, so the envelope row and its New envelope button must not move under the pointer (no-layout-shift-under-pointer,
     /// decision duo-card-in-hand). The button is read once the page has stopped moving, tapped, and read again once it is still.
-    func testNewEnvelopeHoldsStillUnderASuspenseBox() {
+    func testNewEnvelopeHoldsStillUnderAHeldBox() {
         let app = XCUIApplication.launchedOnSeed()
         guard app.requirePose(.flat) else { return }
         openHand(app)
 
         typeCard(app, "Lightning Bolt")
-        _ = need(app, "hand-held", "the Suspense line of a held name")
+        _ = needHeldBox(app, "the held box of a held name")
         need(app, "hand-new-envelope", "the New envelope button").tap()
         _ = need(app, "hand-strays", "the Released box of the first name New envelope released")
         waitGone(app.element("hand-held"), "the name is still held after the first New envelope")
 
         typeCard(app, "Brainstorm")
-        let held = need(app, "hand-held", "the Suspense line of Brainstorm, a shared name")
-        XCTAssertTrue(held.label.lowercased().contains("brainstorm"), "the Suspense line does not name Brainstorm: \"\(held.label)\"")
+        let held = needHeldBox(app, "the held box of Brainstorm, a shared name")
+        XCTAssertTrue(held.label.lowercased().contains("brainstorm"), "the held box does not name Brainstorm: \"\(held.label)\"")
         let strays = need(app, "hand-strays", "the Released box that holds Lightning Bolt")
         XCTAssertTrue(strays.label.lowercased().contains("lightning bolt"), "the Released box does not list Lightning Bolt: \"\(strays.label)\"")
         let newEnvelope = need(app, "hand-new-envelope", "the New envelope button")
@@ -439,7 +460,7 @@ final class DuoHandUITests: XCTestCase {
         XCTAssertTrue(released.label.lowercased().contains("brainstorm"), "the Released box does not list Brainstorm after New envelope: \"\(released.label)\"")
         waitUntilStill([newEnvelope])
         let after = newEnvelope.frame
-        XCTAssertEqual(after.minY, before.minY, accuracy: 1, "New envelope moved \(after.minY - before.minY) pt, from \(before) to \(after): the Suspense box above it left when New envelope was pressed")
+        XCTAssertEqual(after.minY, before.minY, accuracy: 1, "New envelope moved \(after.minY - before.minY) pt, from \(before) to \(after): the held box above it left when New envelope was pressed")
         keepShot(app, "hand-new-envelope-holds-still")
     }
 
@@ -641,49 +662,49 @@ final class DuoHandUITests: XCTestCase {
         XCTAssertTrue(value.contains("ordered") && value.contains(Self.gammaDate), "hand-who's value is \"\(value)\", not the sender and the order date \"\(Self.gammaDate)\": the slim head's spoken value is dropped (decision duo-card-in-hand)")
     }
 
-    /// Pose: flat, system keys up. A held name's Suspense box shows, and the one match row must clear the keys. A box above
+    /// Pose: flat, system keys up. A held name's held box shows, and the one match row must clear the keys. A box above
     /// the list would push the row under them, so the boxes sit below the matches (decision duo-card-in-hand).
-    func testMatchRowClearsTheKeysUnderASuspenseBox() {
+    func testMatchRowClearsTheKeysUnderAHeldBox() {
         let app = XCUIApplication.launchedOnSeed()
         guard app.requirePose(.flat) else { return }
         openHand(app)
         typeCard(app, "Lightning Bolt")
-        _ = need(app, "hand-held", "the Suspense line of a held name")
-        XCTAssertFalse(app.element("hand-strays").exists, "a Released box shows as well as the Suspense box, so this is not the Suspense case")
-        assertOnlyMatchClearsTheKeys(app, box: "Suspense")
+        _ = needHeldBox(app, "the held box of a held name")
+        XCTAssertFalse(app.element("hand-strays").exists, "a Released box shows as well as the held box, so this is not the held case")
+        assertOnlyMatchClearsTheKeys(app, box: "held")
     }
 
     /// Pose: flat, system keys up. A released name's Released box shows, and the one match row must clear the keys, as in the
-    /// Suspense case.
+    /// held case.
     func testMatchRowClearsTheKeysUnderAReleasedBox() {
         let app = XCUIApplication.launchedOnSeed()
         guard app.requirePose(.flat) else { return }
         openHand(app)
         typeCard(app, "Lightning Bolt")
-        _ = need(app, "hand-held", "the Suspense line of a held name")
+        _ = needHeldBox(app, "the held box of a held name")
         need(app, "hand-new-envelope", "the New envelope button").tap()
         _ = need(app, "hand-strays", "the Released box of the released name")
         waitGone(app.element("hand-held"), "the name is still held after New envelope")
         typeCard(app, "Path to Exile")
-        XCTAssertFalse(app.element("hand-held").exists, "a Suspense box shows as well as the Released box, so this is not the Released case")
+        XCTAssertFalse(app.element("hand-held").exists, "a held box shows as well as the Released box, so this is not the Released case")
         assertOnlyMatchClearsTheKeys(app, box: "Released")
     }
 
     /// Pose: flat, system keys up, text at AccessibilityXL, no box. The typed name leaves one match row, and that row must lie wholly
-    /// above the keys' drawn top (duo-fold-and-keyboard). The Suspense and Released cases show a box and set no text size, so no
+    /// above the keys' drawn top (duo-fold-and-keyboard). The held and Released cases show a box and set no text size, so no
     /// other case pins this row with no box at large text.
     func testMatchRowClearsTheKeysAtAccessibilityXL() {
         let app = XCUIApplication.launchedOnSeed(extra: ["-UIPreferredContentSizeCategoryName", Self.accessibilityXL])
         guard app.requirePose(.flat) else { return }
         openHand(app)
         typeCard(app, "Path to Exile")
-        XCTAssertFalse(app.element("hand-held").exists, "a Suspense box shows for Path to Exile, which no held name matches: this is not the no-box case")
+        XCTAssertFalse(app.element("hand-held").exists, "a held box shows for Path to Exile, which no held name matches: this is not the no-box case")
         XCTAssertFalse(app.element("hand-strays").exists, "a Released box shows for Path to Exile: this is not the no-box case")
         assertOnlyMatchClearsTheKeys(app, box: nil, at: "AccessibilityXL")
     }
 
     /// Pose: flat, system keys up. The typed name must leave exactly one match row, and that row must lie wholly above the keys'
-    /// drawn top and be hittable. `box` names the box that shows ("Suspense" or "Released"), or nil for no box. `size` names the
+    /// drawn top and be hittable. `box` names the box that shows ("held" or "Released"), or nil for no box. `size` names the
     /// text size the test launched at, for the message. The row is read once the keys and the list have stopped moving.
     /// No tap and no scroll. The typed name leaves one row, so that row is the list's only row and the one the keys can cover.
     func assertOnlyMatchClearsTheKeys(_ app: XCUIApplication, box: String?, at size: String? = nil) {
@@ -731,7 +752,7 @@ final class DuoHandUITests: XCTestCase {
         guard app.requirePose(.flat) else { return }
         openHand(app)
         typeCard(app, "Lightning Bolt")
-        _ = need(app, "hand-held", "the Suspense line of a held name")
+        _ = needHeldBox(app, "the held box of a held name")
         typeCard(app, "Zzz")
         waitForMatches(app, [], "typing Zzz must list no match")
         assertChipClearsTheKeys(app, "with default text and no match", shot: "hand-chip-no-match")
@@ -743,7 +764,7 @@ final class DuoHandUITests: XCTestCase {
         guard app.requirePose(.flat) else { return }
         openHand(app)
         typeCard(app, "Lightning Bolt")
-        _ = need(app, "hand-held", "the Suspense line of a held name")
+        _ = needHeldBox(app, "the held box of a held name")
         typeCard(app, "Path to")
         waitForMatches(app, ["Path to Exile"], "typing Path to must list Path to Exile alone")
         assertChipClearsTheKeys(app, "with default text and one match", shot: "hand-chip-one-match")
@@ -755,7 +776,7 @@ final class DuoHandUITests: XCTestCase {
         guard app.requirePose(.flat) else { return }
         openHand(app)
         typeCard(app, "Lightning Bolt")
-        _ = need(app, "hand-held", "the Suspense line of a held name")
+        _ = needHeldBox(app, "the held box of a held name")
         typeCard(app, "er")
         waitForMatches(app, ["Counterspell", "Ponder"], "typing er must list Counterspell and Ponder")
         assertChipClearsTheKeys(app, "with default text and two matches", shot: "hand-chip-two-matches")
@@ -768,7 +789,7 @@ final class DuoHandUITests: XCTestCase {
         guard app.requirePose(.flat) else { return }
         openHand(app)
         typeCard(app, "Lightning Bolt")
-        _ = need(app, "hand-held", "the Suspense line of a held name")
+        _ = needHeldBox(app, "the held box of a held name")
         typeCard(app, "er")
         waitForMatches(app, ["Counterspell", "Ponder"], "typing er must list Counterspell and Ponder, at AccessibilityXL")
         assertChipClearsTheKeys(app, "at AccessibilityXL with two matches", shot: "hand-chip-ax3")
@@ -782,11 +803,11 @@ final class DuoHandUITests: XCTestCase {
         guard app.requirePose(.flat) else { return }
         openHand(app)
         typeCard(app, "Lightning Bolt")
-        _ = need(app, "hand-held", "the Suspense line of a held name")
+        _ = needHeldBox(app, "the held box of a held name")
         need(app, "hand-new-envelope", "the New envelope button").tap()
         _ = need(app, "hand-strays", "the Released box of the name New envelope released")
         typeCard(app, "Brainstorm")
-        _ = need(app, "hand-held", "the Suspense line of Brainstorm, a shared name, held beside the released Lightning Bolt")
+        _ = needHeldBox(app, "the held box of Brainstorm, a shared name, held beside the released Lightning Bolt")
         let field = need(app, "hand-field", "the search field's box, which holds the typed text and the held chip")
         let chip = need(app, "hand-held-chip", "the held chip in the search field, which shows while a card is held and one is released")
         waitUntilStill([field, chip])
@@ -804,7 +825,7 @@ final class DuoHandUITests: XCTestCase {
         guard app.requirePose(.flat) else { return }
         openHand(app)
         typeCard(app, "Lightning Bolt")
-        _ = need(app, "hand-held", "the Suspense line of a held name")
+        _ = needHeldBox(app, "the held box of a held name")
         typeCard(app, "er")
         waitForMatches(app, ["Counterspell", "Ponder"], "typing er must list Counterspell and Ponder")
         let chip = need(app, "hand-held-chip", "the held chip in the search field, which shows while a card is held")
@@ -813,7 +834,7 @@ final class DuoHandUITests: XCTestCase {
         waitUntilStill([chip, row, field])
         let chipBefore = chip.frame.minY, rowBefore = row.frame.minY, fieldBefore = field.frame
 
-        row.tap()  // Ponder is in Gamma Cards alone, so the tap opens no Suspense line
+        row.tap()  // Ponder is in Gamma Cards alone, so the tap opens no held box
         waitForMatches(app, ["Counterspell", "Ponder"], "tapping Ponder must hold both rows, not collapse to the tapped one")
         waitUntilStill([chip, row, field])
         continueAfterFailure = true
@@ -1062,7 +1083,7 @@ final class DuoHandUITests: XCTestCase {
     /// Pose: flat. A tap on a match fills the query and the list holds its rows, so the New envelope button, which the owner's
     /// thumb reaches for next, does not move (no-layout-shift-under-pointer). "to" hits Brainstorm (two envelopes), Path to Exile
     /// and Swords to Plowshares in the seed, so the list has 3 rows. The 2nd, Path to Exile, is only in C1: it holds no name, so no
-    /// Suspense line opens. The tapped row is marked selected. One more letter ends the hold, and the list reads the field again.
+    /// held box opens. The tapped row is marked selected. One more letter ends the hold, and the list reads the field again.
     /// With the list above the row, a list that shrinks would move the button up and this fails.
     func testTappingAMatchDoesNotMoveNewEnvelope() {
         let app = XCUIApplication.launchedOnSeed()
@@ -1081,7 +1102,7 @@ final class DuoHandUITests: XCTestCase {
         _ = waitForHits(app, count: listed, "tapping Path to Exile must hold all \(listed) rows, not collapse to the tapped one")
         XCTAssertTrue(app.element("hand-hit:Path to Exile").isSelected, "the tapped row hand-hit:Path to Exile is not marked selected")
         XCTAssertEqual(app.element("hand-query").value as? String, "Path to Exile", "the tap did not fill the query")
-        XCTAssertFalse(app.element("hand-held").exists, "a Suspense line opened: the 2nd match is a shared name, so the seed no longer makes this test fair")
+        XCTAssertFalse(app.element("hand-held").exists, "a held box opened: the 2nd match is a shared name, so the seed no longer makes this test fair")
         let after = envelope.frame
         XCTAssertEqual(after.minY, before.minY, accuracy: 0.5, "New envelope moved from \(before) to \(after) after the tap on a match, which held the list at \(listed) rows")
 
@@ -1094,9 +1115,9 @@ final class DuoHandUITests: XCTestCase {
     }
 
     /// Pose: flat. A tap on a match fills the query, and the list holds its rows. The tapped row must stay under the finger.
-    /// The Suspense box that a shared name opens below the list must not rise above the old list foot (no-layout-shift-under-pointer).
+    /// The held box that a shared name opens below the list must not rise above the old list foot (no-layout-shift-under-pointer).
     /// "o" lists seven names, Brainstorm then Counterspell.
-    /// A1 and B1 both hold Counterspell, so tapping it opens a Suspense box. Rows are read once the list has stopped moving.
+    /// A1 and B1 both hold Counterspell, so tapping it opens a held box. Rows are read once the list has stopped moving.
     func testTappingAMatchMovesNoRowUnderTheFinger() {
         let app = XCUIApplication.launchedOnSeed()
         guard app.requirePose(.flat) else { return }
@@ -1105,7 +1126,7 @@ final class DuoHandUITests: XCTestCase {
 
         let rows = waitForHits(app, count: 7, "typing \"o\" must list seven names")
         XCTAssertEqual(rows[1].identifier, "hand-hit:Counterspell", "the 2nd match of \"o\" is not Counterspell, the name A1 and B1 share: \(rows.map(\.identifier))")
-        XCTAssertFalse(app.element("hand-held").exists, "a Suspense line shows before the tap, so the box after the tap is not the one the tap opened")
+        XCTAssertFalse(app.element("hand-held").exists, "a held box shows before the tap, so the box after the tap is not the one the tap opened")
         waitUntilStill(rows)
         let tapped = rows[1].identifier
         let before = rows[1].frame
@@ -1113,7 +1134,7 @@ final class DuoHandUITests: XCTestCase {
         let listed = rows.count
 
         app.element(tapped).tap()  // by id, so the tap is the 2nd row whatever order the query lists them in
-        let held = need(app, "hand-held", "the Suspense line of Counterspell, a name A1 and B1 share")  // opens once the tap has settled
+        let held = needHeldBox(app, "the held box of Counterspell, a name A1 and B1 share")  // opens once the tap has settled
         _ = waitForHits(app, count: listed, "tapping Counterspell must hold all \(listed) rows, not collapse to the tapped one")
         XCTAssertTrue(app.element(tapped).isSelected, "the tapped row \(tapped) is not marked selected")
         XCTAssertEqual(app.element("hand-query").value as? String, "Counterspell", "the tap did not fill the query")
@@ -1124,7 +1145,7 @@ final class DuoHandUITests: XCTestCase {
         let after = row.frame
         // The label's horizontal position is not visible to XCUITest through the Button, so the design review checks it from shots.
         XCTAssertEqual(after.minY, before.minY, accuracy: 1, "the tapped row \(tapped) moved \(after.minY - before.minY) pt under the finger, from \(before) to \(after): the list shrank above it")
-        XCTAssertGreaterThanOrEqual(held.frame.minY, foot - 1, "the Suspense box, frame \(held.frame), sits above the old list foot at y \(foot): it rose into the space the list left, under the finger")
+        XCTAssertGreaterThanOrEqual(held.frame.minY, foot - 1, "the held box, frame \(held.frame), sits above the old list foot at y \(foot): it rose into the space the list left, under the finger")
         keepShot(app, "hand-match-tap-moves-no-row")
     }
 

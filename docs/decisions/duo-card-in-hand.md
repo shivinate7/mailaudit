@@ -26,7 +26,7 @@ The owner ruled on 2026-10-27, 12:25 CDT. Round 2 answers, 14:26 CDT, are marked
 - **Card in Hand entry.** Owner, page item 35 (`duo-card-in-hand-entry`), option a, 2026-11-18 23:17 CST: "Keep Packages; add a Card in Hand control". Card in Hand is not the Packages tab. Option b, Packages becomes Card in Hand, is not chosen.
 - **Still owed place.** Owner, page item 78 (`hand-still-owed-place`), option a, 2026-11-18 23:22 CST: "Still owed here" sits on the order line. Option b, under the lines, is not chosen.
 - **End of mail day entry.** Owner, page item 79 (`hand-end-of-day-open`), option a, 2026-11-19 23:23 CST: the empty query opens the End of mail day view. Option b, a Day's end control, is not chosen. The house rule is `ux-control-earns-place`.
-- **Held card words.** Owner, page item 80 (`hand-held-words`), option b, 2026-11-19 19:28 CST: one word only. Item 113 (`held-word-which-stays`), option a, 2026-11-21 19:54 CST: "held" is the one word everywhere. Item 97 (`held-words-one-word-scope`), option b, 2026-11-21 19:58 CST: change every place the word shows. The card line, box title, chip, offer and Post are ruled to say "held". The held word is built on PR 388 (draft). Until it merges, main still titles the box "Suspense" (`native/Manifest/HandScreen.swift`).
+- **Held card words.** Owner, page item 80 (`hand-held-words`), option b, 2026-11-19 19:28 CST: one word only. Item 113 (`held-word-which-stays`), option a, 2026-11-21 19:54 CST: "held" is the one word everywhere. Item 97 (`held-words-one-word-scope`), option b, 2026-11-21 19:58 CST: change every place the word shows. The card line, box title, chip, offer and Post are ruled to say "held". The Hand box is titled "held" (`native/Manifest/HandScreen.swift`).
 
 ## Keys across the fold
 
