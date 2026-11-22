@@ -2020,7 +2020,7 @@ const REMOTE_SAYS = {
   offline: "No connection. The ledger is safe on this device.",
   server: "The backup service is having trouble. Try again.",
   "bad-response":
-    "That isn’t a Mail Day ledger. Nothing on this device was changed.",
+    "That isn’t a CH Post ledger. Nothing on this device was changed.",
 };
 
 /* A SEPARATE table, and photo failures get a separate piece of state, because
@@ -3868,14 +3868,14 @@ export default function MailDayLedger() {
     (file) => {
       setUploadErr("");
       if (/\.json$/i.test(file.name)) {
-        // restore from a Mail Day backup
+        // restore from a CH Post backup
         const reader = new FileReader();
         reader.onload = () => {
           applyBackup(reader.result, "file").catch((e) =>
             setUploadErr(
               e?.message === "unsaved"
                 ? "A copy of that file could not be saved to History, so nothing was changed."
-                : "That file isn\u2019t a Mail Day backup. Use a backup downloaded from the Backup button, or an OrderWand CSV."
+                : "That file isn\u2019t a CH Post backup. Use a backup downloaded from the Backup button, or an OrderWand CSV."
             )
           );
         };
