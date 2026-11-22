@@ -1,6 +1,6 @@
 // Card in Hand UI tests on the open iPhone Duo (decisions duo-card-in-hand and new-envelope-ends-an-envelope; mockup
-// poses 1, 2, 4 and 6 of docs/design/duo-card-in-hand on origin/design/duo-round2). The model is HandModel and
-// PastTransitModel in ManifestKit; their unit tests are HandModelTests and PastTransitModelTests.
+// poses 1, 2, 4 and 6 of docs/design/duo-card-in-hand on origin/archive/design/duo-round2). The model is
+// HandModel and PastTransitModel in ManifestKit; their unit tests are HandModelTests and PastTransitModelTests.
 //
 // Red-first and NOT RUN by the test-author (the Duo is another agent's to boot). They compile against this branch
 // and fail on a missing element. The builder runs them red, then green. How to run: DuoShellUITests.swift, same
