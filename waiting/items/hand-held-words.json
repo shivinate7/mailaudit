@@ -86,8 +86,8 @@
   "pick": "a",
   "rank": 35,
   "ref": "decision duo-card-in-hand; lane duo-gaps-design-review (PR 237)",
-  "replied": "2026-11-22T00:23:00Z",
-  "reply": "You chose b, one word only (19:28 CST). Filed in git. Not yet said: which word stays, \"held\" or \"Suspense\". Item 113 asks which word stays; item 97 asks how far the change reaches. Held until then: your answers on 98, 101 and 102.",
+  "replied": "2026-11-22T00:30:00Z",
+  "reply": "You chose b, one word only (19:28 CST). Filed in git. Not yet said: which word stays, \"held\" or \"Suspense\". Item 113 asks which word stays; item 97 asks how far the change reaches. Held until then: your answers on 101 and 102 (98 is closed as moot).",
   "repo": "shivinate7/mailaudit",
   "short": "Held card words",
   "shown": [
