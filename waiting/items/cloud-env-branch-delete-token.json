@@ -1,8 +1,8 @@
 {
   "added": "2026-11-21T06:36:00Z",
   "command": {
-    "mac": "gh auth switch -u shivinate7 && git push origin --delete archive-duo-round2-records design-duo-post-bar-53 design-duo-post-pins red/duo-post-pins red/orphaned-composer-dismiss red/post-pins design/duo-round2",
-    "powershell": "gh auth switch -u shivinate7; git push origin --delete archive-duo-round2-records design-duo-post-bar-53 design-duo-post-pins red/duo-post-pins red/orphaned-composer-dismiss red/post-pins design/duo-round2"
+    "mac": "gh auth switch -u shivinate7 && git push origin --delete archive-duo-round2-records design-duo-post-bar-53 design-duo-post-pins red/duo-post-pins red/orphaned-composer-dismiss red/post-pins design/duo-round2 red/tracking-stamp rename-ch-post-118b-tests rename-ch-post-build rename-ch-post-tests rulings-115-116-107 tracking-stamp-build tracking-stamp-records-fix tracking-stamp-tests-fix record-run-393",
+    "powershell": "gh auth switch -u shivinate7; git push origin --delete archive-duo-round2-records design-duo-post-bar-53 design-duo-post-pins red/duo-post-pins red/orphaned-composer-dismiss red/post-pins design/duo-round2 red/tracking-stamp rename-ch-post-118b-tests rename-ch-post-build rename-ch-post-tests rulings-115-116-107 tracking-stamp-build tracking-stamp-records-fix tracking-stamp-tests-fix record-run-393"
   },
   "context": "Goal: sessions can delete merged and temporary branches on their own.\nProblem (rule): you already ruled that the cloud environment carries a GitHub token named SHIV_GITHUB_TOKEN, it is still not set (checked in two sessions), and branch deletes return 403; only you can create the token.\nBased on (ruling): r45, your ruling of 2026-11-11 14:25 CST in claude-settings: you approve a GitHub token in the cloud environment as SHIV_GITHUB_TOKEN, which you create, so sessions can delete branches.\nBased on (read): seven branches wait for deletion: ideas/mock-delight, ideas/mock-deputy, ideas/mock-money, ideas/mock-say-it-back, red/duo-post-pins, design-duo-post-pins, design-duo-post-bar-53 (checked 2026-11-21 17:15 CST CST: duo-post-pins, duo-post-bar-53 and red/duo-post-bar-53 are already gone).\nDeparts from: main has no such token in the cloud environment \u2014 this adds one cloud environment variable.\nWaiting on: your answer; the branches stay until then.",
   "home": "claude-settings ruling r45; cloud environment settings",
@@ -40,8 +40,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "a",
   "ref": "claude-settings ruling r45",
-  "replied": "2026-11-22T06:32:00Z",
-  "reply": "You parked this (saved in git, 2026-11-22 00:31 CST). Nothing runs. The branches stay, and the command box below keeps the stopgap if you want it later. Ruling r45 still stands. 00:32 CST.",
+  "replied": "2026-11-22T12:17:00Z",
+  "reply": "You parked this (saved in git, 2026-11-22 00:31 CST), so nothing runs. I refreshed the command box below with the batch runner's new list: 15 branches, each already on main or an archive, plus the throwaway macOS record branch. I checked the new merged ones against main myself (9 of 9 are in main). Left out on purpose: the older step8 branches (draft PR 238 is still open) and the unmerged design and idea branches. Run it only when you want the clean-up. Ruling r45 still stands. 06:17 CST.",
   "repo": "shivinate7/mailaudit",
   "short": "Create the branch-delete token (r45)",
   "shown": [
