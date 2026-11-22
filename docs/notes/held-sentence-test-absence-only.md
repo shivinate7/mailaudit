@@ -1,1 +1,0 @@
-- held-sentence-test-absence-only: `testHeldSentenceLeavesTheScreen` (`native/ManifestUITests/DuoHandUITests.swift`) asserts only that no static text contains "Your held card came with this envelope." A reword of that sentence to other words would stay green, and the test checks no replacement text. Seen: 2026-11-22 x1 Decision: duo-card-in-hand.
