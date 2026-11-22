@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "MANIFEST orders",
+  "name": "CH Post orders",
   "version": "1.0.0",
-  "description": "Reads your TCGplayer order history from a signed-in tab and adds new orders to your MANIFEST ledger.",
+  "description": "Reads your TCGplayer order history from a signed-in tab and adds new orders to your CH Post ledger.",
   "minimum_chrome_version": "110",
   "permissions": ["storage", "scripting", "tabs"],
   "host_permissions": [
@@ -12,7 +12,7 @@
   "background": { "service_worker": "background.mjs", "type": "module" },
   "options_ui": { "page": "options.html", "open_in_tab": true },
   "action": {
-    "default_title": "MANIFEST orders",
+    "default_title": "CH Post orders",
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png",

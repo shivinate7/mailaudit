@@ -27,6 +27,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `one-repo-for-both-halves` | The source repository, `mailaudit`, is public and holds no data. | [`docs/decisions/one-repo-for-both-halves.md`](../docs/decisions/one-repo-for-both-halves.md) |
 | `one-simulator-per-mac` | Kind: process | [`docs/decisions/one-simulator-per-mac.md`](../docs/decisions/one-simulator-per-mac.md) |
 | `peek-is-three-valued` | **Status:** retired 2026-10-14. | [`docs/decisions/peek-is-three-valued.md`](../docs/decisions/peek-is-three-valued.md) |
+| `phone-forms-and-mockup-size` | Kind: process | [`docs/decisions/phone-forms-and-mockup-size.md`](../docs/decisions/phone-forms-and-mockup-size.md) |
 | `photo-branch-must-preexist` | Photos lived on the `main` branch of `mailaudit-data`, in `photos/`. | [`docs/decisions/photo-branch-must-preexist.md`](../docs/decisions/photo-branch-must-preexist.md) |
 | `photo-errors-never-hit-pushstate` | Kind: process | [`docs/decisions/photo-errors-never-hit-pushstate.md`](../docs/decisions/photo-errors-never-hit-pushstate.md) |
 | `photo-writes-wait-one-second` | **Status:** retired 2026-10-14. | [`docs/decisions/photo-writes-wait-one-second.md`](../docs/decisions/photo-writes-wait-one-second.md) |
