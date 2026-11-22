@@ -16,6 +16,7 @@ A merge never drops a line from `items`. A check-in or an envelope goes only whe
 
 - `mergeItems` unions by `it.key`. The CSV import path calls it too, so there is one definition of "union line items".
 - `mergeReceived` takes the later time per key, from `receivedAt`. A timed absence beats an untimed count, because only an un-check makes one. With no time on either side, it takes the per-key **max**.
+- A line's `tracking` takes the later `trackingAt`, as `receivedAt` takes the later time (owner item 94, route c, 2026-11-21 20:00 CST; ruled, not built). Tracking joins the later-change-wins fields.
 - The cost of that rule: an old build writes no times. So its later check-in loses to a timed un-check. Update both devices first, as `saved-state-shape` says.
 - `mergeEnvelopes` unions by id. The freshest `updatedAt` wins. A `deletedAt` tombstone competes the same way.
 - `mergeStamps` works per package. The freshest `updatedAt` wins, and tombstones are included.
@@ -38,7 +39,7 @@ Mutants confirmed red:
 
 ## Clock skew is an accepted risk
 
-A device clock set far ahead pins a key. A later real change on the other device then loses to that pinned time. Envelope and stamp `updatedAt` share this exposure, and so does an unknown key's `savedAt`. The merge trusts device time, and no bound checks it.
+A device clock set far ahead pins a key. A later real change on the other device then loses to that pinned time. Envelope and stamp `updatedAt` share this exposure, and so does an unknown key's `savedAt`, and a line's `trackingAt` once it is built. The merge trusts device time, and no bound checks it.
 
 **Holds while:** `touchReceived` in `src/app.jsx` and the save timer stamp `Date.now()` from the device, with no server time or skew bound. A server-set time, or a skew bound, would end this risk.
 
