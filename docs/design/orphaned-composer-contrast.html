@@ -134,7 +134,7 @@ table.ratios { border-collapse:collapse; font-size:13.5px; background:var(--card
 <div class="banner">Sample. No card name, count or figure in the drawn screens is real data. Positions come from the code's sizes and the measured Duo figures, not from a simulator.</div>
 <h1>Orphaned composer: keep Save clear of the keys</h1>
 <p class="kind">Designer kind: informed. Owner page item 84. iPhone Duo folded, 466 x 678 pt. Light only.</p>
-<p class="sub">The ready audit flags the "1 card" count and the Save envelope button. Both colour pairs clear 4.5:1. The empty audit passes on the same count in the same colour. What differs is the place: adding a card pushes the Save row 62 pt down, under the keys, and nothing scrolls it back. The audit then reads keyboard pixels inside the two frames. The fix is a margin: the Save row stays 56 pt above the keyboard's reported top, re-scrolled each time the composer changes height.</p>
+<p class="sub">The ready audit flags the "1 card" count and the Save envelope button. Both colour pairs clear 4.5:1. The empty audit passes on the same count in the same colour. What differs is the place: adding a card pushes the Save row 62 pt down, under the keys, and nothing scrolls it back. The audit then reads keyboard pixels inside the two frames. The fix is a margin: the Save row stays 12 pt above the keyboard's reported top, re-scrolled each time the composer changes height (owner ruling 123 a, 2026-11-22). The 56 pt margin that also clears the drawn strip is not picked.</p>
 
 <nav aria-label="State">
   <span class="lab">Keyboard</span>
@@ -193,10 +193,10 @@ const COMPOSER_READY = 12 + 13 + 8 + 48 + 8 + 54 + 8 + 48 + 8 + 48 + 12;  // 267
 const ROW = 44, PAD = 12;          // the Save row's hit frame, the composer's bottom padding
 
 const OPTS = [
-  { id:"margin-strip", grp:"margin", title:"Clear the drawn strip", pick:true,
+  { id:"margin-strip", grp:"margin", title:"Margin 56 pt: clear the drawn strip (not picked)", notpick:true,
     how:"Re-scroll whenever the composer's height changes, so the Save row's bottom sits 56 pt above the keyboard's reported top: the 44 pt the keys drew above their frame on the open Duo, plus 12 pt.",
     gain:"Clears the keys even if the folded screen and the 18 Pro draw the same strip.", loss:"44 pt less of the composer shows above the keys. Whether the strip exists folded is unmeasured." },
-  { id:"margin-clear", grp:"margin", title:"Clear the reported frame",
+  { id:"margin-clear", grp:"margin", title:"Margin 12 pt: clear the reported frame", pick:true,
     how:"The same re-scroll, with the Save row's bottom 12 pt above the keyboard's reported top.",
     gain:"Shows 44 pt more above the keys.", loss:"If the keys draw a strip above their frame here too, the row sits under it and the audit still reads keyboard pixels." },
   { id:"count-inksoft", grp:"count", title:"Count stays inkSoft", pick:true,
@@ -212,7 +212,7 @@ const OPTS = [
     how:"Save and Cancel pills fill their 44 pt frame, so the audited box holds only fill, border and text.",
     gain:"Takes the card strips out of Save's frame.", loss:"Taller pills than the web's miniBtn. Cancel flags in every container with or without strips (audit-skips-measured-flags)." },
 ];
-const PICK = { margin:"margin-strip", count:"count-inksoft", save:"save-pill" };
+const PICK = { margin:"margin-clear", count:"count-inksoft", save:"save-pill" };
 
 let S = { k:289, show:"all", o:null };
 const hidden = new Set();
@@ -255,8 +255,8 @@ function frame(kind) {
   } else if (kind === "keys") {
     const clearDrawn = drawnTop - rowBottom;
     verdict = clearDrawn >= 0
-      ? `<span class="ok">Save row y ${rowTop}–${rowBottom}. ${clearDrawn} pt above the drawn top (y ${drawnTop}), ${keysTop - rowBottom} pt above the reported top (y ${keysTop}).</span> With an empty pile, only 28 pt of content lies below the row, so the scroll needs a bottom content margin of ${Math.max(0, keysTop - rowBottom - 28)} pt while composing to get here.`
-      : `<span class="bad">Save row y ${rowTop}–${rowBottom}. ${-clearDrawn} pt inside the drawn strip (from y ${drawnTop}), if the folded keys draw one.</span>`;
+      ? `<span class="ok">Save row y ${rowTop}–${rowBottom}. ${clearDrawn} pt above the drawn top (y ${drawnTop}), ${keysTop - rowBottom} pt above the reported top (y ${keysTop}).</span> With an empty pile, 28 pt of content lies below the row, so the scroll ${keysTop - rowBottom > 28 ? `needs ${keysTop - rowBottom - 28} pt more content below` : `needs no extra content below: the 28 pt covers the ${keysTop - rowBottom} pt margin`}.`
+      : `<span class="ok">Save row y ${rowTop}–${rowBottom}, ${keysTop - rowBottom} pt above the reported top (y ${keysTop}).</span> <b>${-clearDrawn} pt inside the drawn strip (from y ${drawnTop}), if the folded keys draw one: accepted, ruling 123 a. Unmeasured folded.</b> With an empty pile, 28 pt of content lies below the row, so the scroll ${keysTop - rowBottom > 28 ? `needs ${keysTop - rowBottom - 28} pt more content below` : `needs no extra content below: the 28 pt covers the ${keysTop - rowBottom} pt margin`}.`;
   } else {
     verdict = `<span class="ok">Save row y ${rowTop}–${rowBottom}, ${TAB_TOP - rowBottom} pt above the tab bar (y ${TAB_TOP}), so the audit checks it: no overlap, no skip.</span>`;
   }
@@ -289,13 +289,13 @@ function render() {
   const cur = S.o && OPTS.find(x => x.id === S.o);
   document.getElementById("drawing").innerHTML = cur
     ? `Drawing the option <b>${cur.title}</b>, ringed in violet. <a href="#s=${S.show}&k=${S.k}">Back to the picks</a>`
-    : "Drawing the picks: clear the drawn strip, count stays inkSoft, Save pill stays as today.";
+    : "Drawing the picks: 12 pt margin above the reported keyboard top, count stays inkSoft, Save pill stays as today.";
   const part = focusPart();
   if (part) { const el = document.getElementById(part === "row" ? "save-row" : part); if (el) el.classList.add("focus"); }
   document.getElementById("opts").innerHTML = OPTS.filter(o => !hidden.has(o.id)).map(o => `
     <section class="opt" data-opt="${o.id}">
       <span class="grp">${({ margin:"Margin above the keys", count:"Count colour", save:"Save frame" })[o.grp]}</span>
-      <h3>${o.title}${o.pick ? '<span class="pick">Pick</span>' : ""}${o.grant ? '<span class="grant">Owner grant</span>' : ""}</h3>
+      <h3>${o.title}${o.pick ? '<span class="pick">Pick</span>' : ""}${o.grant ? '<span class="grant">Owner grant</span>' : ""}${o.notpick ? '<span class="grant">Not picked</span>' : ""}</h3>
       <p>${o.how}</p><p><b>Gain:</b> ${o.gain}</p><p><b>Loss:</b> ${o.loss}</p>
       <div class="row"><a href="#o=${o.id}&k=${S.k}&s=${S.show}">Draw it</a><button type="button" data-hide="${o.id}">Hide</button></div>
     </section>`).join("");
