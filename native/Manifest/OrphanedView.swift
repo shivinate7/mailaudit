@@ -187,13 +187,12 @@ private struct ComposerView: View {
     @State private var gauge = KeyGauge()
 
     /// The Save row's bottom stays this far above the keys' reported top. A choice (the mockup `orphaned-composer-contrast`), not a
-    /// measurement. On the iPhone 18 Pro the reported top is the prediction strip's top (pro-ui run: strip cells at y 546, reported
-    /// top 546), so this is 12 pt clear of the strip. The 44 pt strip that `duo-fold-and-keyboard` records above the open Duo's
-    /// reported frame is not added: the empty composer's Save then sat 56 pt above the strip, which needed a scroll that failed its
-    /// audits. The Duo's reported frame against this is unmeasured (`duo-keyboard-gap-unmeasured`).
+    /// measurement. On the iPhone 18 Pro the reported top is the prediction strip's top, so this is 12 pt clear of the strip. The
+    /// 44 pt strip that `duo-fold-and-keyboard` records above the open Duo's reported frame is not added to the margin. The Duo's
+    /// reported frame against this is unmeasured (`duo-keyboard-gap-unmeasured`).
     private static let keyMargin: CGFloat = 12
-    /// A shortfall under this is layout rounding, not a row under the keys, so it starts no scroll. A bandaid: the empty composer's
-    /// Save lies 0.67 pt inside `keyMargin`, and a scroll for that moved the page under the audit.
+    /// A shortfall under this starts no scroll, so a sub-point miss of `keyMargin` does not move the page. A bandaid: 2 pt is a
+    /// chosen threshold, not a measured one.
     private static let deadband: CGFloat = 2
     private static let saveRow = "orphaned-composer-save-row"
     /// The open Duo's left page, where the composer sits in a page the keys do not reach the way they reach the iPhone's.
@@ -298,8 +297,7 @@ private struct ComposerView: View {
         // finish opening, and when its own height changes (an entry added or removed, the suggestions opening or closing, a field
         // growing). Never on a scroll, so a drag is not fought.
         // On the open Duo's spread it keeps the older move instead: Save to the page's bottom edge on a focus change and once the keys
-        // are open, and nothing else. A bandaid: the margin's scroll left the left page scrolled past its envelope cells after Save
-        // (duo-ui run 45025191429: cell frame y -8.3), where the older move did not.
+        // are open, and nothing else. The cause of the earlier margin scroll's failures on the spread is not established.
         .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { _ in if !onSpread { keepSaveClear() } }
         .onChange(of: focused) { _, f in if f != nil { bringSaveUp() } }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { note in
