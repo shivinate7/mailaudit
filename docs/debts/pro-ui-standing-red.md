@@ -1,6 +1,6 @@
 # The pro-ui shards fail on every run, and the cause is unmeasured
 
-**What.** The pro-ui shards of the duo-ui workflow failed in every run where they ran across the last 80 duo-ui runs, on every pull request head, back to 2026-11-20 (audit ab2db318a89419f0a, 2026-11-22). Nine tests fail on every run:
+**What.** The pro-ui shards of the duo-ui workflow failed in every run where they ran across the last 80 duo-ui runs, on every pull request head, back to 2026-11-20 (owner ruling 122 c, relayed by triage 2026-11-22 12:29 CST; run ids below). Nine tests fail on every run:
 
 - `MastheadBackupUITests.testAccessibilityAuditMastheadOnTally`
 - `PackageBulkUITests.testAccessibilityAuditPackagesWithBothBulkControls`

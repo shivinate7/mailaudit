@@ -4,6 +4,8 @@ Mockup: `orphaned-composer-contrast.html`. Designer kind: informed. Owner page i
 
 Deep links: `#s=all` (default: Today keys up, New keys up, New keys closed), `#s=today`, `#s=keys`, `#s=closed`. `#k=250` draws the 250 pt keyboard, and `#k=289` (default) the 289 pt one. `#o=<option id>` draws an option and rings the element it changes: `margin-strip`, `margin-clear`, `count-inksoft`, `count-ink`, `save-pill`, `save-fills`. The parts combine, as in `#s=keys&k=250&o=margin-clear`.
 
+Option ids: `margin-clear` is item 1 (12 pt, picked); `margin-strip` is item 2 (56 pt, not picked).
+
 Size and theme: iPhone Duo folded, 466 x 678 pt only (owner page item 109, decision `phone-forms-and-mockup-size`, still on branch `ruling-109-phone-forms`). Default text size. Light only: `native/project.yml` sets `UIUserInterfaceStyle: Light`.
 
 ## The cause the mockup draws
@@ -37,7 +39,7 @@ The last column is the share of a pixel that must be the text colour, the rest c
    - Loss: the keys drew a 44 pt strip above their frame on the open Duo (`DuoHandUITests.keyboardDrawnAbove`, measurement `duo-fold-and-keyboard`). If they draw it here too, the row sits inside the strip, and the audit still reads keyboard pixels. The strip is measured on the open Duo only. On the folded screen and the 18 Pro it is unmeasured.
    - Departs from: `ComposerView` `.onChange(of: focused)` and the `keyboardDidShowNotification` handler, which scroll on focus and keys only, and `MastheadScreen` `scrollTo(anchor: .bottom)`, which leaves no margin. Not blocking.
    - Reach: `scrollTo` cannot scroll past the end of the content. The audited run starts with an empty pile, since the seed fixture `shared/fixtures/ledger.json` holds items only. The composer hides the empty line, so only the composer's 12 pt padding and the list's 16 pt bottom padding lie below the Save row, 28 pt in all. That covers the 12 pt margin, so the scroll needs no extra content below. Item 2 would need 28 pt more.
-   - Pointer: the re-scroll moves the composer about 74 pt up just after a tap on a suggestion row. Invariant `no-layout-shift-under-pointer` forbids a row moving under the thumb after a press. Today the same tap already moves every row below the input by 62 pt as the list closes and the entry lands, but the re-scroll moves the input itself, which today stays still. To keep the move small, scroll only when the Save row lies below the keys' drawn top, and only by the distance needed. Owner grant: yes.
+   - Pointer: the re-scroll moves the composer about 62 pt up just after a tap on a suggestion row. Invariant `no-layout-shift-under-pointer` forbids a row moving under the thumb after a press. Today the same tap already moves every row below the input by 62 pt as the list closes and the entry lands, but the re-scroll moves the input itself, which today stays still. To keep the move small, scroll only when the Save row lies below the keys' drawn top, and only by the distance needed. Owner grant: yes.
    - Builder: give the check an outcome, not a picture. With the keys up and one card added, Save's frame `maxY` ≤ the keyboard's `minY` − 12. The test reads the 12 pt margin from one constant and never copies it.
 2. **Margin: 56 pt above the reported top.** The same re-scroll with the strip added: 44 pt for the strip plus the 12 pt clearance. Not picked.
    - Gain: the row clears the keys even if the folded screen and the 18 Pro draw the same strip.
@@ -59,7 +61,7 @@ The last column is the share of a pixel that must be the text colour, the rest c
 ## What moves compared with today
 
 - With the keys up, the composer scrolls up after each card is added. With the 289 pt keys it moves 74 pt: from y 196–463 to y 122–389. Today the row is 62 pt under the keys' top, and the pick puts it 12 pt above that top.
-- With the keys closed, nothing moves that does not move today. The scroll offset stays where the last re-scroll left it. That is my reading of SwiftUI's scroll view, and it is unmeasured. The row then lies 262 pt above the tab bar, so the audit checks it, with no overlap and no skip.
+- With the keys closed, nothing moves that does not move today. The scroll offset stays where the last re-scroll left it. That is my reading of SwiftUI's scroll view, and it is unmeasured. The row then lies 218 pt above the tab bar (179 pt with the 250 pt keys), so the audit checks it, with no overlap and no skip.
 - No colour, size, font or control changes in the picks.
 
 ## The fix check
