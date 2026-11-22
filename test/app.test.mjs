@@ -2917,7 +2917,7 @@ eq(
     { items: [trkLine(1, "with tracking")] }
   ).merged.items[0].tracking,
   "unknown",
-  "33.65 a two-device merge keeps the local tracking: mergeLedger never refreshes"
+  "33.65 a two-device merge of two unstamped lines keeps the local tracking: mergeLedger never refreshes"
 );
 /* the count is per key, against the tracking the base held: two incoming rows of one
    key count once, and the last row decides whether that key counted at all */
@@ -3011,6 +3011,8 @@ eq(
 const TRK_NOW = Date.UTC(2026, 10, 21, 20, 0);
 const stampedTrk = (n, tracking, at) => trkLine(n, tracking, { trackingAt: at });
 const trkAtOf = (items, n) => items.find((it) => it.key === `T|${n}|${n}`)?.trackingAt ?? 0;
+/* trkAtOf reads 0 for a missing line, so each stamp case first checks the line is present */
+const trkHas = (items, n) => items.some((it) => it.key === `T|${n}|${n}`);
 
 /* a stamped line on either side of a clash, in either argument order */
 const TRK_UNSTAMPED_1 = [trkLine(1, "unknown")];
@@ -3035,7 +3037,9 @@ const trkStamped = mergeItems(TRK_BASE, TRK_IN, { refreshTracking: true, now: TR
 eq(trkOf(trkStamped.items, 1), "with tracking", "33.85a scope: the refresh still takes the incoming tracking");
 eq(trkAtOf(trkStamped.items, 1), TRK_NOW, "33.85 a refreshed line is stamped with the injected now");
 eq(trkAtOf(trkStamped.items, 2), TRK_NOW, "33.86 and so is each other line the refresh changed");
+ok(trkHas(trkStamped.items, 3), "33.87 line 3, which the refresh leaves unchanged, is present in the merged list");
 eq(trkAtOf(trkStamped.items, 3), 0, "33.87 a line the refresh leaves unchanged gets no stamp");
+ok(trkHas(trkStamped.items, 5), "33.87a line 5, a stored line absent from the incoming list, is present in the merged list");
 eq(trkAtOf(trkStamped.items, 5), 0, "33.87a a stored line absent from the incoming list gets no stamp");
 const trkRenamed = mergeItems(
   [trkLine(1, "unknown")],
@@ -3043,6 +3047,7 @@ const trkRenamed = mergeItems(
   { refreshName: true, refreshTracking: true, now: TRK_NOW }
 );
 eq(trkRenamed.renamed, 1, "33.88a scope: the name changed on the one line");
+ok(trkHas(trkRenamed.items, 1), "33.88 line 1, changed only by its name, is present in the merged list");
 eq(trkAtOf(trkRenamed.items, 1), 0, "33.88 a line changed only by its name gets no stamp");
 
 /* the empty state and the full-size state of the refresh */
