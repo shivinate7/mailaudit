@@ -1,0 +1,46 @@
+{
+  "added": "2026-11-22T02:11:00Z",
+  "context": "Goal: every device gets the tracking update.\nProblem (rule): after you restore a backup, the restored tracking value has no new time stamp, so the server's newer tracking can overwrite it at the next sync; a decision says a later reply cannot undo a restore, so only you can allow this exception.\nBased on (ruling): decision a-restore-is-not-local: a later server reply cannot undo a restore.\nBased on (read): src/merge-rules.mjs, where the restore re-stamps check-ins, stamps and envelopes only, not tracking.\nBased on (read): the coordinator's plan with the refuter's check: each line carries an optional tracking time and the later time wins; the saved-state rule allows an optional defaulted field inside a key already saved.\nDeparts from: main lets a restore stick on the restoring device \u2014 option a lets newer server tracking win after a restore.\nWaiting on: your answer; the coordinator builds with a as the working default meanwhile.",
+  "home": "decision a-restore-is-not-local; debt reimport-refresh-stays-on-device",
+  "id": "restore-tracking-stamp",
+  "kind": "decision",
+  "n": 115,
+  "options": [
+    {
+      "gain": "No phone rebuild; tracking is shipping data from the source.",
+      "how": "Tracking gets a time only when it is imported; a restore keeps the old time.",
+      "id": "leave-restore-alone",
+      "key": "a",
+      "label": "Leave the restore alone",
+      "lose": "A restored tracking value can be overwritten once by the server's newer one."
+    },
+    {
+      "gain": "A restore always sticks.",
+      "how": "The restore gives every tracking value the restore's time.",
+      "id": "stamp-tracking-on-restore",
+      "key": "b",
+      "label": "Stamp tracking on restore",
+      "lose": "The phone's rules bundle changes, so the phone app needs a rebuild and an install."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "a",
+  "ref": "decision a-restore-is-not-local",
+  "repo": "shivinate7/mailaudit",
+  "short": "Restore and tracking: let newer win or stamp it",
+  "shown": [
+    {
+      "id": "leave-restore-alone",
+      "key": "a",
+      "label": "Leave the restore alone"
+    },
+    {
+      "id": "stamp-tracking-on-restore",
+      "key": "b",
+      "label": "Stamp tracking on restore"
+    }
+  ],
+  "status": "open",
+  "title": "After a restore, may the server's newer tracking overwrite the restored tracking?",
+  "why": "Tracking comes from the source file, so a one-time overwrite costs little and saves a phone rebuild (coordinator's recommendation)."
+}
