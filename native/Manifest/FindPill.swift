@@ -1,3 +1,4 @@
+import ManifestKit
 import SwiftUI
 
 /// The floating search pill of the Packages and Tally tabs (src/app.jsx `.mdl-pill`; phone-nav-is-bottom-bar, Find). One
@@ -41,7 +42,7 @@ struct FindPill: View {
                 .font(.cochin(16, relativeTo: .body)).foregroundStyle(Parchment.ink)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
-                .accessibilityIdentifier("find-field")
+                .accessibilityIdentifier(FindPillID.field)
             clearSlot
         }
         .padding(.leading, 16).padding(.trailing, 6).padding(.vertical, 4)
@@ -52,7 +53,7 @@ struct FindPill: View {
         .contentShape(Capsule())
         .onTapGesture { focused = true }
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("find-pill")
+        .accessibilityIdentifier(FindPillID.pill)
         .onAppear { text = query }
         .onChange(of: query) { _, new in if new != text { text = new } }
         .onChange(of: text) { _, new in change(new) }
@@ -69,7 +70,7 @@ struct FindPill: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Clear search")
-            .accessibilityIdentifier("find-clear")
+            .accessibilityIdentifier(FindPillID.clear)
         }
     }
 }
