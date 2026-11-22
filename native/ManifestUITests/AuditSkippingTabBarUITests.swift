@@ -44,6 +44,12 @@ func isMeasuredContrastFlag(_ type: XCUIAccessibilityAuditType, identifier: Stri
         || ["discard:", "orphaned-edit:", "tally-left:", PackageCard.doneDetailIDPrefix].contains(where: identifier.hasPrefix)
 }
 
+/// The Find pill skip's test-side entry. The product rule (ManifestKit, FindPillSkip.swift) takes a Bool for the contrast
+/// type, since XCUIAccessibilityAuditType is XCTest's and the app links no XCTest. This reads the type and passes the answer.
+func isUnderFindPill(_ type: XCUIAccessibilityAuditType, identifier: String?, element: CGRect?, pill: CGRect?) -> Bool {
+    isUnderFindPill(contrast: type == .contrast, identifier: identifier, element: element, pill: pill)
+}
+
 /// The ruled: closure of auditSkippingTabBar (the skipping: closure of auditNamingElements), over a real audit issue.
 @MainActor func skipMeasuredContrastFlags(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
     isMeasuredContrastFlag(issue.auditType, identifier: issue.element?.identifier)
@@ -104,7 +110,7 @@ extension XCUIApplication {
 
     /// The Find pill's frame, the container `find-pill` (FindPill.swift), or nil when no pill is drawn on this screen.
     var findPillFrame: CGRect? {
-        let pill = descendants(matching: .any).matching(identifier: "find-pill").firstMatch
+        let pill = descendants(matching: .any).matching(identifier: FindPillID.pill).firstMatch
         return pill.exists && !pill.frame.isEmpty ? pill.frame : nil
     }
 
@@ -354,8 +360,8 @@ final class AuditSkippingTabBarUITests: XCTestCase {
     }
 
     func testTheFindPillSkipKeepsItsOwnFieldAndClearControl() {
-        XCTAssertFalse(underPill(CGRect(x: 20, y: 740, width: 300, height: 40), identifier: "find-field"), "contrast on the pill's field")
-        XCTAssertFalse(underPill(CGRect(x: 300, y: 740, width: 44, height: 44), identifier: "find-clear"), "contrast on the pill's clear control")
+        XCTAssertFalse(underPill(CGRect(x: 20, y: 740, width: 300, height: 40), identifier: FindPillID.field), "contrast on the pill's field")
+        XCTAssertFalse(underPill(CGRect(x: 300, y: 740, width: 44, height: 44), identifier: FindPillID.clear), "contrast on the pill's clear control")
     }
 
     // MARK: the measured contrast skip, on identifiers
