@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Composer Save Clearance</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light
+   (native/project.yml, UIUserInterfaceStyle: Light), so this page has one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --red:#A8443C; --manila:#EADBBA; --manilaInk:#695832;
+  --shadow:rgba(28,43,36,0.06);
+  /* Cochin and Menlo are Apple fonts. Off a Mac, Menlo falls back to DejaVu Sans Mono, which Menlo is drawn from:
+     the same 0.602 em advance, so every mono width on this page holds. */
+  --cochin: Cochin, "Liberation Serif", Georgia, serif;
+  --mono: Menlo, "DejaVu Sans Mono", ui-monospace, monospace;
+  --new:#2E7A5E; --today:#A8443C; --audit:#6F5CA6;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.4; }
+main { margin:0 auto; padding:16px; padding-left:max(16px, env(safe-area-inset-left)); padding-right:max(16px, env(safe-area-inset-right));
+  padding-bottom:max(32px, env(safe-area-inset-bottom)); max-width:1560px; }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-weight:600; max-width:100ch; }
+h1 { font-family:var(--cochin); font-size:26px; margin:16px 0 4px; }
+h2 { font-family:var(--cochin); font-size:20px; margin:32px 0 6px; }
+.sub { color:var(--inkSoft); margin:0 0 12px; max-width:100ch; }
+.kind { font-size:13px; color:var(--inkSoft); margin:4px 0 0; }
+nav { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; align-items:center; }
+nav a, nav button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"], nav button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+a:focus-visible, button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+nav .lab { font-size:13px; color:var(--inkSoft); min-width:7em; }
+nav .sep { flex-basis:100%; height:0; }
+[hidden] { display:none !important; }
+code { font-family:var(--mono); font-size:0.88em; overflow-wrap:anywhere; }
+
+/* ---- Ratio table ---- */
+.scroller { overflow-x:auto; padding:4px 2px 8px; }
+table.ratios { border-collapse:collapse; font-size:13.5px; background:var(--card); }
+.ratios th, .ratios td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; }
+.ratios td.num { font-family:var(--mono); white-space:nowrap; }
+.sw { display:inline-block; width:34px; height:22px; border-radius:4px; border:1px solid var(--line); font:700 12px/20px var(--mono); text-align:center; vertical-align:middle; margin-right:6px; }
+
+/* ---- Frames: three phones side by side, each the folded Duo outer screen at 1 CSS px = 1 pt ---- */
+.frames { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+.frames figure { margin:0; width:466px; max-width:100%; }
+/* The caption sits on card: green text on paper is 4.29:1, on card 4.8:1. */
+.frames figcaption { font-size:13px; margin-top:8px; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
+.drawing { margin:0 0 12px; font-size:14px; min-height:1.4em; }
+.drawing a { color:var(--accent); }
+.frames figcaption b { font-family:var(--cochin); font-size:16px; display:block; margin-bottom:2px; }
+.fitbox { width:100%; overflow-x:auto; }
+.phone { position:relative; width:466px; height:678px; background:var(--paper); border:1px solid var(--ink); border-radius:20px; overflow:hidden;
+  padding-top:env(safe-area-inset-top); }
+.zone { position:absolute; left:0; right:0; border:1px dashed var(--inkSoft); color:var(--inkSoft); font:12px/1.35 -apple-system, system-ui, sans-serif;
+  display:flex; align-items:center; justify-content:center; text-align:center; padding:4px 12px; }
+.zone.head { border-top:0; border-left:0; border-right:0; background:var(--paper); }
+.zone.tabbar { background:var(--card); border-left:0; border-right:0; border-bottom:0; }
+/* The system keyboard: a placeholder, not drawn. The solid part is the reported frame; the hatched band is the
+   44 pt the keys drew above that frame on the open Duo (duo-fold-and-keyboard). */
+.keys { position:absolute; left:0; right:0; bottom:0; background:var(--line); border-top:1px solid var(--inkSoft); color:var(--ink);
+  font:12px/1.35 -apple-system, system-ui, sans-serif; display:flex; align-items:center; justify-content:center; z-index:3; }
+.strip { position:absolute; left:0; right:0; z-index:3; color:var(--ink); font:12px/1.35 -apple-system, system-ui, sans-serif;
+  display:flex; align-items:center; justify-content:center; text-align:center; border-top:1px dashed var(--inkSoft);
+  background:repeating-linear-gradient(135deg, #DCCDB6 0 6px, #EADFCB 6px 12px); }
+/* Where the Save row lies under the keys today: drawn over the keyboard placeholder so the reader sees it. */
+.ghost { position:absolute; z-index:5; border:2px dashed var(--red); border-radius:6px; color:var(--red); background:rgba(252,246,234,0.85);
+  font:600 12px/1.3 -apple-system, system-ui, sans-serif; display:flex; align-items:center; justify-content:center; text-align:center; padding:0 8px; }
+.clearline { position:absolute; left:0; right:0; border-top:2px solid var(--new); z-index:4; }
+.clearline span { position:absolute; left:8px; top:4px; font:600 11px/16px -apple-system, system-ui, sans-serif; color:var(--new); background:var(--paper); padding:0 4px; border-radius:3px; }
+
+/* ---- The composer, as OrphanedView.swift ComposerView draws it. Heights are fixed to the code's numbers so the
+   geometry on this page is the geometry the readout states. ---- */
+.list { position:absolute; left:16px; right:16px; }
+.composer { background:var(--card); border:1px solid var(--ink); border-radius:8px; box-shadow:0 1px 2px var(--shadow); padding:12px; line-height:normal; }
+.composer > * + * { margin-top:8px; }
+.micro { height:13px; font:11px/13px var(--mono); text-transform:uppercase; letter-spacing:0.14em; color:var(--inkSoft); }
+.field { height:48px; font:16px var(--cochin); color:var(--inkSoft); padding:0 12px; border:1px solid var(--line); border-radius:8px; background:var(--card);
+  display:flex; align-items:center; white-space:nowrap; overflow:hidden; }
+.entries { height:54px; padding-top:8px; }
+.rule { height:1px; background:var(--line); }
+.entry { height:44px; display:flex; align-items:center; padding-left:12px; }
+.entry .name { flex:1; font:14px var(--cochin); color:var(--ink); }
+.entry .step { width:44px; height:44px; display:flex; align-items:center; justify-content:center; font:15px var(--mono); color:var(--ink); }
+.entry .qty { min-width:20px; text-align:center; font:13px var(--mono); color:var(--ink); }
+.foot { height:48px; padding-top:4px; display:flex; align-items:center; gap:8px; }
+.count { font:11px/13px var(--mono); color:var(--inkSoft); white-space:nowrap; position:relative; }
+.count.ink { color:var(--ink); }
+.spacer { flex:1; }
+/* MiniLabel (ControlViews.swift): Menlo 11.5, padding 8 x 12, radius 5, 1 pt border, centred in a 44 pt hit frame. */
+.hit { width:auto; min-width:44px; height:44px; display:flex; align-items:center; justify-content:center; position:relative; flex:none; }
+.pill { font:11.5px/13.4px var(--mono); padding:7px 11px; border-radius:5px; border:1px solid var(--line); background:var(--card); color:var(--ink); white-space:nowrap; }
+.pill.save { font-weight:700; background:var(--ink); border-color:var(--ink); color:var(--card); }
+.fills .pill { height:44px; display:flex; align-items:center; padding-top:0; padding-bottom:0; }
+.below { margin-top:12px; background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 2px var(--shadow); padding:12px; }
+.below .micro { letter-spacing:0.12em; }
+.below .e { font:13.5px var(--cochin); margin-top:6px; }
+
+/* The audited frame: the box the audit reports for an element, dashed over the part. */
+.aud { outline:1px dashed var(--audit); outline-offset:0; }
+.noaudit .aud { outline:0; }
+/* Today / New tags: dashed outline on what exists today, and on what an option adds. */
+.tag-today { box-shadow:0 0 0 3px var(--paper), 0 0 0 5px var(--today); }
+.tag-new { box-shadow:0 0 0 3px var(--card), 0 0 0 5px var(--new); }
+.notags .tag-today, .notags .tag-new { box-shadow:none; }
+.tagname { display:inline-block; font-size:12px; font-weight:600; padding:1px 6px; border:2px dashed currentColor; border-radius:4px; margin:0 4px 4px 0; }
+.tagname.today { color:var(--today); } .tagname.new { color:var(--new); }
+.focus { outline:3px solid var(--accent) !important; outline-offset:3px; }
+
+.read { font:12px/1.5 var(--mono); color:var(--inkSoft); margin-top:6px; }
+.read b { color:var(--ink); font-weight:700; }
+.read .bad { color:var(--red); font-weight:700; } .read .ok { color:var(--green); font-weight:700; }
+
+/* ---- Options ---- */
+.opts { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap:12px; }
+.opt { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px; }
+.opt h3 { margin:0; font-family:var(--cochin); font-size:17px; }
+.opt .grp { font-size:12px; color:var(--inkSoft); }
+.opt p { margin:0; font-size:13.5px; }
+.opt .row { display:flex; flex-wrap:wrap; gap:8px; margin-top:auto; padding-top:6px; }
+.opt .row a, .opt .row button { font:inherit; font-size:13.5px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--paper); color:var(--ink); text-decoration:none; cursor:pointer; }
+.pick { display:inline-block; font-size:12px; font-weight:600; padding:1px 8px; border-radius:6px; border:1px solid var(--green); color:var(--green); margin-left:6px; vertical-align:2px; }
+.grant { display:inline-block; font-size:12px; font-weight:600; padding:1px 8px; border-radius:6px; border:1px solid var(--manilaInk); color:var(--manilaInk); margin-left:6px; vertical-align:2px; }
+.sources li { margin:4px 0; max-width:110ch; }
+/* On a phone the 466 pt frame is drawn at 72%, so the whole Save row shows without a sideways scroll. */
+@media (max-width:520px) { h1 { font-size:22px; } .frames figure { width:100%; } .phone { zoom:0.72; } }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No card name, count or figure in the drawn screens is real data. Positions come from the code's sizes and the measured Duo figures, not from a simulator.</div>
+<h1>Orphaned composer: keep Save clear of the keys</h1>
+<p class="kind">Designer kind: informed. Owner page item 84. iPhone Duo folded, 466 x 678 pt. Light only.</p>
+<p class="sub">The ready audit flags the "1 card" count and the Save envelope button. Both colour pairs clear 4.5:1. The empty audit passes on the same count in the same colour. What differs is the place: adding a card pushes the Save row 62 pt down, under the keys, and nothing scrolls it back. The audit then reads keyboard pixels inside the two frames. The fix is a margin: the Save row stays 56 pt above the keyboard's reported top, re-scrolled each time the composer changes height.</p>
+
+<nav aria-label="State">
+  <span class="lab">Keyboard</span>
+  <a href="#k=289" data-k="289">289 pt (suggestion bar)</a>
+  <a href="#k=250" data-k="250">250 pt</a>
+  <span class="sep"></span>
+  <span class="lab">Show</span>
+  <a href="#s=all" data-s="all">All three</a>
+  <a href="#s=today" data-s="today">Today, keys up</a>
+  <a href="#s=keys" data-s="keys">New, keys up</a>
+  <a href="#s=closed" data-s="closed">New, keys closed</a>
+  <span class="sep"></span>
+  <span class="lab">View</span>
+  <button type="button" id="auditBtn" aria-pressed="true">Audited frames</button>
+  <button type="button" id="tagBtn" aria-pressed="true">Today / New tags</button>
+</nav>
+
+<!-- Folded only: owner page item 109, decision phone-forms-and-mockup-size. No unfolded frame is drawn. -->
+<p class="drawing" id="drawing" aria-live="polite"></p>
+<div class="frames" id="frames" data-device="iphone-duo-folded"></div>
+
+<h2>Contrast by the tokens</h2>
+<p class="sub">WCAG 2 relative luminance, computed from <code>shared/tokens.json</code> for this page. Floors from Apple's accessibility page: 4.5:1 for text up to 17 pt, 3:1 for a control's fill. The last column is the headroom: the least share of a glyph pixel that must be the text colour, the rest card, for that pixel still to clear 4.5:1. An edge pixel of a thin 11 pt stroke holds less.</p>
+<div class="scroller">
+<table class="ratios" id="ratios">
+  <tr><th>Part</th><th>Pair</th><th>Text</th><th>Floor</th><th>Ratio</th><th>Pixel share for 4.5:1</th></tr>
+  <tr><td>"1 card" count, today and pick</td><td><span class="sw" style="background:#FCF6EA;color:#6E6379">Aa</span><code>inkSoft</code> #6E6379 on <code>card</code> #FCF6EA</td><td>Menlo 11</td><td>4.5:1</td><td class="num">5.24:1</td><td class="num">93%</td></tr>
+  <tr><td>"1 card" count, Ink option</td><td><span class="sw" style="background:#FCF6EA;color:#332E3F">Aa</span><code>ink</code> #332E3F on <code>card</code> #FCF6EA</td><td>Menlo 11</td><td>4.5:1</td><td class="num">12.17:1</td><td class="num">68%</td></tr>
+  <tr><td>Save envelope, text</td><td><span class="sw" style="background:#332E3F;color:#FCF6EA;border-color:#332E3F">Aa</span><code>card</code> #FCF6EA on <code>ink</code> #332E3F</td><td>Menlo 11.5 bold</td><td>4.5:1</td><td class="num">12.17:1</td><td class="num">52%</td></tr>
+  <tr><td>Save envelope, fill</td><td><span class="sw" style="background:#FCF6EA;border:6px solid #332E3F"></span><code>ink</code> fill in the <code>card</code> composer</td><td>none</td><td>3:1</td><td class="num">12.17:1</td><td class="num">n/a</td></tr>
+  <tr><td>Cancel, border (for scale)</td><td><span class="sw" style="background:#FCF6EA;border:3px solid #DCCDB6"></span><code>line</code> #DCCDB6 on <code>card</code></td><td>none</td><td>none</td><td class="num">1.45:1</td><td class="num">n/a</td></tr>
+</table>
+</div>
+
+<h2>Options</h2>
+<p class="sub">The three frames above draw the picks. Each option's link redraws them in that option's state and rings the element it changes. Hide removes an option from this list.</p>
+<nav aria-label="Hidden options"><button type="button" id="showAll">Show all options</button></nav>
+<div class="opts" id="opts"></div>
+
+<h2>Sources</h2>
+<ul class="sources">
+  <li><code>native/Manifest/OrphanedView.swift</code> <code>ComposerView</code>: the sizes (padding 12, spacing 8, fields 48, entry rows 44 plus rules, footer padding 4 and the 44 pt hit frames), the <code>.onChange(of: focused)</code> and <code>keyboardDidShowNotification</code> scrolls, and the 8 pt <code>HStackLayout</code> gap between Cancel and Save.</li>
+  <li><code>native/Manifest/MastheadScreen.swift</code>: <code>scrollTo(id, anchor: .bottom)</code>, which puts the Save row's bottom on the top of the space left by the keys.</li>
+  <li><code>native/ManifestKit</code> <code>OrphanedModel.addName</code>: it clears the input, so the suggestion list closes as the entry row lands. <code>OrphanedPaint</code>: note = inkSoft, saveReadyText = card, saveReadyFill = ink.</li>
+  <li><code>native/ManifestUITests/OrphanedRecordSupport.swift</code> <code>addEnvelopeCard</code>: the keys stay up. <code>DuoHandUITests.keyboardDrawnAbove</code> = 44, and its outcome check at <code>keyboardDrawnAbove</code>'s use in the Post test.</li>
+  <li>Measurement <code>duo-fold-and-keyboard</code>: window 466 x 678, tab bar from y 595 (83 pt), keyboard 250 to 289 pt tall folded, the 44 pt drawn strip measured on the open Duo only.</li>
+  <li>Apple HIG Accessibility (contrast table, 44x44 pt control size) and Buttons (44x44 pt hit region), read 2026-11-21 as JSON, each 200.</li>
+</ul>
+</main>
+
+<script>
+// Geometry, in pt. Window and bars: duo-fold-and-keyboard. Composer: OrphanedView.swift ComposerView.
+const W = 466, H = 678, TAB_TOP = 595, STRIP = 44, CLEAR = 12;
+const ENTRY_SHIFT = 54 + 8;        // the entry block (8 + 1 + 44 + 1) and its stack spacing
+const COMPOSER_READY = 12 + 13 + 8 + 48 + 8 + 54 + 8 + 48 + 8 + 48 + 12;  // 267
+const ROW = 44, PAD = 12;          // the Save row's hit frame, the composer's bottom padding
+
+const OPTS = [
+  { id:"margin-strip", grp:"margin", title:"Clear the drawn strip", pick:true,
+    how:"Re-scroll whenever the composer's height changes, so the Save row's bottom sits 56 pt above the keyboard's reported top: the 44 pt the keys drew above their frame on the open Duo, plus 12 pt.",
+    gain:"Clears the keys even if the folded screen and the 18 Pro draw the same strip.", loss:"44 pt less of the composer shows above the keys. Whether the strip exists folded is unmeasured." },
+  { id:"margin-clear", grp:"margin", title:"Clear the reported frame",
+    how:"The same re-scroll, with the Save row's bottom 12 pt above the keyboard's reported top.",
+    gain:"Shows 44 pt more above the keys.", loss:"If the keys draw a strip above their frame here too, the row sits under it and the audit still reads keyboard pixels." },
+  { id:"count-inksoft", grp:"count", title:"Count stays inkSoft", pick:true,
+    how:"No colour change. 5.24:1. The empty audit passes on this pair at this size.",
+    gain:"Keeps the note meaning (orphaned-colours-by-meaning).", loss:"Thin headroom: a glyph pixel under 93% inkSoft falls below 4.5:1." },
+  { id:"count-ink", grp:"count", title:"Count in ink", grant:true,
+    how:"The count paints ink, 12.17:1, as the quantity numeral in the row above does.",
+    gain:"Wide headroom: a pixel down to 68% ink still clears 4.5:1.", loss:"Changes a paint OrphanedPaint pins and the web's 11 px inkSoft count. Not needed if the margin is the cause." },
+  { id:"save-pill", grp:"save", title:"Save pill stays as today", pick:true,
+    how:"MiniLabel as today: a pill of about 29 pt inside its 44 pt hit frame.",
+    gain:"No change to a shared control.", loss:"Two card strips of about 7 pt sit inside the audited frame. No run shows they matter." },
+  { id:"save-fills", grp:"save", title:"Save fills its hit frame",
+    how:"Save and Cancel pills fill their 44 pt frame, so the audited box holds only fill, border and text.",
+    gain:"Takes the card strips out of Save's frame.", loss:"Taller pills than the web's miniBtn. Cancel flags in every container with or without strips (audit-skips-measured-flags)." },
+];
+const PICK = { margin:"margin-strip", count:"count-inksoft", save:"save-pill" };
+
+let S = { k:289, show:"all", o:null };
+const hidden = new Set();
+
+function composer(o) {
+  const countCls = o.count === "count-ink" ? "ink" : "";
+  const foot = o.save === "save-fills" ? "fills" : "";
+  const tagCount = o.focus === "count" ? (o.count === "count-inksoft" ? "tag-today" : "tag-new") : "";
+  const tagSave = o.focus === "save" ? (o.save === "save-pill" ? "tag-today" : "tag-new") : "";
+  return `<div class="composer">
+    <div class="micro">New envelope</div>
+    <div class="field">Type a card name…</div>
+    <div class="entries"><div class="rule"></div><div class="entry"><span class="name">Sample Card Name</span>
+      <span class="step" aria-hidden="true">–</span><span class="qty">1</span><span class="step" aria-hidden="true">+</span></div><div class="rule"></div></div>
+    <div class="field">Note (optional) — tracking #, sender, mailer…</div>
+    <div class="foot ${foot}" ${o.ids ? 'id="save-row"' : ""}>
+      <span class="count aud ${countCls} ${tagCount}" ${o.ids ? 'id="count"' : ""}>1 card</span>
+      <span class="spacer"></span>
+      <span class="hit"><span class="pill">Cancel</span></span>
+      <span class="hit aud ${tagSave}" ${o.ids ? 'id="save"' : ""}><span class="pill save">Save envelope</span></span>
+    </div>
+  </div>`;
+}
+
+function frame(kind) {
+  const k = S.k, keysTop = H - k, drawnTop = keysTop - STRIP;
+  const margin = state("margin") === "margin-strip" ? STRIP + CLEAR : CLEAR;
+  let rowBottom, title, tag, keys = kind !== "closed";
+  if (kind === "today") { rowBottom = keysTop + ENTRY_SHIFT; title = "Today, keys up"; tag = '<span class="tagname today">Today: no re-scroll after a card lands</span>'; }
+  else { rowBottom = keysTop - margin; title = kind === "keys" ? "New, keys up" : "New, keys closed"; tag = `<span class="tagname new">New: Save row ${margin} pt above the keyboard top</span>`; }
+  const compBottom = rowBottom + PAD, compTop = compBottom - COMPOSER_READY;
+  const headBottom = compTop - 47;  // the 46 pt running-head slot and its rule sit clear between masthead and content
+  // The Today frame always draws today's paint; only the New frames take an option.
+  const o = kind === "today" ? { count:"count-inksoft", save:"save-pill", focus:null, ids:false }
+    : { count: state("count"), save: state("save"), focus: focusPart(), ids: kind === "keys" };
+  const rowTop = rowBottom - ROW;
+  let read, verdict;
+  if (kind === "today") {
+    verdict = `<span class="bad">Save row y ${rowTop}–${rowBottom}, wholly under the keys (top y ${keysTop}). Not under the tab bar (y ${TAB_TOP}), so the tab-bar skip does not drop it: the audit reads keyboard pixels in both frames.</span>`;
+  } else if (kind === "keys") {
+    const clearDrawn = drawnTop - rowBottom;
+    verdict = clearDrawn >= 0
+      ? `<span class="ok">Save row y ${rowTop}–${rowBottom}. ${clearDrawn} pt above the drawn top (y ${drawnTop}), ${keysTop - rowBottom} pt above the reported top (y ${keysTop}).</span> With an empty pile, only 28 pt of content lies below the row, so the scroll needs a bottom content margin of ${Math.max(0, keysTop - rowBottom - 28)} pt while composing to get here.`
+      : `<span class="bad">Save row y ${rowTop}–${rowBottom}. ${-clearDrawn} pt inside the drawn strip (from y ${drawnTop}), if the folded keys draw one.</span>`;
+  } else {
+    verdict = `<span class="ok">Save row y ${rowTop}–${rowBottom}, ${TAB_TOP - rowBottom} pt above the tab bar (y ${TAB_TOP}), so the audit checks it: no overlap, no skip.</span>`;
+  }
+  read = `<div class="read">Keys ${keys ? k + " pt, reported top y " + keysTop : "closed"} · composer y ${compTop}–${compBottom}<br>${verdict}</div>`;
+  const head = headBottom > 0 ? `<div class="zone head" style="top:0;height:${headBottom}px">Masthead, scrolled up. Folded height and top inset not measured.</div>` : "";
+  // The audited run starts with an empty pile, and the composer hides the empty line, so nothing is drawn below it.
+  const below = "";
+  const keyLayer = keys ? `
+      <div class="strip" style="top:${drawnTop}px;height:${STRIP}px">Drawn strip, 44 pt above the frame: measured on the open Duo only</div>
+      <div class="keys" style="height:${k}px">System keyboard, not drawn. Reported frame ${k} pt.</div>` : `
+      <div class="zone tabbar" style="top:${TAB_TOP}px;height:${H - TAB_TOP}px">System tab bar, from y ${TAB_TOP}, 83 pt with the bottom inset</div>`;
+  const line = kind === "keys" ? `<div class="clearline" style="top:${rowBottom}px" title="Save row bottom, y ${rowBottom}"></div>`
+    : kind === "today" ? `<div class="ghost" style="left:28px;right:28px;top:${rowTop}px;height:${ROW}px">Count, Cancel and Save are here, under the keys</div>` : "";
+  return `<figure data-state="${kind}">
+    <div class="fitbox"><div class="phone" data-device="iphone-duo-folded">
+      ${head}
+      <div class="list" style="top:${compTop}px">${composer(o)}${below}</div>
+      ${keyLayer}${line}
+    </div></div>
+    <figcaption><b>${title}</b>${tag}${read}</figcaption>
+  </figure>`;
+}
+
+function state(grp) { const f = S.o && OPTS.find(x => x.id === S.o); return f && f.grp === grp ? f.id : PICK[grp]; }
+function focusPart() { const f = S.o && OPTS.find(x => x.id === S.o); return f ? ({ margin:"row", count:"count", save:"save" })[f.grp] : null; }
+
+function render() {
+  const kinds = S.show === "all" ? ["today", "keys", "closed"] : [S.show];
+  document.getElementById("frames").innerHTML = kinds.map(frame).join("");
+  const cur = S.o && OPTS.find(x => x.id === S.o);
+  document.getElementById("drawing").innerHTML = cur
+    ? `Drawing the option <b>${cur.title}</b>, ringed in violet. <a href="#s=${S.show}&k=${S.k}">Back to the picks</a>`
+    : "Drawing the picks: clear the drawn strip, count stays inkSoft, Save pill stays as today.";
+  const part = focusPart();
+  if (part) { const el = document.getElementById(part === "row" ? "save-row" : part); if (el) el.classList.add("focus"); }
+  document.getElementById("opts").innerHTML = OPTS.filter(o => !hidden.has(o.id)).map(o => `
+    <section class="opt" data-opt="${o.id}">
+      <span class="grp">${({ margin:"Margin above the keys", count:"Count colour", save:"Save frame" })[o.grp]}</span>
+      <h3>${o.title}${o.pick ? '<span class="pick">Pick</span>' : ""}${o.grant ? '<span class="grant">Owner grant</span>' : ""}</h3>
+      <p>${o.how}</p><p><b>Gain:</b> ${o.gain}</p><p><b>Loss:</b> ${o.loss}</p>
+      <div class="row"><a href="#o=${o.id}&k=${S.k}&s=${S.show}">Draw it</a><button type="button" data-hide="${o.id}">Hide</button></div>
+    </section>`).join("");
+  document.querySelectorAll("[data-hide]").forEach(b => b.addEventListener("click", () => { hidden.add(b.dataset.hide); render(); }));
+  document.querySelectorAll("[data-k]").forEach(a => { a.setAttribute("aria-current", String(+a.dataset.k === S.k)); a.href = `#k=${a.dataset.k}&s=${S.show}${S.o ? "&o=" + S.o : ""}`; });
+  document.querySelectorAll("[data-s]").forEach(a => { a.setAttribute("aria-current", String(a.dataset.s === S.show)); a.href = `#s=${a.dataset.s}&k=${S.k}${S.o ? "&o=" + S.o : ""}`; });
+}
+
+function readHash() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  S.k = h.get("k") === "250" ? 250 : 289;
+  S.show = ["today", "keys", "closed"].includes(h.get("s")) ? h.get("s") : "all";
+  S.o = OPTS.some(o => o.id === h.get("o")) ? h.get("o") : null;
+  if (S.o && S.show === "all") S.show = "all";
+  render();
+  if (S.o) { const el = document.querySelector(".focus"); if (el) el.closest("figure").scrollIntoView({ block:"start" }); }
+}
+
+function toggle(id, cls) {
+  const b = document.getElementById(id);
+  b.addEventListener("click", () => { const on = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", String(on)); document.body.classList.toggle(cls, !on); });
+}
+toggle("auditBtn", "noaudit");
+toggle("tagBtn", "notags");
+document.getElementById("showAll").addEventListener("click", () => { hidden.clear(); render(); });
+window.addEventListener("hashchange", readHash);
+readHash();
+</script>
+</body>
+</html>
