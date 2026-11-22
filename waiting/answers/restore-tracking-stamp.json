@@ -1,0 +1,9 @@
+{
+  "at": "2026-11-22T02:26:37.000Z",
+  "choice": "a",
+  "item": "restore-tracking-stamp",
+  "label": "A: Leave the restore alone",
+  "n": 115,
+  "note": "Recorded by triage at the owner's request in chat, 20:26 CST: the owner wants whichever tracking is latest to stick.",
+  "optionId": "leave-restore-alone"
+}
