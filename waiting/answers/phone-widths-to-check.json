@@ -1,0 +1,9 @@
+{
+  "at": "2026-11-22T06:30:53.809Z",
+  "choice": "a",
+  "item": "phone-widths-to-check",
+  "label": "A: The coordinator reads the widths from the simulators",
+  "n": 117,
+  "note": "you can just surf the web for this information?",
+  "optionId": "read-from-simulators"
+}
