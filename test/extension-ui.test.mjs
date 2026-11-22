@@ -394,17 +394,17 @@ await test("10.5", async () => {
   eq(m[1], "CH Post orders", "the options page title is CH Post orders");
 });
 
-/* The letterhead is the masthead and stays MANIFEST (records masthead-is-not-project-name and
-   masthead-is-one-letterhead). The title keeps the product name, CH Post orders. */
+/* The extension's name is CH Post, so its letterhead reads CH Post (owner ruling item 118 b,
+   2026-11-22). The in-app masthead stays MANIFEST (record masthead-is-not-project-name). */
 await test("10.6", async () => {
   const m = /<div class="t">([^<]*)<\/div>/.exec(extFile("options.html"));
   eq(!!m, true, "scope, options.html has a letterhead div of class t");
-  eq(m[1], "MANIFEST", "the options page letterhead says MANIFEST, the masthead");
+  eq(m[1], "CH Post", "the options page letterhead says CH Post, the extension name");
 });
 
 await test("10.7", async () => {
   const hits = extFile("options.html").match(/MANIFEST/g) ?? [];
-  eq(hits.length, 1, "the options page carries MANIFEST once, on the letterhead");
+  eq(hits.length, 0, "the options page holds no MANIFEST, the extension name is CH Post");
 });
 
 /* ---------- report ---------- */
