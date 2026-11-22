@@ -61,7 +61,7 @@ At the 46px reservation, the first check-in moves no item row at 360, 375 or 390
 
 ## The 320px exception
 
-At `3de6c03` the Packages card moves 0.00px at 320px. The three-button state this paragraph describes was not reproduced, so the 11px step is unmeasured at the grid head (debt `card-eleven-px-step-unmeasured`). The Tally card does move at 320px, by 14px on check-ins 1 and 6 (see Figures). That is debt `tally-card-moves-at-320px`. No shipped check reads card heights at 320px: claim 2 runs at 375px and 760px only. Claim 17a reads 320px for the order id link alone.
+At `3de6c03` the Packages card moves 0.00px at 320px. The three-button state this paragraph describes was not reproduced, so the 11px step is unmeasured at the grid head (debt `card-eleven-px-step-unmeasured`). The Tally card does move at 320px, by 14px on check-ins 1 and 6 (see Figures). The owner chose none of the 320px fix options (item 62, relayed 2026-11-21 19:55 to 19:56 CST; decision `card-the-action-row-is-reserved`). No shipped check reads card heights at 320px: claim 2 runs at 375px and 760px only. Claim 17a reads 320px for the order id link alone.
 
 **320px is the one width this does not fully fix.** Three buttons wrap to a *third* line there, and the row still steps 11px. The bar half is width-independent, so at 320px the shift falls from 28px to 11px. This is left deliberately. 320px is not one of the three phone forms the owner named (page item 109, 2026-11-21 19:57 CST; `phone-forms-and-mockup-size`). It is not a viewport that current iOS runs. Reserving 57px would fix 320px by spending 26px of dead space in every expanded card at the widths that are real.
 
