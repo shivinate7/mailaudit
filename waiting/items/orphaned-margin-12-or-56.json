@@ -4,6 +4,10 @@
   "home": "invariant no-layout-shift-under-pointer; debt orphaned-composer-contrast",
   "id": "orphaned-margin-12-or-56",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-22T18:27:00Z",
+    "note": "a: accept 12 pt (saved in git)."
+  },
   "n": 123,
   "options": [
     {
@@ -26,6 +30,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "a",
   "ref": "coordinator 2026-11-22 12:27 CST: PR 389 ships 12 pt",
+  "replied": "2026-11-22T18:29:00Z",
+  "reply": "You picked a: 12 pt is accepted (saved in git, 2026-11-22 12:27 CST). I told the coordinator to update the rule that the screen never moves under your finger and the open note on the composer to 12 pt, and PR 389 can merge. 12:29 CST.",
   "repo": "shivinate7/mailaudit",
   "short": "Orphaned composer margin: accept 12 pt or bring back 56 pt",
   "shown": [

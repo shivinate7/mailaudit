@@ -4,6 +4,10 @@
   "home": "docs/decisions",
   "id": "gh-read-grant-git-score",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-22T18:27:00Z",
+    "note": "None of these: what is the value of this? (saved in git)"
+  },
   "n": 121,
   "options": [
     {
@@ -26,6 +30,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "a",
   "ref": "coordinator 2026-11-22 06:25 CST: compliance run, PR 399",
+  "replied": "2026-11-22T18:29:00Z",
+  "reply": "You asked what this is worth (saved in git, 2026-11-22 12:27 CST). Value: only one row of the compliance scorecard, the Git group, gets a real score instead of unknown. Nothing else changes, nothing is written, and no run happens until you say. My read, unmeasured: low value, so skip it unless you want that score. Still open: a, grant the run, or b, no grant. 12:29 CST.",
   "repo": "shivinate7/mailaudit",
   "short": "One-time read-only GitHub check to score the Git group",
   "shown": [
