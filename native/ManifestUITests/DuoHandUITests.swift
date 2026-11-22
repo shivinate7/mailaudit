@@ -42,6 +42,11 @@
 //             "Undo check in <name>", as checkin: is), hand-tie (the tie of envelopes that hold a held shared name;
 //             present instead of hand-who), hand-post (the Post button; its label starts with "Post"; present exactly
 //             while HandModel.offer is set), hand-past-transit-open (the Open control of the "Past 14 days" box).
+//   Today     With the query empty and one card checked in today (a line with a count and a stamp since local midnight), the day
+//             shows: hand-today-pile (the left page's "Today's pile"; its rows are hand-today-row:<gk>, labelled "<seller>, <got> of
+//             <qty>", with ", short" added on a short envelope) and hand-not-normal (the right page's "Not normal today"; its rows
+//             are hand-short-row:<gk>, labelled with the missing card names and "N left · $Y"). Before any check-in today the start
+//             hint shows instead, and neither identifier exists. Owner ruling item 79 a (2026-11-19 23:23 CST).
 //   Match list hand-matches-heading (the heading over the hand-hit:<name> rows; present while the list shows; BELOW the
 //             "This envelope" row, whose New envelope button is hand-new-envelope: the list opens and shrinks as you type, and
 //             the row above it must not move under the pointer, no-layout-shift-under-pointer).
@@ -97,6 +102,7 @@ final class DuoHandUITests: XCTestCase {
 
     static let bolt = "C1|0|pLightningBolt"
     static let path = "C1|1|pPathtoExile"
+    static let gammaGk = "C1::Gamma Cards"
     static let swords = "C1|2|pSwordstoPlowshares"
     static let boltOfAlpha = "A1|0|pLightningBolt"
     /// The late packages in the seed, oldest last: dated 2026-07-29, 2026-07-01 and 2026-05-01. The last two are 30 days or more on any clock the page needs.
@@ -441,6 +447,47 @@ final class DuoHandUITests: XCTestCase {
         let after = newEnvelope.frame
         XCTAssertEqual(after.minY, before.minY, accuracy: 1, "New envelope moved \(after.minY - before.minY) pt, from \(before) to \(after): the Suspense box above it left when New envelope was pressed")
         keepShot(app, "hand-new-envelope-holds-still")
+    }
+
+    /// Pose: flat. Before any card is checked in today, an empty query keeps the start hint, and neither today's pile nor
+    /// Not normal today shows (owner ruling item 79 a, 2026-11-19 23:23 CST).
+    func testEmptyQueryKeepsTheStartHintBeforeAnyCheckInToday() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let answer = need(app, "hand-answer", "the answer page of Card in Hand")
+        XCTAssertTrue(answer.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Type the card in hand. The envelope")).firstMatch.waitForExistence(timeout: 5),
+                      "the empty query shows no start hint before any card is checked in today")
+        XCTAssertFalse(app.element("hand-today-pile").exists, "today's pile shows before any card is checked in today")
+        XCTAssertFalse(app.element("hand-not-normal").exists, "Not normal today shows before any card is checked in today")
+    }
+
+    /// Pose: flat. Once one card is checked in today, an empty query shows today's pile on the left page and Not normal today
+    /// on the right, in place of the start hint. Nothing new opens them. The query is emptied the way New envelope empties it
+    /// (owner ruling item 79 a, 2026-11-19 23:23 CST).
+    func testEmptyQueryShowsTodaysPileAndNotNormalOnceACardIsInToday() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        typeCard(app, "Path to Exile")
+        checkInTypedCard(app, key: Self.path)
+        waitForLabel(app.element("hand-checkin:\(Self.path)"), startingWith: "Undo check in", "the card was not checked in")
+
+        need(app, "hand-new-envelope", "the New envelope button").tap()
+        XCTAssertEqual(typedText(app.element("hand-query")), "", "New envelope left the typed card in the field, so the query is not empty")
+
+        let pile = need(app, "hand-today-pile", "today's pile, on the empty query once a card is in today")
+        onLeftPage(pile, app, "today's pile")
+        let row = need(app, "hand-today-row:\(Self.gammaGk)", "the Gamma Cards row of today's pile")
+        XCTAssertTrue(row.label.contains("1 of 5"), "the Gamma Cards row does not show one of its five cards in: \"\(row.label)\"")
+
+        let notNormal = need(app, "hand-not-normal", "Not normal today, on the empty query once a card is in today")
+        onRightPage(notNormal, app, "Not normal today")
+        let short = need(app, "hand-short-row:\(Self.gammaGk)", "the Gamma Cards row of Not normal today")
+        XCTAssertTrue(short.label.contains("Lightning Bolt") && short.label.contains("4 left"),
+                      "the Gamma Cards row does not name its missing cards and \"4 left\": \"\(short.label)\"")
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Type the card in hand. The envelope")).firstMatch.exists,
+                       "the start hint still shows once a card is in today")
     }
 
     /// Pose: flat. The past-transit page lists the late mail, oldest last, on the right page. A tracked package is not
@@ -973,9 +1020,11 @@ final class DuoHandUITests: XCTestCase {
         _ = need(app, "hand-receipt", "the receipt a saved Post leaves in the offer's slot")
 
         need(app, "hand-new-envelope", "the New envelope button").tap()
-        let answer = need(app, "hand-answer", "the answer page of Card in Hand")
-        XCTAssertTrue(answer.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Type the card in hand. The envelope")).firstMatch.waitForExistence(timeout: 5),
-                      "New envelope did not leave the answer page on its empty state, so the receipt cannot be judged")
+        // Owner ruling item 79 a (2026-11-19 23:23 CST): the Post checked a card in today, so the empty query shows today's pile
+        // and Not normal today in place of the start hint. The receipt is judged on that page.
+        _ = need(app, "hand-not-normal", "Not normal today, on the empty query once the Post checked a card in today")
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Type the card in hand. The envelope")).firstMatch.exists,
+                       "the start hint still shows after a Post checked a card in today")
         waitGone(app.element("hand-receipt"), "the receipt is still shown after New envelope")
 
         typeCard(app, "Swords to Plowshares")
