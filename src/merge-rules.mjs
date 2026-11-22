@@ -37,18 +37,29 @@ import { mergeRecent } from "./recent-rules.mjs";
    app.jsx's import path calls it too rather than keeping a second Map-union
    that could drift from this one.
 
-   `base` wins a collision. Both sides derive items from the same TCGplayer
-   scrape, so a collision is almost always byte-identical; preferring the
-   caller's own copy means a merge never perturbs a line already on screen.
+   `base` wins a collision, bar the tracking stamp below. Both sides derive items from
+   the same TCGplayer scrape, so a collision is almost always byte-identical; preferring
+   the caller's own copy means a merge never perturbs a line already on screen.
+
+   `trackingAt` (owner item 94, route c) is an optional ms stamp on a line, default 0,
+   that says when its `tracking` last changed. On a collision the line with the higher
+   `trackingAt` wins and brings its `tracking` and its stamp, so a device that already
+   holds the line takes a later shipping status, and a stale device cannot put an older
+   one back. Equal stamps, and two unstamped lines, keep the base copy. This holds with
+   or without the options below.
 
    `opts.refreshTracking` (the CSV import passes it, invariant
    imports-merge-never-replace): on a collision keep the base line but take the
    incoming `tracking`, so a newer export's shipping status reaches a stored line.
-   An empty incoming `tracking` says nothing, so the stored one stays. No other
-   field changes (bar `name` under refreshName), no line is dropped, and `refreshed` counts each line whose
-   `tracking` differs from the one `base` held, once, however many incoming rows
-   share its key. The option is off in mergeLedger: a stale device's items
-   would revert a newer `tracking` the other device already holds.
+   An empty incoming `tracking` says nothing, so the stored one stays. A line whose
+   `tracking` this changes is stamped `trackingAt: opts.now`; a line it leaves unchanged
+   gets no stamp, and a line it adds arrives as the incoming list holds it. With no
+   `opts.now` nothing is stamped, so the merge never reads the clock. No other field
+   changes (bar `name` under refreshName, and the stamp), no line is dropped, and
+   `refreshed` counts each line whose `tracking` differs from the one `base` held, once,
+   however many incoming rows share its key. The option is off in mergeLedger: a stale
+   device's items would revert a newer `tracking` the other device already holds, and the
+   stamp is what lets mergeLedger carry a refresh between devices instead.
 
    `opts.refreshName` (the CSV import passes it, owner item 90): on a collision take
    the incoming `name`, so a line stored under an old product name pools in the Tally with
@@ -69,9 +80,15 @@ export function mergeItems(base, incoming, opts = {}) {
       continue;
     }
     const next = { ...held };
-    if (opts.refreshTracking && it.tracking && it.tracking !== held.tracking) next.tracking = it.tracking;
+    if ((it.trackingAt || 0) > (held.trackingAt || 0)) {
+      next.tracking = it.tracking;
+      next.trackingAt = it.trackingAt;
+    } else if (opts.refreshTracking && it.tracking && it.tracking !== held.tracking) {
+      next.tracking = it.tracking;
+      if (opts.now) next.trackingAt = opts.now;
+    }
     if (opts.refreshName && it.name && it.name !== held.name) next.name = it.name;
-    if (next.tracking !== held.tracking || next.name !== held.name) {
+    if (next.tracking !== held.tracking || next.name !== held.name || next.trackingAt !== held.trackingAt) {
       map.set(it.key, next);
       touched.add(it.key);
     }
