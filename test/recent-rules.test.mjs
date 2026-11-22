@@ -301,6 +301,15 @@ eq(
   );
 }
 {
+  // owner item 94, route c: a restore stamps the times, stamps and envelopes it moves, never a line's tracking.
+  // A restored line keeps the tracking and the stamp the version holds.
+  const data = ledger({ items: [{ key: "T|1|1", tracking: "with tracking", trackingAt: 5000 }] });
+  const res = restampRestore(ledger({ items: [{ key: "T|1|1", tracking: "unknown" }] }), data, NOW);
+  const applied = { ...data, ...res };
+  eq(applied.items[0].trackingAt, 5000, "R4.8 a restore keeps the stamp the restored version holds, and does not stamp the line with now");
+  eq(applied.items[0].tracking, "with tracking", "R4.8a and keeps the restored version's tracking");
+}
+{
   // check X, check Y, uncheck X, check Z, check X: only the newest step on X is live
   const K3 = "A1|2|pBrainstorm";
   const items3 = [...ITEMS, { key: K3, qty: 4 }];
