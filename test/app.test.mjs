@@ -3066,6 +3066,16 @@ eq(
   "33.90 full size: exactly the 100 changed lines are stamped"
 );
 
+/* no `now` in the options: the merge never reads the clock, so a refresh stamps nothing
+   (the no-now rule in mergeItems). The stamp count is the lines that carry a nonzero stamp. */
+const stampsIn = (items) => items.filter((it) => (it.trackingAt || 0) !== 0).length;
+const trkNoNow = mergeItems(TRK_BASE, TRK_IN, TRK_OPT);
+eq(trkOf(trkNoNow.items, 1), "with tracking", "33.91 scope: with no now the refresh still takes the incoming tracking");
+eq(stampsIn(trkNoNow.items), 0, "33.91a with no now a refreshed line is not stamped: the merge never reads the clock");
+const trkFullNoNow = mergeItems(TRK_FULL_BASE, TRK_FULL_IN, TRK_OPT);
+eq(trkFullNoNow.refreshed, 100, "33.91b scope, full size: 100 of the 300 lines changed");
+eq(stampsIn(trkFullNoNow.items), 0, "33.91c full size with no now: no changed line is stamped");
+
 /* ── 34. the conflict stops being a trap ──────────────────────────────────
    Group 25 proves a stale write is refused. This proves it can now be resolved
    without either device losing work. On the Worker the merge happens on the
@@ -7723,15 +7733,24 @@ eq(betaBefore57?.tracking, "without tracking", "57.14a before the canceled re-im
 await reachFor(/Re-import CSV/);
 await click(btn(/Re-import CSV/), "show upload zone");
 ok(/Drop your OrderWand CSV here/.test(text()), "57.14b the upload zone is open before the canceled drop");
+/* the virtual clock is the only clock here, and it moves only inside sleep, so the import's
+   stamp falls between the two readings taken around the drop */
+const dropFrom57 = Date.now();
 await dropFile(
   "orders.csv",
   csv([FIRST57[0], { ...FIRST57[1], "Shipping Status": "Canceled" }, FIRST57[2], NEW57])
 );
+const dropTo57 = Date.now();
 await sleep(SAVE_WAIT);
 eq(
   canon56(unstamped(saved().items.find((it) => it.name === RB57))),
   canon56({ ...betaBefore57, tracking: "Canceled" }),
   "57.14 the canceled re-import sets Beta's stored tracking to Canceled and changes no other Beta field"
+);
+const betaStamp57 = saved().items.find((it) => it.name === RB57)?.trackingAt;
+ok(
+  typeof betaStamp57 === "number" && betaStamp57 >= dropFrom57 && betaStamp57 <= dropTo57,
+  "57.14c the canceled re-import stamps Beta's tracking with the import's clock"
 );
 eq(saved().items.length, 4, "57.15 the canceled re-import adds no line");
 eq(
