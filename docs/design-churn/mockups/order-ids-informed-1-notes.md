@@ -1,6 +1,6 @@
 # Order ids: read, copy and follow an order number
 
-Mockup: `order-ids-informed-1.html`. Designer kind: informed. Owner page item 61 waits on this. Debts: `order-id-visible-unbuilt` (the Tally id ends in an ellipsis) and `tcgplayer-link-opens-history-list` (the link may open the whole list). Decision: `order-id-button-stops-propagate`. Invariant: `no-layout-shift-under-pointer`.
+Mockup: `order-ids-informed-1.html`. Designer kind: informed. Answered, owner page item 61 (owner, 2026-11-21 19:56 CST). Debts: `order-id-visible-unbuilt` (the Tally id ends in an ellipsis) and `tcgplayer-link-opens-history-list` (the link may open the whole list). Decision: `order-id-button-stops-propagate`. Invariant: `no-layout-shift-under-pointer`.
 
 The pain, in the owner's words: "I need to paste the order number into a message." The job: read the whole number, copy it in one tap, and follow a link that lands on that one order.
 
