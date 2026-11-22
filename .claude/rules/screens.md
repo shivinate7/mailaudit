@@ -61,6 +61,7 @@ One stamp per package, set by hand. A refund takes the package out of every coun
 House UX rules that govern the screens. Read these before changing a screen.
 
 - `ux-house-rules-govern` — MANIFEST screens follow the house UX rules.
+- `ux-control-earns-place` — A control earns its place; the End of mail day view opens from the empty query.
 - `spacing-on-4px-grid` — Spacing moves to a 4px grid with an 8px card radius.
 - `phone-nav-is-bottom-bar` — Phone navigation is a bottom glass bar, built in L11a.
 - `ledger-tab-holds-options` — The Ledger tab holds the options, built in L11b.

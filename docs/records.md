@@ -105,6 +105,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `three-views-share-one-switch` | The bottom bar replaces the top view switch at every width (`phone-nav-is-bottom-bar`). | [`docs/decisions/three-views-share-one-switch.md`](../docs/decisions/three-views-share-one-switch.md) |
 | `typography-cochin-and-mono` | Cochin sets everything that is not a number. | [`docs/decisions/typography-cochin-and-mono.md`](../docs/decisions/typography-cochin-and-mono.md) |
 | `undo-removes-only-its-delta` | Undo keeps the deltas of an assignment, not a snapshot of the ledger. | [`docs/decisions/undo-removes-only-its-delta.md`](../docs/decisions/undo-removes-only-its-delta.md) |
+| `ux-control-earns-place` | Kind: build | [`docs/decisions/ux-control-earns-place.md`](../docs/decisions/ux-control-earns-place.md) |
 | `ux-house-rules-govern` | The owner ruled on 2026-10-11: "apply the latest from claude settings' ux guidelines, along with /design-review /ci-hygiene /fresh-prose". | [`docs/decisions/ux-house-rules-govern.md`](../docs/decisions/ux-house-rules-govern.md) |
 | `worker-keeps-snapshots` | **Status:** ruled. | [`docs/decisions/worker-keeps-snapshots.md`](../docs/decisions/worker-keeps-snapshots.md) |
 
@@ -270,7 +271,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `duo-checkin-error-under-bar` | On the open Duo, the Packages `checkin-error` overlay sits at the tab's bottom edge. | [`docs/debts/duo-checkin-error-under-bar.md`](../docs/debts/duo-checkin-error-under-bar.md) |
 | `duo-fold-change-unpinned` | The shell UI tests launch MANIFEST in one pose and check the tab bar. | [`docs/debts/duo-fold-change-unpinned.md`](../docs/debts/duo-fold-change-unpinned.md) |
 | `duo-hand-first-case-timeout` | In the `duo-ui` CI job, a 5 s `XCTNSPredicateExpectation` wait in `DuoHandUITests` can time out even though the label it waits for is already right. | [`docs/debts/duo-hand-first-case-timeout.md`](../docs/debts/duo-hand-first-case-timeout.md) |
-| `duo-hand-mockup-gaps` | Poses 1, 2, 3 and 5 of PR 144, the Duo round 2 design pull request, show eight parts that the build lacks: | [`docs/debts/duo-hand-mockup-gaps.md`](../docs/debts/duo-hand-mockup-gaps.md) |
+| `duo-hand-mockup-gaps` | Poses 1, 2, 3 and 5 of the Duo round 2 design, archived at `origin/archive/design/duo-round2` (draft PR 144, the Duo round 2 design pull request, before the archive), show eight parts that the build lacks: | [`docs/debts/duo-hand-mockup-gaps.md`](../docs/debts/duo-hand-mockup-gaps.md) |
 | `duo-keyboard-gap-unmeasured` | On the open Duo, every tab reserves the custom tab bar's height as a bottom scroll margin. | [`docs/debts/duo-keyboard-gap-unmeasured.md`](../docs/debts/duo-keyboard-gap-unmeasured.md) |
 | `duo-keys-minimize-pref` | The Duo keys-up tests in DuoHandUITests wait for the system keys and read their frame. | [`docs/debts/duo-keys-minimize-pref.md`](../docs/debts/duo-keys-minimize-pref.md) |
 | `duo-left-page-dead-margin` | On the open Duo, DuoSystemBar reserves the custom bar's height as a bottom scroll margin in every tab. | [`docs/debts/duo-left-page-dead-margin.md`](../docs/debts/duo-left-page-dead-margin.md) |
