@@ -433,8 +433,8 @@ final class AuditSkippingTabBarUITests: XCTestCase {
 
     // MARK: the same rule, on the device
 
-    /// Moving the bar away and growing the window turn every skipped issue into a failure, so the rule hides nothing
-    /// that an on-screen element clear of the bar would show. Skips when nothing sits under the bar or below the
+    /// Moving the bar and the Find pill away and growing the window turn every skipped issue into a failure, so the
+    /// rules hide nothing that an on-screen element clear of the bar and the pill would show. Skips when nothing sits under the bar or below the
     /// window, because the rule then hides nothing.
     func testTheSameIssuesFailOnceTheBarMovesAway() throws {
         let app = launchedPackages()
@@ -443,10 +443,10 @@ final class AuditSkippingTabBarUITests: XCTestCase {
         XCTAssertTrue(real.failing.isEmpty, auditFailureText(real.failing) + "\nan issue outside the tab bar fails the Packages audit")
         try XCTSkipIf(real.skipped.isEmpty, "no audit issue sits under the tab bar, so the rule hides nothing")
 
-        let away = try app.auditSkippingTabBar(bar: Self.farAway, window: Self.tallWindow, record: false)
+        let away = try app.auditSkippingTabBar(bar: Self.farAway, window: Self.tallWindow, pill: Self.farAway, record: false)
         XCTAssertEqual(away.skipped, [], "a bar far from the screen and a tall window still skipped an issue")
-        XCTAssertEqual(away.failing.count, real.skipped.count + real.failing.count,
-                       "the skipped issues did not all fail once the bar moved away and the window grew")
+        XCTAssertEqual(away.failing.count, real.skipped.count + real.pillSkipped.count + real.failing.count,
+                       "the skipped issues did not all fail once the bar and the Find pill moved away and the window grew")
     }
 
     /// Moving the Find pill away turns every issue the pill rule skipped into a failure, so the pill rule hides nothing
