@@ -72,7 +72,7 @@ const html = `<!doctype html>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Mail Day">
+<meta name="apple-mobile-web-app-title" content="CH Post">
 <meta name="theme-color" content="${paper}">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">

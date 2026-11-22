@@ -13,7 +13,7 @@ final class InterfaceStyleTests: XCTestCase {
         let data = try Data(contentsOf: native.appending(path: "Manifest/Info.plist"))
         let plist = try XCTUnwrap(
             PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
-        XCTAssertEqual(plist["CFBundleDisplayName"] as? String, "MANIFEST", "the plist read works")
+        XCTAssertEqual(plist["CFBundleDisplayName"] as? String, "CH Post", "the plist read works")
         XCTAssertEqual(plist["UIUserInterfaceStyle"] as? String, "Light")
     }
 
