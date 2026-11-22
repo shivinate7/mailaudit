@@ -116,11 +116,11 @@ The register is stationery, not software. One rule governs all of it: nothing ma
 Where the page holds its shape, and where every colour comes from.
 
 - `card-tally-row-counts-first` — The Tally row degrades sets first, never counts.
-- `card-the-action-row-is-reserved` — The card action row reserves its tallest height.
+- `card-the-action-row-is-reserved` — The card action row reserves its tallest height. 320 px is not one of the three phone forms (owner, page item 109, 2026-11-21 19:57 CST).
 - `card-the-bar-is-out-of-flow` — The package progress bar sits out of flow.
 - `design-form-controls-no-inherit` — Form controls need their own font rule.
 - `design-parchment-ledger` — The palette is parchment ledger.
-- `design-view-switch-equal-thirds` — The view switch is retired. Its chrome rules still hold.
+- `design-view-switch-equal-thirds` — The view switch is retired. Its chrome rules still hold. The phone forms are set in `phone-forms-and-mockup-size` (owner, page item 109, 2026-11-21 19:57 CST).
 - `masthead-is-one-letterhead` — The masthead is one letterhead, not stacked boxes.
 - `masthead-sizing-by-clamp` — Masthead sizing uses clamp, never breakpoints.
 - `masthead-tallies-unequal-thirds` — The tally cells are not sized equally.
