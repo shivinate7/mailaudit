@@ -14,6 +14,10 @@
 // This file also holds the narrowness proof. The app has no low-contrast element above the bar,
 // so the on-device case moves the bar away and checks that the same issues now fail.
 //
+// It also holds the Find pill skip (owner ruling 95 b, 2026-11-21): the contrast audit skips an element whose frame
+// shares area with the Find pill, except the pill's own field and clear control. The frame cases and the on-device
+// case move the pill the same way the bar cases move the bar.
+//
 // Every key here is fake. The tests read no Keychain item.
 
 import ManifestKit
@@ -88,10 +92,6 @@ func auditFailureText(_ failing: [String]) -> String {
     XCTAssertGreaterThanOrEqual(f.height, 44 - 0.001, "\(what) is \(f.height)pt high, under 44pt", file: file, line: line)
 }
 
-/// FindPill's `.padding(.top, 8)` in `findPill` (FindPill.swift). The band's top rule sits this far above the pill's frame,
-/// and a list ends at that rule.
-private let findPillBandTop: CGFloat = 8
-
 extension XCUIApplication {
     /// The top of the band a list scrolls in: the status bar's foot, or the window's top when no status bar resolves.
     /// The status bar is not in the app's accessibility tree on the simulator runs so far, so this reads the window's
@@ -102,17 +102,21 @@ extension XCUIApplication {
         max(windows.firstMatch.frame.minY, statusBars.firstMatch.exists ? statusBars.firstMatch.frame.maxY : 0)
     }
 
-    /// The bottom of the band a list scrolls in: the top rule of the Find pill's band when one is drawn, else the top of the bar
-    /// the list ends on. That bar is the system tab bar, or on the open Duo the custom bar, whose top edge is its pill's (DuoMetrics.pill).
-    /// The flat Duo hides the system bar (DuoSystemBar), so tabBars has no match there. The list ends above the pill's band, so a
-    /// drag that starts on the pill moves nothing, and a row under the band is not free to read. The pill's own frame is
-    /// `find-pill`, the container of the field, and the band's top rule sits findPillBandTop above it.
+    /// The Find pill's frame, the container `find-pill` (FindPill.swift), or nil when no pill is drawn on this screen.
+    var findPillFrame: CGRect? {
+        let pill = descendants(matching: .any).matching(identifier: "find-pill").firstMatch
+        return pill.exists && !pill.frame.isEmpty ? pill.frame : nil
+    }
+
+    /// The bottom of the band a list scrolls in: the top of the Find pill when one is drawn, else the top of the bar
+    /// the list ends on. That bar is the system tab bar, or on the open Duo the custom bar (DuoMetrics.pill sits above it).
+    /// The flat Duo hides the system bar (DuoSystemBar), so tabBars has no match there. The list ends above the pill, so a
+    /// drag that starts on the pill moves nothing, and a row under the pill is not free to read.
     var listBottom: CGFloat {
         let bar = tabBars.firstMatch.exists ? tabBars.firstMatch.frame.minY
             : duoBar.exists ? duoBar.frame.minY
             : windows.firstMatch.frame.maxY
-        let pill = descendants(matching: .any).matching(identifier: "find-pill").firstMatch
-        return pill.exists && !pill.frame.isEmpty ? min(bar, pill.frame.minY - findPillBandTop) : bar
+        return findPillFrame.map { min(bar, $0.minY) } ?? bar
     }
 
     /// One drag up a list, from `from` to `to` in screen points, at `x` (the window's middle by default). It holds before it
@@ -179,25 +183,33 @@ extension XCUIApplication {
     /// (isUnderTabBar). `bar` and `window` replace the tab bar's and the window's frames, for the narrowness test.
     /// `ruled` is another skip the owner ruled on, such as skipMeasuredContrastFlags. An issue it accepts is left
     /// out and is not counted in `skipped`, which means "under the bar" only. It comes back in `ruled` instead.
+    /// `pill` replaces the Find pill's frame (findPillFrame), for the narrowness test: an issue the pill rule accepts
+    /// (isUnderFindPill) comes back in `pillSkipped`, never in `skipped`. The bar rule runs first.
     /// A failing issue comes back in `failing` as one AUDIT-FAIL line (auditFailLine). With `record: true` the
     /// failing issues fail the test once, with those lines first (auditFailureText). With `record: false` nothing
     /// fails, so a test can read them.
     @discardableResult
-    func auditSkippingTabBar(bar override: CGRect? = nil, window windowOverride: CGRect? = nil, record: Bool = true,
-                             ruled: ((XCUIAccessibilityAuditIssue) -> Bool)? = nil,
+    func auditSkippingTabBar(bar override: CGRect? = nil, window windowOverride: CGRect? = nil, pill pillOverride: CGRect? = nil,
+                             record: Bool = true, ruled: ((XCUIAccessibilityAuditIssue) -> Bool)? = nil,
                              file: StaticString = #filePath, line: UInt = #line) throws
-        -> (skipped: [String], failing: [String], ruled: [String])
+        -> (skipped: [String], failing: [String], ruled: [String], pillSkipped: [String])
     {
         let tabBar = tabBars.firstMatch
         let bar = try XCTUnwrap(tabBar.waitForExistence(timeout: 5) ? override ?? tabBar.frame : nil, "the tab bar is missing")
         let window = windowOverride ?? windows.firstMatch.frame
-        var skipped: [String] = [], failing: [String] = [], ruledText: [String] = []
+        let pill = pillOverride ?? findPillFrame
+        var skipped: [String] = [], failing: [String] = [], ruledText: [String] = [], pillText: [String] = []
         try performAccessibilityAudit { issue in
             let frame = issue.element?.frame
-            let text = "\(issue.compactDescription) | id=\(issue.element?.identifier ?? "nil") label=\(issue.element?.label ?? "nil") | frame=\(frame.map(String.init(describing:)) ?? "nil") | bar=\(bar) | window=\(window)"
+            let text = "\(issue.compactDescription) | id=\(issue.element?.identifier ?? "nil") label=\(issue.element?.label ?? "nil") | frame=\(frame.map(String.init(describing:)) ?? "nil") | bar=\(bar) | window=\(window) | pill=\(pill.map(String.init(describing:)) ?? "nil")"
             if isUnderTabBar(frame, bar: bar, window: window) {
                 print("AUDIT-SKIP \(text)")
                 skipped.append(text)
+                return true
+            }
+            if isUnderFindPill(issue.auditType, identifier: issue.element?.identifier, element: frame, pill: pill) {
+                print("AUDIT-PILL \(text)")
+                pillText.append(text)
                 return true
             }
             if ruled?(issue) == true {
@@ -214,27 +226,27 @@ extension XCUIApplication {
         if record {
             XCTAssertTrue(failing.isEmpty, auditFailureText(failing), file: file, line: line)
         }
-        return (skipped, failing, ruledText)
+        return (skipped, failing, ruledText, pillText)
     }
 
     /// The whole audit with each failing issue named by its element: a bare performAccessibilityAudit() fails with
     /// "Contrast failed" and the result bundle does not say which element (palette-tokens-contrast-floor). It is
     /// auditSkippingTabBar with `skipping` as its `ruled:` skip, so the tab-bar skip and the AUDIT-* log lines have one
     /// home. An issue the handler accepts is never recorded by the audit itself, and the assertion below is the only
-    /// failure. It returns the text of every issue let through, under the bar or ruled, so a test can prove that no
-    /// skip covers an element (the Tally meta line). The default `skipping` adds none.
+    /// failure. It returns the text of every issue let through, under the bar, under the Find pill or ruled, so a test
+    /// can prove that no skip covers an element (the Tally meta line). The default `skipping` adds none.
     @discardableResult
     func auditNamingElements(skipping skip: @escaping (XCUIAccessibilityAuditIssue) -> Bool = { _ in false },
                              file: StaticString = #filePath, line: UInt = #line) throws -> [String] {
         let result = try auditSkippingTabBar(record: false, ruled: skip)
         XCTAssertTrue(result.failing.isEmpty, auditFailureText(result.failing), file: file, line: line)
-        return result.skipped + result.ruled
+        return result.skipped + result.pillSkipped + result.ruled
     }
 }
 
 @MainActor
 final class AuditSkippingTabBarUITests: XCTestCase {
-    /// A bar frame no element can reach.
+    /// A bar or pill frame no element can reach.
     static let farAway = CGRect(x: 0, y: -10_000, width: 400, height: 100)
 
     private func launchedPackages() -> XCUIApplication {
@@ -300,6 +312,50 @@ final class AuditSkippingTabBarUITests: XCTestCase {
         XCTAssertFalse(skipped(CGRect(x: 20, y: 790, width: 100, height: 20), bar: .null), "a null bar")
         XCTAssertFalse(skipped(CGRect(x: 20, y: 100, width: 100, height: 20), window: .zero), "a window that did not resolve")
         XCTAssertFalse(skipped(CGRect(x: 20, y: 100, width: 100, height: 20), window: .null), "a null window")
+    }
+
+    // MARK: the Find pill skip, on frames and identifiers
+    //
+    // Owner ruling 95 b (2026-11-21 19:54 CST): the contrast audit skips an element whose frame shares area with the
+    // Find pill, except the pill's own field and clear control. No other audit type is skipped under the pill.
+
+    /// A Find pill on a phone window: its top edge 731 pt down, 51 pt tall, so its bottom edge is at 782.
+    static let pill = CGRect(x: 16, y: 731, width: 343, height: 51)
+
+    private func underPill(_ element: CGRect?, type: XCUIAccessibilityAuditType = .contrast, identifier: String? = "stamp-button:C1",
+                           pill: CGRect? = AuditSkippingTabBarUITests.pill) -> Bool {
+        isUnderFindPill(type, identifier: identifier, element: element, pill: pill)
+    }
+
+    func testTheFindPillSkipCoversContrastThatOverlapsThePill() {
+        XCTAssertTrue(underPill(CGRect(x: 20, y: 740, width: 100, height: 20)), "contrast inside the pill")
+        XCTAssertTrue(underPill(CGRect(x: 20, y: 700, width: 100, height: 40)), "contrast across the pill's top edge")
+        XCTAssertTrue(underPill(CGRect(x: 20, y: 770, width: 100, height: 40)), "contrast across the pill's bottom edge")
+        XCTAssertTrue(underPill(CGRect(x: 20, y: 700, width: 100, height: 200)), "contrast on an element that spans the whole pill")
+        XCTAssertTrue(underPill(CGRect(x: 20, y: 740, width: 100, height: 20), identifier: nil), "contrast on an element with no identifier")
+    }
+
+    func testTheFindPillSkipKeepsEveryOtherAuditType() {
+        for type in [XCUIAccessibilityAuditType.textClipped, .hitRegion, .dynamicType, .sufficientElementDescription] {
+            XCTAssertFalse(underPill(CGRect(x: 20, y: 740, width: 100, height: 20), type: type), "audit type \(type.rawValue) under the pill")
+        }
+    }
+
+    func testTheFindPillSkipKeepsAnElementThatOnlyTouchesThePill() {
+        XCTAssertFalse(underPill(CGRect(x: 20, y: 711, width: 100, height: 20)), "contrast that ends on the pill's top edge")
+        XCTAssertFalse(underPill(CGRect(x: 20, y: 782, width: 100, height: 20)), "contrast that starts on the pill's bottom edge")
+    }
+
+    func testTheFindPillSkipKeepsAFindingWithNoElementOrNoPill() {
+        XCTAssertFalse(underPill(nil, identifier: nil), "a finding with no element")
+        XCTAssertFalse(underPill(CGRect(x: 20, y: 740, width: 100, height: 20), pill: nil), "no pill is drawn")
+        XCTAssertFalse(underPill(CGRect(x: 20, y: 740, width: 100, height: 20), pill: .zero), "a pill frame that is empty")
+        XCTAssertFalse(underPill(CGRect(x: 20, y: 740, width: 100, height: 20), pill: .null), "a null pill frame")
+    }
+
+    func testTheFindPillSkipKeepsItsOwnFieldAndClearControl() {
+        XCTAssertFalse(underPill(CGRect(x: 20, y: 740, width: 300, height: 40), identifier: "find-field"), "contrast on the pill's field")
+        XCTAssertFalse(underPill(CGRect(x: 300, y: 740, width: 44, height: 44), identifier: "find-clear"), "contrast on the pill's clear control")
     }
 
     // MARK: the measured contrast skip, on identifiers
@@ -385,6 +441,21 @@ final class AuditSkippingTabBarUITests: XCTestCase {
         XCTAssertEqual(away.skipped, [], "a bar far from the screen and a tall window still skipped an issue")
         XCTAssertEqual(away.failing.count, real.skipped.count + real.failing.count,
                        "the skipped issues did not all fail once the bar moved away and the window grew")
+    }
+
+    /// Moving the Find pill away turns every issue the pill rule skipped into a failure, so the pill rule hides nothing
+    /// the screen would show. Skips when no issue sits under the pill, because the rule then hides nothing.
+    func testTheSameIssuesFailOnceTheFindPillMovesAway() throws {
+        let app = launchedPackages()
+
+        let real = try app.auditSkippingTabBar(record: false)
+        XCTAssertTrue(real.failing.isEmpty, auditFailureText(real.failing) + "\nan issue outside the Find pill and the tab bar fails the Packages audit")
+        try XCTSkipIf(real.pillSkipped.isEmpty, "no audit issue sits under the Find pill, so the rule hides nothing")
+
+        let away = try app.auditSkippingTabBar(pill: Self.farAway, record: false)
+        XCTAssertEqual(away.pillSkipped, [], "a Find pill far from the screen still skipped an issue")
+        XCTAssertEqual(away.failing.count, real.failing.count + real.pillSkipped.count,
+                       "the pill-skipped issues did not all fail once the pill moved away")
     }
 
     /// Orphaned's composer, open. The audit raises issues on it by itself, and the Orphaned composer audit has to skip
