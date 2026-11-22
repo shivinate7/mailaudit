@@ -3,7 +3,7 @@
   "routes": [
     { "name": "Packages-empty", "path": "/" }
   ],
-  "sizes": [375, 760],
+  "sizes": [402, 440, 466],
   "themes": ["light"],
   "height": 812
 }
