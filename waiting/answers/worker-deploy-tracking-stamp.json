@@ -1,0 +1,9 @@
+{
+  "at": "2026-11-22T18:32:23.420Z",
+  "choice": "b",
+  "item": "worker-deploy-tracking-stamp",
+  "label": "B: Deploy both together after PR 390 merges",
+  "n": 124,
+  "note": "",
+  "optionId": "deploy-together"
+}
