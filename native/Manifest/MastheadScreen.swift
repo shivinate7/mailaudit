@@ -35,6 +35,12 @@ struct MastheadScreen<Content: View>: View {
         // On the open Duo spread the scroll keeps no position binding and no offset tracking, so it scrolls as it did before scrollBy
         // existed. Whether the binding caused the spread's flat Orphaned failure is unproven.
         let offSpread = spread.pages(for: tab.duoTab) == nil
+        // Two typed constants, not a ternary of two closure literals: a literal in a ternary is not inferred @MainActor @Sendable, which the
+        // environment value needs, and the compiler then refuses the conversion.
+        let scrollByReal: @MainActor @Sendable (CGFloat) -> Void = { dy in
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { position.scrollTo(y: offset.y + dy) }
+        }
+        let scrollByNone: @MainActor @Sendable (CGFloat) -> Void = { _ in }
         ScrollViewReader { proxy in
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -53,9 +59,7 @@ struct MastheadScreen<Content: View>: View {
         // A tab's content asks for a view by id (a focused field, its Save) to be kept above the keyboard.
         .environment(\.scrollTo, { id in withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { proxy.scrollTo(id, anchor: .bottom) } })
         // A tab's content asks to be moved by a distance: it knows where its view lies and where the keys start, which an id cannot say.
-        .environment(\.scrollBy, offSpread
-            ? { dy in withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { position.scrollTo(y: offset.y + dy) } }
-            : { _ in })
+        .environment(\.scrollBy, offSpread ? scrollByReal : scrollByNone)
         // Pinned once the slot's top has passed the scroll view's top edge. A short tab never scrolls that far.
         .onScrollGeometryChange(for: Bool.self, of: { pinAt > 0 && $0.contentOffset.y + $0.contentInsets.top >= pinAt }) { pinned = $1 }
         .overlay(alignment: .top) {
