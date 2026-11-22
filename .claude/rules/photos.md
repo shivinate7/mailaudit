@@ -8,8 +8,6 @@ paths:
 
 ## Envelope photos
 
-A photo is a picture of a mailing label. It never enters the ledger, and it can never lose a conflict.
-
 - `photos-stay-out-of-the-ledger` — Photo blobs never enter the ledger.
 - `photo-sync-cannot-conflict` — Photo sync cannot conflict by design.
 - `photo-errors-never-hit-pushstate` — A photo error never reaches pushState.
