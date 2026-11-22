@@ -21,8 +21,8 @@
   "id": "tally-320-move",
   "kind": "decision",
   "lastAnswer": {
-    "at": "2026-11-19T03:54:59.294Z",
-    "note": "can i see this visually"
+    "at": "2026-11-22T01:56:00Z",
+    "note": "Owner: 320 px is not a real phone width; closed, no change."
   },
   "n": 62,
   "options": [
@@ -86,8 +86,8 @@
   "rank": 19,
   "recommended": "a",
   "ref": "debt tally-card-moves-at-320px (the Tally card moves at 320px); invariant no-layout-shift-under-pointer; decision card-reserved-geometry",
-  "replied": "2026-11-21T14:10:59-06:00",
-  "reply": "The pictures of both options are now inside this item. Please look and pick an option.",
+  "replied": "2026-11-22T01:56:00Z",
+  "reply": "Short answer: never on a current iPhone. Repo decision card-the-action-row-is-reserved says 320 px is below the app's stated 380 px floor and is not a width current iOS runs; the 14 px move at 320 was left on purpose. So this question asked about a width your phone does not have, and I should not have put it to you. Your answer, none of these, stands as: do nothing. Closed; the open gap on main (debt tally-card-moves-at-320px) goes to the coordinator to retire. Your own phone's real width is still the open question on item 109. 19:56 CST 2026-11-21.",
   "repo": "shivinate7/mailaudit",
   "short": "Tally card at 320 px",
   "shown": [
@@ -107,7 +107,7 @@
       "label": "Shorten the button labels so both fit on one line"
     }
   ],
-  "status": "open",
+  "status": "closed",
   "title": "At a 320 px screen, the Tally card jumps 14 px when you check in. Fix it, though the look changes?",
   "why": "The no-shift rule is one of the eight that must not break, and a mis-tap there checks in the wrong card."
 }

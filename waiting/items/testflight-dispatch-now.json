@@ -5,9 +5,9 @@
   "id": "testflight-dispatch-now",
   "kind": "decision",
   "lastAnswer": {
-    "at": "2026-11-21T22:52:00Z",
+    "at": "2026-11-22T01:56:00Z",
     "choice": "b",
-    "note": "just give me the prompt and ill have a local sesh install it for now (chat, 16:52 CST, passed by the coordinator)"
+    "note": "Owner: irrelevant now; no dispatch, Mac install."
   },
   "n": 112,
   "options": [
@@ -31,8 +31,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "a",
   "ref": "decision native-ships-via-testflight; record cloud-session-reach",
-  "replied": "2026-11-21T16:54:00-06:00",
-  "reply": "Recorded: no TestFlight dispatch now. You run a local Mac session and install the phone app with ios-ship install; the coordinator gives you the prompt. This item stays open, and I close it when you say the install is done.",
+  "replied": "2026-11-22T01:56:00Z",
+  "reply": "Closed, no dispatch. You said none of these and asked if it is irrelevant now: yes, you chose no TestFlight dispatch (2026-11-21 16:52 CST) and install from a local Mac session instead. The change that mattered (CH Post, pull request 373) is merged, so that install can start whenever you run it. If the install fails or you want TestFlight after all, tell me and I open a new item. 19:56 CST 2026-11-21.",
   "repo": "shivinate7/mailaudit",
   "short": "Dispatch TestFlight now?",
   "shown": [
@@ -47,7 +47,7 @@
       "label": "No, wait for a Mac install"
     }
   ],
-  "status": "open",
+  "status": "closed",
   "title": "Dispatch the TestFlight workflow on main now, so your phone gets everything merged through pull request 369?",
   "why": "Your phone is behind the app since 2026-11-16 and each dispatch needs your go."
 }
