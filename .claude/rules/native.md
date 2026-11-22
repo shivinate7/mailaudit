@@ -53,6 +53,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-orphaned-colours-unbuilt` — The native Orphaned composer audits flag text with no element.
 - `orphaned-composer-contrast` — The ready Orphaned composer fails contrast on its card count and its Save (duo-ui run 42653870499, job pro-ui-a, 2 of 2 tries).
 - `tabbar-hides-partial-controls` — The tab-bar skip never checks a control partly under the bar.
+- `find-pill-hides-row-contrast` — The Find pill's contrast skip never checks row text under the pill.
 - `native-undo-notice-padding` — The native Undo notice pads 4pt, not 8pt.
 - `composer-fields-two-lines` — The envelope composer's two-line card name and note fields are right on the phone.
 - `native-discard-arm-unpinned` — No test pins the native Discard arm.
