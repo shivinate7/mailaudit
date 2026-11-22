@@ -1,0 +1,46 @@
+{
+  "added": "2026-11-22T20:20:00Z",
+  "context": "Goal: the Hand end-of-day pile and \"Not normal today\" land, which the restore-stamp change and the live Worker deploy wait on.\nProblem (goal): the pile lists an envelope when its count is above 0 and its stamp is today, but a same-day \"One fewer\" on a copy checked in yesterday also stamps it today, so it shows with no check-in today, and the saved data cannot tell a check-in from a decrement, so only you can say what the pile means.\nBased on (ruling): the rule that the saved data's layout never changes, which rules out a new saved field; the Hand end-of-day answer you gave on 2026-11-19 23:23 CST covers only the count-0 un-check.\nBased on (read): the Hand end-of-day change is PR 390; the coordinator found this in review.\nDeparts from: main has no end-of-day pile on the Hand screen \u2014 this adds one that can list an envelope touched today by a decrement.\nWaiting on: your answer; PR 390 waits on this point, and the coordinator fixes its other review findings meanwhile.",
+  "home": "decision duo-card-in-hand",
+  "id": "hand-pile-touched-or-checked",
+  "kind": "decision",
+  "n": 126,
+  "options": [
+    {
+      "gain": "Nothing new is saved, and it ships now.",
+      "how": "The screen text says touched today; the coordinator records the same-day decrement as accepted in the Hand rules.",
+      "id": "pile-means-touched-today",
+      "key": "a",
+      "label": "The pile means \"touched today\", and the screen says so",
+      "lose": "An envelope can appear with no new check-in today, and the wording differs from the mockup."
+    },
+    {
+      "gain": "The wording stays as the mockup drew it.",
+      "how": "The coordinator files a known-gap record for the decrement case and PR 390 ships with the mockup wording.",
+      "id": "keep-wording-known-gap",
+      "key": "b",
+      "label": "Keep the wording \"checked in today\" and record the false entry as a known gap",
+      "lose": "The screen can say something untrue about an envelope."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "a",
+  "ref": "coordinator 2026-11-22 14:22 CST: PR 390 review finding",
+  "repo": "shivinate7/mailaudit",
+  "short": "Hand pile: \"touched today\" or keep \"checked in today\"",
+  "shown": [
+    {
+      "id": "pile-means-touched-today",
+      "key": "a",
+      "label": "The pile means \"touched today\", and the screen says so"
+    },
+    {
+      "id": "keep-wording-known-gap",
+      "key": "b",
+      "label": "Keep the wording \"checked in today\" and record the false entry as a known gap"
+    }
+  ],
+  "status": "open",
+  "title": "Should the Hand end-of-day pile mean \"touched today\", or keep the wording \"checked in today\"?",
+  "why": "A stamp on each check-in would be exact but breaks the saved data's fixed layout, so it is not offered; a is the coordinator's recommendation."
+}
