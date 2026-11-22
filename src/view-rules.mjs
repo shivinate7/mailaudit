@@ -528,7 +528,7 @@ export const compact = (n) => {
 
 /* Lane N15: the package card's text forms, one home for the web and native cards.
    TCGplayer's buyer order-history page, searched by order id (owner ruling 2026-10-21).
-   Whether the page honours SearchString is unconfirmed; debt tcgplayer-link-opens-history-list. */
+   The owner confirmed the link opens that exact order (decision order-id-button-stops-propagate). */
 export const tcgplayerOrderUrl = (id) =>
   `https://store.tcgplayer.com/myaccount/orderhistory?SearchString=${encodeURIComponent(id)}`;
 
