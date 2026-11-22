@@ -181,6 +181,8 @@ private struct ComposerView: View {
     private enum Field { case name, note }
     @FocusState private var focused: Field?
     @Environment(\.scrollBy) private var scrollBy
+    @Environment(\.scrollTo) private var scrollTo
+    @Environment(\.duoSpread) private var spread
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var gauge = KeyGauge()
 
@@ -193,6 +195,9 @@ private struct ComposerView: View {
     /// A shortfall under this is layout rounding, not a row under the keys, so it starts no scroll. A bandaid: the empty composer's
     /// Save lies 0.67 pt inside `keyMargin`, and a scroll for that moved the page under the audit.
     private static let deadband: CGFloat = 2
+    private static let saveRow = "orphaned-composer-save-row"
+    /// The open Duo's left page, where the composer sits in a page the keys do not reach the way they reach the iPhone's.
+    private var onSpread: Bool { spread.pages(for: .orphaned) != nil }
     private var draft: EnvelopeDraft { model.draft(for: target) }
 
     var body: some View {
@@ -283,6 +288,7 @@ private struct ComposerView: View {
                 .buttonStyle(.plain).disabled(!ready).accessibilityIdentifier("orphaned-save")
             }
             .padding(.top, 4)
+            .id(Self.saveRow)
             .onGeometryChange(for: CGFloat.self, of: { $0.frame(in: .global).maxY }) { gauge.rowBottom = $0 }
         }
         .padding(12)
@@ -291,15 +297,24 @@ private struct ComposerView: View {
         // view does not follow focus, so the composer keeps Save clear itself: on a focus change, when the keys change frame or
         // finish opening, and when its own height changes (an entry added or removed, the suggestions opening or closing, a field
         // growing). Never on a scroll, so a drag is not fought.
-        .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { _ in keepSaveClear() }
-        .onChange(of: focused) { _, f in if f != nil { keepSaveClear() } }
+        // On the open Duo's spread it keeps the older move instead: Save to the page's bottom edge on a focus change and once the keys
+        // are open, and nothing else. A bandaid: the margin's scroll left the left page scrolled past its envelope cells after Save
+        // (duo-ui run 45025191429: cell frame y -8.3), where the older move did not.
+        .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { _ in if !onSpread { keepSaveClear() } }
+        .onChange(of: focused) { _, f in if f != nil { bringSaveUp() } }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { note in
             gauge.keysTop = Self.keysTop(note)
-            keepSaveClear()
+            if !onSpread { keepSaveClear() }
         }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in keepSaveClear() }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in
+            if onSpread { if focused != nil { scrollTo(Self.saveRow) } } else { keepSaveClear() }
+        }
         .task(id: d.input) { found = await model.suggestions(for: d.input) }
         .onAppear { focused = .name }
+    }
+
+    private func bringSaveUp() {
+        if onSpread { scrollTo(Self.saveRow) } else { keepSaveClear() }
     }
 
     /// Scrolls up by the distance the Save row lies inside `keyMargin` of the keys' reported top, and does nothing when it is clear,
