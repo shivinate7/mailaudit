@@ -1,0 +1,46 @@
+{
+  "added": "2026-11-22T12:25:00Z",
+  "context": "Goal: the compliance scorecard scores the Git group instead of leaving it unknown.\nProblem (rule): the cloud refuses gh writes and the standing rule blocks gh reads without your grant, so the run made no gh calls and the Git group is unknown.\nBased on (read): the coordinator's compliance run (PR 399) made no gh calls; the probes are branch protection and merged pull requests.\nDeparts from: main blocks gh reads without a grant \u2014 option a adds a one-time read grant for these probes only.\nWaiting on: your answer; the Git row stays unknown meanwhile.",
+  "home": "docs/decisions",
+  "id": "gh-read-grant-git-score",
+  "kind": "decision",
+  "n": 121,
+  "options": [
+    {
+      "gain": "The Git group gets a real score.",
+      "how": "The coordinator runs only the branch-protection and merged-pull-request reads, once, and reports the verdicts.",
+      "id": "grant-read-once",
+      "key": "a",
+      "label": "Grant one named read-only gh run",
+      "lose": "One gh read run happens, with your grant."
+    },
+    {
+      "gain": "No gh read happens.",
+      "how": "The scorecard keeps the Git row as unknown.",
+      "id": "no-grant",
+      "key": "b",
+      "label": "Do not grant it",
+      "lose": "The Git group stays unknown."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "a",
+  "ref": "coordinator 2026-11-22 06:25 CST: compliance run, PR 399",
+  "repo": "shivinate7/mailaudit",
+  "short": "One-time read-only GitHub check to score the Git group",
+  "shown": [
+    {
+      "id": "grant-read-once",
+      "key": "a",
+      "label": "Grant one named read-only gh run"
+    },
+    {
+      "id": "no-grant",
+      "key": "b",
+      "label": "Do not grant it"
+    }
+  ],
+  "status": "open",
+  "title": "Do you grant one named read-only gh run so the compliance scorecard can score the Git group?",
+  "why": "Reads only, one run, and the Git row stays unknown without it (coordinator's recommendation)."
+}
