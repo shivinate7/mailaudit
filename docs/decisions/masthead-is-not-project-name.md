@@ -4,9 +4,9 @@ The app presents itself as **MANIFEST**, under a C.H Postal Company letterhead. 
 
 **Holds while:** `build.mjs` sets the page title to `Manifest` and the iOS title to `CH Post`, `STORAGE_KEY` in `src/app.jsx` is `mailday:v1`, and `CFBundleDisplayName` in `native/project.yml` is `CH Post`.
 
-The browser `<title>` in `build.mjs` is "Manifest". The `apple-mobile-web-app-title` is "CH Post" (owner, 2026-11-21; it was "Mail Day"). iOS bakes that label in at install time, so a web app already on the home screen keeps its old label until the owner deletes it and adds it again from Safari. The label differs from the browser title on purpose. Do not fix it without asking.
+The browser `<title>` in `build.mjs` is "Manifest". The `apple-mobile-web-app-title` is "CH Post" (owner, 2026-11-21 17:05 CST, "change that too"). iOS bakes that label in at install time, so a web app already on the home screen keeps its old label until the owner deletes it and adds it again from Safari. The label differs from the browser title on purpose. Do not fix it without asking.
 
-The native app's home-screen label is also **CH Post** (owner, 2026-11-21): `CFBundleDisplayName` in `native/project.yml`. The bundle id, product name, scheme and the in-app masthead stay as they were.
+The native app's home-screen label is also **CH Post** (owner, 2026-11-21 17:02 CST): `CFBundleDisplayName` in `native/project.yml`. The bundle id, product name, scheme and the in-app masthead stay as they were.
 
 ## See also
 
