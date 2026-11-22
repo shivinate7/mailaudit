@@ -14,7 +14,7 @@ The arrival is a fade and a 4px move. It changes no layout. A panel never reflow
 
 ## Web plan
 
-Position `.mdl-panel` over the list so its arrival moves no row. Keep the 220ms fade and the 4px move. A check at 375px proves the list rows do not move when a panel opens.
+Position `.mdl-panel` over the list so its arrival moves no row. Keep the 220ms fade and the 4px move. A check at 402px, 440px and 466px proves the list rows do not move when a panel opens.
 
 ## See also
 

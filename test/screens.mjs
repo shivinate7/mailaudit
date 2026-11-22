@@ -5,41 +5,41 @@
    its localStorage, and checks the two layout claims jsdom cannot see, because
    jsdom has no layout:
 
-     1. No sideways overflow, in every view, at 375px and 760px, and in the
+     1. No sideways overflow, in every view, at 402, 440 and 466px, and in the
         lost-photo tile state (LOST_STATE). The head's three ruled cells must hold
         the longest sort label (decisions: the ruled head, `minmax(0, 1fr)`;
         measurements/ruled-head-heights.md).
      2. Every check-in moves no other row in its card (invariant
         no-layout-shift-under-pointer; measurement card-reserved-geometry). Each
-        card is checked in row by row through completion, at 375px and 760px: Tally
+        card is checked in row by row through completion, at 402, 440 and 466px: Tally
         under Unreceived and under Everything, and Packages under Everything.
         Packages under Unreceived is checked one line short of completion, since
         its completed package drops out (view-rules filterPackages). A failing
         check-in names each moved row and its shift.
      3. Arming Discard on an envelope card moves no element on the page and
         causes no sideways overflow. The arm adds a panel; it takes no space.
-        Measured at 375px in Orphaned, the view that holds envelope cards.
+        Measured at each form in Orphaned, the view that holds envelope cards.
      4. The armed Reset ask shows its full label: the text is not cut, so no
-        ellipsis. Measured at 375px in each view.
-     5. The bottom bar (decision phone-nav-is-bottom-bar) at 375px and 760px:
+        ellipsis. Measured at each form in each view.
+     5. The bottom bar (decision phone-nav-is-bottom-bar) at 402, 440 and 466px:
         four tabs of at least 44px in order, the bar 24px in from each side and
         capped at 480px, centred, 12px above the bottom edge and clear of a
         34px home indicator, the search pill 8px above it, and the last row of
         Tally and Packages clear of both when scrolled to the bottom.
-     6. The Ledger tab (decision ledger-tab-holds-options) at 375px and 760px:
+     6. The Ledger tab (decision ledger-tab-holds-options) at 402, 440 and 466px:
         each option is a 44px target, Reset is red, the gap above its title is
         16px (decision spacing-on-4px-grid), and Reset ends
         above the bar stack when the tab is scrolled to the bottom.
      7. The Sync panel on the Ledger tab (decision ledger-tab-holds-options, owner
-        ruling 2026-10-12) at 375px and 760px: the panel opens from its Sync cell,
+        ruling 2026-10-12) at 402, 440 and 466px: the panel opens from its Sync cell,
         holds no GitHub control (Pull from GitHub, Push, Push anyway, Merge & push),
         and causes no sideways overflow.
-     8. An axe scan (ux-house-rules-govern L8) at 375px and 760px in every state
+     8. An axe scan (ux-house-rules-govern L8) at 402, 440 and 466px in every state
         of SCREEN_STATES, and in the open photo viewer. Fails on any serious or
         critical violation, and on the experimental label-content-name-mismatch rule.
         LOST_STATE is the last state of SCREEN_STATES and of the scan: it needs a key,
         a mocked Worker and an old envelope, so it reloads the page (openLostTile).
-     9. Touch targets (ux-a11y-floor, L6) at 375px on a touch device, in every
+     9. Touch targets (ux-a11y-floor, L6) at each form on a touch device, in every
         state of SCREEN_STATES: each visible interactive element is hit at least
         44 by 44 CSS px, measured by elementFromPoint from its centre, the centre
         sample included. A tap that lands on a label counts for the field the label
@@ -48,25 +48,17 @@
         skipped by this floor only: each state prints one `note` line with the number
         of such targets. Its drawn box and its overlap probe still count.
     10. Drawn boxes (L6): in every state of SCREEN_STATES, each element's painted
-        box at 375px matches test/a11y-base-boxes.json. The base is recorded at the
-        grid lane head, commit 528bbde (the re-space build under
-        spacing-on-4px-grid), with `A11Y_RECORD=1 node test/screens.mjs`. The six
-        touch states that the tab badge top 6px to 4px moved were re-recorded at
-        dc73fc3 with `A11Y_RECORD_ONLY`. "Tally card open" was re-recorded at
-        a95b180 with `A11Y_RECORD_ONLY`, after the Tally row shift fix. It is no
-        longer the f7d51ba base: the grid is a deliberate visual change, so this
-        check now guards drift from the grid head, not the grid change itself.
-        "Packages" and "Stamp editor open" were re-recorded at 2b4fd8f with
-        `A11Y_RECORD_ONLY`, after the order id became a link: each package card
-        went from one header button to a chevron button plus an id link (6 more
-        elements per state), and the header grew 12px. Both were re-recorded again
-        at 4e61484 with `A11Y_RECORD_ONLY`, after the id line moved 12px clear of the
-        date line and the header grew 12px more: in each card the id link moved 12px
-        and each box under it 24px, on top of the cards above. Every other state
-        stayed. A grown hit area never grows it. Keys mask digits in their text, so a day
-        count in a card does not move a key. After any deliberate visual change,
-        re-record every state the same way; A11Y_RECORD_ONLY="<state>" re-records
-        one.
+        box at each form matches test/a11y-base-boxes.json, keyed by width. Each
+        state's base at each form is recorded at the commit that last set its base at
+        375px (in git history): Ledger, Tally and Sync panel open at caff16a8;
+        Orphaned and Envelope composer open at f97e423e; Tally card open at f426c120;
+        Packages and Stamp editor open at 5b55968b; Lost photo tile at df00b697. So
+        each form is measured against the same drift record as the 375px base was. Record with
+        `A11Y_RECORD=1 node test/screens.mjs` (record mode runs the touch check only),
+        and A11Y_RECORD_ONLY="<state>" re-records one state. A grown hit area never
+        grows it. Keys mask digits in their text, so a day count in a card does not
+        move a key. After any deliberate visual change, re-record every state the same
+        way.
     11. Overlap (L6, F2): in the same states, a tap 1px outside any point of a
         control's side, corner to corner, counts when that point is strictly
         nearer to that control than to any other control. So the walk along a side
@@ -78,28 +70,28 @@
         2026-10-14 08:10 CDT). A sticky control is not fixed, so its pairs are still
         checked. Named hole: no check covers a tap just past a fixed control's
         edge. The probe must test at least one tap per state, or the state fails.
-    12. Stamp chips (L6, decision 2026-10-13): at 375px touch, in the Stamp editor
+    12. Stamp chips (L6, decision 2026-10-13): at each form touch, in the Stamp editor
         state, each of the six kind chips has a hit area at least 44px tall, centred
         on its drawn box, that ends at the gap midpoint to the chip above and to the
         chip below. Reach is walked from the drawn box in 0.25px steps. The span,
         centring and midpoint checks allow 0.25px (cause in the claim 12 header).
-    13. Ledger rule (L6, Sorted by top rule): at 375px touch on the Ledger tab, each tap in the
+    13. Ledger rule (L6, Sorted by top rule): at each form touch on the Ledger tab, each tap in the
         top 1px band of the "Sorted by" row, inset 2px from each end (every 0.25px
         down, every 4px across), returns "Sorted by", not the row above it.
     14. Spacing grid (decision spacing-on-4px-grid, owner ruling 2026-10-11 "Re-space
-        to the grid"): at 375px and 760px, and at 375px touch (the pointer: coarse
+        to the grid"): at 402, 440 and 466px, and at each form touch (the pointer: coarse
         block sets its own padding), in every state of SCREEN_STATES, each visible
         element's computed margin, padding, row-gap and column-gap is a multiple of
         4px. Auto margins are skipped and gap "normal" counts as 0. Each card's four
         corners are 8px. A card is a DIV on the card surface (#FCF6EA) with a 1px
         border. Pseudo-elements are not walked. Exemptions are named in GRID_EXEMPT,
         each with its reason.
-    15. Lost tile size (decision pull-warns-on-what-it-drops) at 375px and 760px: in a
+    15. Lost tile size (decision pull-warns-on-what-it-drops) at 402, 440 and 466px: in a
         strip that holds a View photo thumbnail and a lost tile, both are 56 by 56
         drawn px (0.5px tolerance), by bounding rect. A content-box tile measures 58.
     16. A remote reply lands without moving what the owner is looking at (invariant
         no-layout-shift-under-pointer; owner ruling 2026-10-20 23:36 CDT, "hover doesn't
-        count"). At 375px and 760px with a mouse at rest on a row, and at 375px touch with a row
+        count"). At each form with a mouse at rest on a row, and at each form touch with a row
         in view, in Packages and in Tally: a mocked Worker pushes {rev} over the socket and
         answers the GET with a ledger that adds rows above the row. 16a: the reply is applied
         within 1.5 s (a hover is not a press, so nothing holds it). 16b: once it has landed
@@ -109,17 +101,17 @@
         claim turns overflow-anchor off and measures the page's own correction either way.
         A scroll gate and a missing correction fail separately.
         `SCREENS_ONLY=16 node test/screens.mjs` runs this claim alone.
-    17. Order id link (owner ruling 2026-10-21) at 375px touch and 760px, on Alpha's
-        order A1: the chevron toggles on a click (a tap at 375px) and on Enter while
-        the seller name is selected, open or collapsed. At 760px a mouse drag from the
+    17. Order id link (owner ruling 2026-10-21) at each form touch and mouse, on Alpha's
+        order A1: the chevron toggles on a click (a tap at each form touch) and on Enter while
+        the seller name is selected, open or collapsed. At each form a mouse drag from the
         seller name into the date line selects text and leaves the card open, and a
-        plain click still collapses it. Claim 17a, at 320px and 375px touch, with
+        plain click still collapses it. Claim 17a, at each form touch, with
         Alpha stamped and not: no real tap on the seller name, the date line, the
         chevron or the row under the header (the Stamp band, or the action row's
         buttons) opens TCGplayer. The taps are Chromium touches with a 1px and a
         12px radius, on a 1px grid within 32px of the id link's area (8px beyond), so
         Chromium's touch adjustment is in play. Header whitespace is not swept.
-    18. Recent log (decision recent-checks-can-be-undone; mockup note 5) at 375px and 760px,
+    18. Recent log (decision recent-checks-can-be-undone; mockup note 5) at 402, 440 and 466px,
         on a seeded ledger with one checked card in the Recent log. In RECENT_STATES
         ("Recent row", "Recent panel open", "Recent row after UNDO"): the cell shows on the
         Ledger tab, the closed row holds no Undo control, the open panel holds one, and after
@@ -129,7 +121,7 @@
         and sit outside claim 10. A tap on the subject text undoes nothing: only the Undo
         control is a tap target.
     19. Head panels carry the paper fill (decision head-panels-carry-paper-fill; owner ruling,
-        page item 63 a, 2026-11-18 21:56 CST) at 375px and 760px: on the Ledger tab, each of
+        page item 63 a, 2026-11-18 21:56 CST) at 402, 440 and 466px: on the Ledger tab, each of
         Sorted by and History, once tapped, opens exactly one panel, and that panel's computed
         background is the `paper` token from shared/tokens.json. Pinned: the fill only. Not
         pinned: the square edge with `paper` (the ruling leaves it unmeasured), any rule under
@@ -153,7 +145,21 @@ const PAGE = path.resolve(process.argv[2] || path.join(ROOT, "index.html"));
 /* The app's own key is `mailday:v1`; window.storage namespaces it under
    `mailday:`, so the literal localStorage key is `mailday:mailday:v1`. */
 const STORE_KEY = "mailday:mailday:v1";
-const WIDTHS = [375, 760];
+/* The three forms the owner checks (item 109 ruling, 2026-11-21 19:57 CST; item 117, option a): the
+   iPhone 18 Pro, the iPhone 18 Pro Max and the folded Duo. Each runs at its own width and viewport
+   height. 402 by 874 and 440 by 956 are Apple's point sizes, unmeasured on a simulator; the folded
+   Duo's 466 by 678 is measured. */
+const FORMS = [
+  { width: 402, height: 874 },
+  { width: 440, height: 956 },
+  { width: 466, height: 678 },
+];
+const WIDTHS = FORMS.map((form) => form.width);
+const heightFor = (width) => {
+  const form = FORMS.find((f) => f.width === width);
+  if (!form) throw new Error(`${width}px is not one of the forms`);
+  return form.height;
+};
 /* Every tab of the bottom bar (decision phone-nav-is-bottom-bar). Ledger has no
    Reset ask until L11b, so the Reset check below leaves it out. */
 const VIEWS = ["Ledger", "Orphaned", "Tally", "Packages"];
@@ -251,6 +257,16 @@ const ARCHIVE = Array.from({ length: 60 }, (_, i) =>
 /* The sort state is set to the LONGEST label each view can show ("$ remaining"
    in Packages, "Biggest position" in Tally), so the head has to hold its worst
    case at every width. A short label would let a 1fr grid pass by accident. */
+/* Full-size rows for the views that must scroll. At 440 by 956 the seeded Tally fits on one screen,
+   so the bottom bar's clearance and the remote reply's anchor have no scroll to prove. These
+   twenty-four Tally cards make the list a real length (decision P8). */
+const BULK_ITEMS = mk(
+  "T1",
+  "Bulk Seller",
+  "2026-07-03",
+  "without tracking",
+  Array.from({ length: 24 }, (_, i) => [`Bulk Card ${String(i + 1).padStart(2, "0")}`, 1, 0.25])
+);
 const LEDGER = {
   mailday: 1,
   items: [...ITEMS, ...ARCHIVE],
@@ -428,8 +444,8 @@ const resetAskProbe = () => {
    checks the visitor lands on the empty ledger, with no snapshot notice. It is
    red while entry.jsx still reads the tag. The copy lives under node_modules and
    every network request is aborted, so no Worker or GitHub call can happen. */
-async function freshVisitorCheck(browser) {
-  const name = "fresh visitor";
+async function freshVisitorCheck(browser, width) {
+  const name = `fresh visitor ${width}px`;
   const packed = gzipSync(
     Buffer.from(
       JSON.stringify({
@@ -460,7 +476,7 @@ async function freshVisitorCheck(browser) {
   mkdirSync(dir, { recursive: true });
   const probe = path.join(dir, "fresh-visitor.html");
   writeFileSync(probe, planted);
-  const ctx = await browser.newContext({ viewport: { width: 375, height: 812 }, reducedMotion: "reduce" });
+  const ctx = await browser.newContext({ viewport: { width, height: heightFor(width) }, reducedMotion: "reduce" });
   try {
     await ctx.route(/^https?:\/\//, (r) => r.abort());
     const page = await ctx.newPage();
@@ -704,7 +720,7 @@ const fail = (name, detail) => failures.push(`FAIL ${name}: ${detail}`);
 
 async function openSeeded(browser, width, opts = {}) {
   const ctx = await browser.newContext({
-    viewport: { width, height: 812 },
+    viewport: { width, height: heightFor(width) },
     reducedMotion: "reduce",
     ...(opts.touch ? { hasTouch: true, isMobile: true } : {}),
   });
@@ -764,7 +780,7 @@ async function overflowChecks(browser) {
       return;
     }
     for (const width of WIDTHS) {
-      await page.setViewportSize({ width, height: 812 });
+      await page.setViewportSize({ width, height: heightFor(width) });
       await page.waitForTimeout(200);
       for (const view of VIEWS) {
         checks++;
@@ -977,10 +993,10 @@ const ROW_SHIFT_CARDS = [
 /* Arm Discard on the first envelope card. Nothing on the page may move, and
    the page may not widen. The Discard panel is absolutely placed, so it is
    the one thing the arm may add; it must not push anything else. */
-async function discardArmCheck(browser) {
-  const name = "discard arm orphaned 375px";
+async function discardArmCheck(browser, width) {
+  const name = `discard arm orphaned ${width}px`;
   checks++;
-  const { ctx, page, pageErrors } = await openSeeded(browser, 375);
+  const { ctx, page, pageErrors } = await openSeeded(browser, width);
   try {
     if (!(await loadedOk(page))) {
       fail(name, "seeded ledger did not render");
@@ -1024,10 +1040,10 @@ async function discardArmCheck(browser) {
 /* Arm Reset in one view and read its ask. The label is one line, and the cell
    that holds it must be wide enough: scrollWidth above clientWidth is the
    ellipsis the cell would otherwise hide behind. */
-async function resetAskCheck(browser, view) {
-  const name = `reset ask ${view} 375px`;
+async function resetAskCheck(browser, view, width) {
+  const name = `reset ask ${view} ${width}px`;
   checks++;
-  const { ctx, page, pageErrors } = await openSeeded(browser, 375);
+  const { ctx, page, pageErrors } = await openSeeded(browser, width);
   try {
     if (!(await loadedOk(page))) {
       fail(name, "seeded ledger did not render");
@@ -1073,8 +1089,10 @@ async function resetAskCheck(browser, view) {
   }
 }
 
+const BAR_LEDGER = { ...LEDGER, items: [...LEDGER.items, ...BULK_ITEMS] };
+
 /* The bottom bar and its search pill (decision phone-nav-is-bottom-bar), at
-   375px and 760px. jsdom has no layout, so each claim here is a box. The bar
+   402, 440 and 466px. jsdom has no layout, so each claim here is a box. The bar
    holds four tabs, each a 44px target. It is 24px in from each side, capped at
    480px and centred. It sits 12px above the bottom edge, and the pill sits 8px
    above the bar. Clearance: at the bottom of a scrolled view, the last row
@@ -1134,7 +1152,7 @@ const lastRowBottom = () => {
 async function barCheck(browser, width) {
   const name = `bottom bar ${width}px`;
   checks++;
-  const { ctx, page, pageErrors } = await openSeeded(browser, width);
+  const { ctx, page, pageErrors } = await openSeeded(browser, width, { ledger: BAR_LEDGER });
   try {
     if (!(await loadedOk(page))) {
       fail(name, "seeded ledger did not render");
@@ -1193,8 +1211,8 @@ async function barCheck(browser, width) {
         fail(name, `${view}: last row ends at ${last.toFixed(1)}px, under the bar stack at ${stackTop.toFixed(1)}px`);
     }
 
-    /* the home indicator: the bar must clear it by the 12px, not sit on it */
-    if (width === 375) {
+    /* the home indicator: the bar must clear it by the 12px, not sit on it. Every form has one. */
+    {
       const cdp = await ctx.newCDPSession(page);
       await cdp.send("Emulation.setSafeAreaInsetsOverride", {
         insets: { top: 0, bottom: HOME_INDICATOR_PX, left: 0, right: 0 },
@@ -1211,7 +1229,7 @@ async function barCheck(browser, width) {
   }
 }
 
-/* The Ledger tab (decision ledger-tab-holds-options), at 375px and 760px. The
+/* The Ledger tab (decision ledger-tab-holds-options), at 402, 440 and 466px. The
    options sit on the tab, each a target of at least 44px. Reset is the red
    control and ends above the bar stack at the bottom of the scroll. Clearance
    is checked whether or not the tab scrolls: a tab that fits on screen cannot
@@ -1837,9 +1855,9 @@ const measureTouch = ({ selector, half }) => {
 
 /* The two L6 claims in one touch context: the hit floor and the drawn boxes.
    In record mode it writes the base boxes instead of comparing them. */
-async function touchCheck(browser) {
-  const name = "touch 375px";
-  const { ctx, page, pageErrors } = await openSeeded(browser, 375, { touch: true });
+async function touchCheck(browser, width) {
+  const name = `touch ${width}px`;
+  const { ctx, page, pageErrors } = await openSeeded(browser, width, { touch: true });
   const recorded = {};
   try {
     if (!(await loadedOk(page))) {
@@ -1851,9 +1869,9 @@ async function touchCheck(browser) {
       fail(name, "the page does not report a coarse pointer, so the 44px floor is not measured on touch");
       return;
     }
-    const base = RECORD ? null : JSON.parse(readFileSync(BASE_BOXES, "utf8"))["375"];
+    const base = RECORD ? null : JSON.parse(readFileSync(BASE_BOXES, "utf8"))[String(width)];
     for (const state of SCREEN_STATES) {
-      const stateName = `touch ${state} 375px`;
+      const stateName = `touch ${state} ${width}px`;
       checks++;
       if (!(await openScreenState(page, state))) {
         fail(stateName, "the state did not open, so it cannot be measured");
@@ -1919,9 +1937,9 @@ async function touchCheck(browser) {
       const only = process.env.A11Y_RECORD_ONLY || "";
       if (only && !recorded[only]) fail(name, `A11Y_RECORD_ONLY names no state: "${only}"`);
       const prior = existsSync(BASE_BOXES) ? JSON.parse(readFileSync(BASE_BOXES, "utf8")) : {};
-      const keep = { ...(prior["375"] || {}) };
+      const keep = { ...(prior[String(width)] || {}) };
       for (const [state, boxes] of Object.entries(recorded)) if (!only || state === only) keep[state] = boxes;
-      writeFileSync(BASE_BOXES, JSON.stringify({ 375: keep }, null, 1) + "\n");
+      writeFileSync(BASE_BOXES, JSON.stringify({ ...prior, [String(width)]: keep }, null, 1) + "\n");
       const n = Object.entries(recorded).reduce((c, [s, b]) => (!only || s === only ? c + Object.keys(b).length : c), 0);
       console.log(`recorded ${n} base boxes to test/a11y-base-boxes.json`);
     }
@@ -1931,7 +1949,7 @@ async function touchCheck(browser) {
   }
 }
 
-/* Claim 12 (L6): the six stamp kind chips at 375px touch. Runs in the page.
+/* Claim 12 (L6): the six stamp kind chips at each form touch. Runs in the page.
    Each chip's reach is walked from its drawn box in 0.25px steps, up and down
    the chip's centre column, stopping at the first point another control owns.
    Neighbours are the chips that share a horizontal span and sit directly above
@@ -1979,10 +1997,10 @@ const chipReach = (chipIndex) => {
   };
 };
 
-async function stampChipCheck(browser) {
-  const name = "stamp chips 375px";
+async function stampChipCheck(browser, width) {
+  const name = `stamp chips ${width}px`;
   checks++;
-  const { ctx, page, pageErrors } = await openSeeded(browser, 375, { touch: true });
+  const { ctx, page, pageErrors } = await openSeeded(browser, width, { touch: true });
   try {
     if (!(await loadedOk(page))) {
       fail(name, "seeded ledger did not render");
@@ -2018,13 +2036,13 @@ async function stampChipCheck(browser) {
   }
 }
 
-/* Claim 13 (L6, Sorted by top rule): on the Ledger tab at 375px touch, each tap on the
+/* Claim 13 (L6, Sorted by top rule): on the Ledger tab at each form touch, each tap on the
    painted 1px top rule of "Sorted by" lands on "Sorted by". Sampled every 0.25px
    down the rule and every 4px across the row, inset 2px from each end. */
-async function ledgerRuleCheck(browser) {
-  const name = "ledger rule 375px";
+async function ledgerRuleCheck(browser, width) {
+  const name = `ledger rule ${width}px`;
   checks++;
-  const { ctx, page, pageErrors } = await openSeeded(browser, 375, { touch: true });
+  const { ctx, page, pageErrors } = await openSeeded(browser, width, { touch: true });
   try {
     if (!(await loadedOk(page))) {
       fail(name, "seeded ledger did not render");
@@ -2066,7 +2084,7 @@ async function ledgerRuleCheck(browser) {
 /* Claim 17 (owner ruling 2026-10-21 00:10 CDT, lane web/order-id-copy): the package
    header of Alpha's order A1 in a real browser, where jsdom has no layout, no mouse
    and no key that turns into a click.
-     a. (orderIdTapSweep, 320px and 375px touch) the id link must not take a tap meant
+     a. (orderIdTapSweep, each form touch) the id link must not take a tap meant
         for something else. A real tap is a Chromium touch, and Chromium moves a tap
         that lands near a link onto the link (touch adjustment). elementFromPoint
         cannot see that move, so the round-2 probe of this claim read 0px while real
@@ -2081,13 +2099,13 @@ async function ledgerRuleCheck(browser) {
         the link, is as likely meant for the link as for the header. Any swept tap
         whose click lands on the link fails. Clicks are stopped at the window so no
         tap changes the card, and any request to tcgplayer.com is aborted.
-     b. (orderIdCheck, 375px touch and 760px) the chevron toggles while header text
-        is selected (round-1 finding F1): a click (a tap at 375px) and Enter, each on
+     b. (orderIdCheck, each form touch and mouse) the chevron toggles while header text
+        is selected (round-1 finding F1): a click (a tap at each form touch) and Enter, each on
         an open and on a collapsed card, each flips the card once. The selection at
         the moment of the click is read by a capture listener. A click that arrives
         with no selection proves nothing about F1: that prints a `note`, and the case
         is reported unknown, not clear.
-     c. (orderIdCheck, 760px) the Mac case: a mouse drag from the seller name into
+     c. (orderIdCheck, each form mouse) the Mac case: a mouse drag from the seller name into
         the date line selects text that holds "Alpha Cards" and leaves the card open.
         A plain click still collapses the card, and the next opens it.
    Nothing here clicks the id link on purpose: its click is group 76. The touch area
@@ -2208,7 +2226,6 @@ const idTapGeometry = (stamped) => {
    click must land on it) and at the far end of the control under the header (its
    click must not), sit among the sweep to show the clicks still line up with the
    taps. */
-const ID_TAP_WIDTHS = [320, 375];
 const ID_TAP_RADII = [1, 12];
 /* a tap this near the link's area (or nearer) is probed at every px; farther out,
    every ID_TAP_FAR_PX, since a 12px contact reaches about 12px and the rest is slack */
@@ -2332,9 +2349,8 @@ async function orderIdTapSweep(browser, width, stamped) {
   }
 }
 
-async function orderIdCheck(browser, width) {
-  const touch = width === 375;
-  const name = `order id ${width}px`;
+async function orderIdCheck(browser, width, touch) {
+  const name = `order id ${width}px${touch ? " touch" : ""}`;
   checks++;
   const { ctx, page, pageErrors } = await openSeeded(browser, width, { touch });
   try {
@@ -2516,7 +2532,7 @@ const gridProbe = ({ exempt, cardBg, step, radius }) => {
   return out;
 };
 
-/* 375px and 760px, plus 375px touch: the pointer: coarse block in the stylesheet
+/* 402, 440 and 466px, plus each form touch: the pointer: coarse block in the stylesheet
    sets its own spacing, so a plain pass would miss it. */
 async function gridCheck(browser, { width, touch = false }) {
   const tag = `${width}px${touch ? " touch" : ""}`;
@@ -2567,11 +2583,12 @@ async function gridCheck(browser, { width, touch = false }) {
    inside the fixture's custom range, so the rows the owner looks at are pushed down unless the
    page corrects for it. The row the pointer is on is Counterspell in Epsilon's package, and the
    Path to Exile header in Tally. */
-const SYNC16_LEDGER = { ...LEDGER, items: ITEMS };
+const SYNC16_LEDGER = { ...LEDGER, items: [...ITEMS, ...BULK_ITEMS] };
 const SYNC16_SERVER = {
   ...SYNC16_LEDGER,
   items: [
     ...ITEMS,
+    ...BULK_ITEMS,
     ...mk("X1", "Omega Trading", "2026-08-15", "with tracking", [
       ["Sol Ring Prime", 2, 450],
       ["Mana Crypt Prime", 1, 600],
@@ -2586,8 +2603,10 @@ const SYNC16_CASES = [
     { view: "Packages", width, touch: false, card: "Epsilon Cards", title: "Counterspell", fresh: "Omega Trading" },
     { view: "Tally", width, touch: false, title: "Path to Exile", fresh: "Sol Ring Prime" },
   ]),
-  { view: "Packages", width: 375, touch: true, card: "Epsilon Cards", title: "Counterspell", fresh: "Omega Trading" },
-  { view: "Tally", width: 375, touch: true, title: "Path to Exile", fresh: "Sol Ring Prime" },
+  ...WIDTHS.flatMap((width) => [
+    { view: "Packages", width, touch: true, card: "Epsilon Cards", title: "Counterspell", fresh: "Omega Trading" },
+    { view: "Tally", width, touch: true, title: "Path to Exile", fresh: "Sol Ring Prime" },
+  ]),
 ];
 
 /* Runs in the page. Finds the target row by its words, never by an attribute the build might add,
@@ -2732,30 +2751,30 @@ async function main() {
       : process.env.SCREENS_ONLY === "19"
       ? paperPhases
       : RECORD
-      ? [() => touchCheck(browser)]
+      ? WIDTHS.map((width) => () => touchCheck(browser, width))
       : [
       () => overflowChecks(browser),
       ...WIDTHS.map((width) => () => lostTileOverflow(browser, width)),
       ...WIDTHS.map((width) => () => lostTileSize(browser, width)),
       ...WIDTHS.map((width) => () => axeCheck(browser, width)),
-      () => touchCheck(browser),
-      () => stampChipCheck(browser),
-      () => ledgerRuleCheck(browser),
+      ...WIDTHS.map((width) => () => touchCheck(browser, width)),
+      ...WIDTHS.map((width) => () => stampChipCheck(browser, width)),
+      ...WIDTHS.map((width) => () => ledgerRuleCheck(browser, width)),
       ...WIDTHS.map((width) => () => barCheck(browser, width)),
       ...WIDTHS.map((width) => () => ledgerCheck(browser, width)),
       ...WIDTHS.map((width) => () => syncPanelCheck(browser, width)),
       ...WIDTHS.map((width) => () => gridCheck(browser, { width })),
-      () => gridCheck(browser, { width: 375, touch: true }),
-      ...WIDTHS.map((width) => () => orderIdCheck(browser, width)),
-      ...ID_TAP_WIDTHS.flatMap((width) =>
+      ...WIDTHS.map((width) => () => gridCheck(browser, { width, touch: true })),
+      ...WIDTHS.flatMap((width) => [false, true].map((touch) => () => orderIdCheck(browser, width, touch))),
+      ...WIDTHS.flatMap((width) =>
         [false, true].map((stamped) => () => orderIdTapSweep(browser, width, stamped))
       ),
       ...ROW_SHIFT_CARDS.flatMap((card) =>
         WIDTHS.map((width) => () => rowShiftCheck(browser, { ...card, width }))
       ),
-      () => discardArmCheck(browser),
-      ...RESET_VIEWS.map((view) => () => resetAskCheck(browser, view)),
-      () => freshVisitorCheck(browser),
+      ...WIDTHS.map((width) => () => discardArmCheck(browser, width)),
+      ...RESET_VIEWS.flatMap((view) => WIDTHS.map((width) => () => resetAskCheck(browser, view, width))),
+      ...WIDTHS.map((width) => () => freshVisitorCheck(browser, width)),
       ...WIDTHS.map((width) => () => recentUndoCheck(browser, width)),
       ...WIDTHS.map((width) => () => recentSubjectCheck(browser, width)),
       ...paperPhases,

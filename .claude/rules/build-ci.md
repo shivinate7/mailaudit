@@ -30,5 +30,5 @@ What each check asks, and the two traps in the icon pipeline.
 - `pages-queued-workflow-fix` — A stuck Pages deploy needs a new commit, not a re-run.
 - `favicon-is-a-different-drawing` — The favicon is redrawn, not the master shrunk.
 - `icon-paths-and-export-gotchas` — Icon paths stay relative, and iOS caches hard.
-- `screens-checked-headless-in-ci` — Each view is checked headless at 375 and 760px.
+- `screens-checked-headless-in-ci` — Each view is checked headless at 402, 440 and 466px.
 - `readme-is-minimal` — The README is minimal, and carries no license.

@@ -1970,9 +1970,21 @@ const partVal = {
    so the label around it grows instead, and a tap on a label focuses its field.
    The label is a flex box with no styling of its own, so it adds no line-box
    strut and the field's drawn box does not move. The margin belongs on the
-   label, not the field. */
-const Fld = ({ style, children }) => (
-  <label className="mdl-fld" style={{ display: "flex", ...style }}>
+   label, not the field. `reach` is [up, down], the label's hit area in px above
+   and below the field's centre, for two fields stacked 8px apart. Equal 45px
+   areas overlap, the later label takes the overlap, and a point hit-test
+   reaches about 1px past an area, so the first field read 43px at some page
+   offsets (envelope composer, 402 and 466). Each side is sized by measuring
+   the walk the screen check makes, not by the geometry alone. */
+const Fld = ({ style, reach, children }) => (
+  <label
+    className={reach ? "mdl-fld mdl-fld-reach" : "mdl-fld"}
+    style={{
+      display: "flex",
+      ...(reach && { "--hit-up": `${reach[0]}px`, "--hit-down": `${reach[1]}px` }),
+      ...style,
+    }}
+  >
     {children}
   </label>
 );
@@ -2513,7 +2525,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
         }}
         style={{ padding: "0 12px" }}
       >
-        <Fld>
+        <Fld reach={[25, 22]}>
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -2694,7 +2706,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
       )}
 
       <div style={{ padding: "8px 12px 0" }}>
-        <Fld>
+        <Fld reach={[21.5, 23]}>
         <input
           value={note}
           onChange={(e) => setNote(e.target.value)}
@@ -5964,6 +5976,11 @@ export default function MailDayLedger() {
           label.mdl-fld::after { content: ""; position: absolute; left: 0; right: 0;
                           top: 50%; height: max(100%, 45px);
                           transform: translateY(-50%); z-index: 1; }
+          /* Card name above the note field in the envelope composer: the reach
+             goes to the free sides (above the first, below the second), and the
+             two areas barely meet in the 8px gap (see Fld). */
+          label.mdl-fld-reach::after { top: calc(50% - var(--hit-up));
+                          height: calc(var(--hit-up) + var(--hit-down)); transform: none; }
           /* The note field sits 8px above the editor's buttons, and a tap 1px
              below the field must stay on the field. So these areas are 44px
              tall (not 45), centred 0.5px low: a point hit-test reaches 1px up. */
