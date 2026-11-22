@@ -12,7 +12,8 @@ across every seller, which answers "did all four arrive" and carries the cost
 basis. **Orphaned** holds a package that arrives with no way to tell who sent it.
 
 The masthead is MANIFEST. Home-screen labels read CH Post on iOS and web. Project, repo,
-storage namespace follow neither. See `masthead-is-not-project-name`.
+storage namespace follow neither. Leftover names are ruled to read CH Post (owner, page item 114,
+option b, 2026-11-21 19:54 CST). See `masthead-is-not-project-name`.
 
 ## How to read this file
 
@@ -51,7 +52,7 @@ Nothing in the component touches a storage API. Three adapters do, and each fail
 
 ## Process
 
-- `masthead-is-not-project-name` — The masthead is not the project name.
+- `masthead-is-not-project-name` — The masthead is not the project name. Leftover names are ruled to read CH Post (owner, page item 114, option b, 2026-11-21 19:54 CST).
 - `main-moves-only-by-pr` — Main moves only by pull request, admins included.
 - `records-hold-current-text-only` — Records hold current text only; git keeps history.
 - `debts-hold-known-gaps` — Known gaps live in debts, one file each. Caught tasks live in `docs/todo.md`.
