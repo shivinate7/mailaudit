@@ -10,9 +10,9 @@ The native app's home-screen label is also **CH Post** (owner, 2026-11-21 17:02 
 
 ## The extension
 
-**Leftover names are CH Post** (owner, page item 114, option b, 2026-11-21 19:54 CST). The "Mail Day" and "Mail day" copy, and the "MANIFEST" names in the Chrome extension, read CH Post. Those names sit at `src/app.jsx` lines 2023 and 3878 (a comment at 3871), `native/Manifest/HandScreen.swift` line 88, `extension/manifest.json` lines 3, 5 and 15, `extension/options.html` lines 7 and 21, `extension/core.mjs` line 239, and `extension/README.md` line 1.
+**Leftover names are CH Post** (owner, page item 114, option b, 2026-11-21 19:54 CST). The "Mail Day" and "Mail day" copy, and the "MANIFEST" names in the Chrome extension, read CH Post. The in-app masthead stays **MANIFEST**.
 
-The extension's name is **CH Post**: its page title, manifest name and README. The options letterhead (`extension/options.html` line 21) reads CH Post (owner 2026-11-22 item 118 b). The in-app masthead stays **MANIFEST** (owner 2026-11-22 item 118 b).
+The extension's name is **CH Post** (owner 2026-11-22 item 118 b): its page title, manifest name, README and options letterhead (`extension/options.html` line 21).
 
 ## See also
 
