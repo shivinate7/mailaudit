@@ -86,7 +86,7 @@ struct HandScreen: View {
                 .task(id: DayKey(received: packages.received, past: kit.transit.rows.count)) { await loadDay() }
                 // A screen left open past midnight must not keep yesterday's pile: read again when the app comes back and at the day change.
                 .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await loadDay() } } }
-                .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantDayChangeNotification)) { _ in Task { await loadDay() } }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in Task { await loadDay() } }
         }
     }
 
