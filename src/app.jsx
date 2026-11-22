@@ -3907,6 +3907,7 @@ export default function MailDayLedger() {
           const { items: mergedItems, added, refreshed, renamed } = mergeItems(items, parsed, {
             refreshTracking: true,
             refreshName: true,
+            now: Date.now(),
           });
           const plural = (n) => `${n} line${n === 1 ? "" : "s"}`;
           const refreshNote =

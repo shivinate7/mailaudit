@@ -146,7 +146,7 @@ export async function route(request, env, store, now = Date.now()) {
 
 /* The one merge path: POST /ledger and the orders job both end here.
    `refresh` (the job only) maps a key to the shipping status the page shows now. A stored line
-   whose key is in it takes that status and nothing else; a CSV import passes none, so its merge
+   whose key is in it takes that status, stamped `trackingAt: now`, and nothing else; a CSV import passes none, so its merge
    keeps the stored status. Returns {status, body}. */
 export async function mergeIntoStore(incoming, store, now, refresh = null) {
   if (!incoming || incoming.mailday !== 1 || !Array.isArray(incoming.items))
@@ -161,7 +161,7 @@ export async function mergeIntoStore(incoming, store, now, refresh = null) {
   const cur = mend?.dropped ? { ...stored, ledger: mend.data } : stored;
   const base =
     refresh && cur
-      ? { ledger: { ...cur.ledger, items: cur.ledger.items.map((it) => (refresh.get(it.key) && refresh.get(it.key) !== it.tracking ? { ...it, tracking: refresh.get(it.key) } : it)) } }
+      ? { ledger: { ...cur.ledger, items: cur.ledger.items.map((it) => (refresh.get(it.key) && refresh.get(it.key) !== it.tracking ? { ...it, tracking: refresh.get(it.key), trackingAt: now } : it)) } }
       : cur;
   const merge = base ? mergeLedger(base.ledger, incoming) : null;
   const ledger = merge ? merge.merged : incoming;
