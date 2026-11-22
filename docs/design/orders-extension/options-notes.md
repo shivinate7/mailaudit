@@ -12,7 +12,7 @@ Measured in headless Chromium, every state, both themes: the Save key button and
 
 ## Choices
 
-1. **Look.** The app's own vocabulary, abridged: the wax seal between gold rules, MANIFEST in Cochin caps, a mono house line, then hairline sections with uppercase mono micro-labels over Cochin values. Read from `src/app.jsx`: `Seal`, `.mdl-head`, `cellLab`, `partGrid`, `partVal`, `keyField`, `optCell`, `restoreCell`. Gain: the extension reads as part of MANIFEST. Loss: the house token rule "app chrome uses the system font" is not followed; the app itself sets Cochin throughout, and the repo wins. The uppercase micro-labels are a ruling (`ruled-head-masthead-vocabulary`), so they stay. Pick: this.
+1. **Look.** The app's own vocabulary, abridged: the wax seal between gold rules, MANIFEST in Cochin caps, a mono house line, then hairline sections with uppercase mono micro-labels over Cochin values. Read from `src/app.jsx`: `Seal`, `.mdl-head`, `cellLab`, `partGrid`, `partVal`, `keyField`, `optCell`, `restoreCell`. Gain: the extension shares the app's look, under its own CH Post letterhead (`masthead-is-not-project-name`). Loss: the house token rule "app chrome uses the system font" is not followed; the app itself sets Cochin throughout, and the repo wins. The uppercase micro-labels are a ruling (`ruled-head-masthead-vocabulary`), so they stay. Pick: this.
 
 2. **Dark palette (proposed).** The app ships one light palette and no `prefers-color-scheme` rule (`design-parchment-ledger`; the iOS app is held to light). The brief asks for dark, so this mockup proposes a set. Measured ratios, all over the 4.5:1 floor of `palette-tokens-contrast-floor`:
 
@@ -76,7 +76,7 @@ Measured in headless Chromium, every state, both themes: the Save key button and
 
 13. **Two sources, builder must follow.** The Worker records only what reaches `POST /orders`. A 401, a 413, a 400 or a network failure never lands in `GET /orders/status`, and `GET /orders/status` itself answers 401 to a wrong key. So the extension keeps its own record of its last attempt in `chrome.storage.local` (time, outcome, counts, kind), and the page reads that first. It reads `GET /orders/status` for `lastSuccessAt` and the Worker's kinds when the local record is missing or older. The key never enters that record.
 
-14. **Names.** Tab title and extension name `CH Post orders`; house line `TCGplayer orders`. The masthead is MANIFEST (`masthead-is-not-project-name`); the extension sits under the masthead, and the project name stays off its screens.
+14. **Names.** Tab title and extension name `CH Post orders`; options page letterhead `CH Post`; house line `TCGplayer orders`. The in-app masthead is MANIFEST (`masthead-is-not-project-name`); the extension's letterhead reads CH Post, and the project name stays off its screens.
 
 15. **Icon.** The favicon drawing (`favicon_svg()`, record `assets-and-icons`), not the seal and not the 1024 master, because the master fails at 16 px. The extension needs it exported at 16, 32, 48 and 128 px: a builder task outside this folder.
 
