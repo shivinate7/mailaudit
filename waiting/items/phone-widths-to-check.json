@@ -1,0 +1,46 @@
+{
+  "added": "2026-11-22T02:32:00Z",
+  "context": "Goal: the web screen checks and the phone screenshots follow the three forms you named: iPhone 18, iPhone Max and the folded Duo.\nProblem (goal): the repo records only the folded Duo width (466 by 678 pt, measured); the widths of the iPhone 18 and the iPhone Max are in no record, and the coordinator will not guess them.\nBased on (read): test/screens.mjs checks at 375 and 760 px today; the iOS CI runs on an iPhone 18 Pro simulator.\nBased on (ruling): your 2026-11-21 19:57 CST answer on phone sizes: only iPhone 18, iPhone Max and iPhone Duo matter (filed in git).\nDeparts from: main checks 375 and 760 px \u2014 this changes the checks to the three forms.\nWaiting on: your answer; the width lane waits, the other lanes run.",
+  "home": "measurements; test/screens.mjs",
+  "id": "phone-widths-to-check",
+  "kind": "decision",
+  "n": 117,
+  "options": [
+    {
+      "gain": "Measured widths and no work for you.",
+      "how": "The widths are read from the iOS CI's iPhone 18 Pro, iPhone 18 Pro Max and iPhone Duo simulators and recorded in measurements.",
+      "id": "read-from-simulators",
+      "key": "a",
+      "label": "The coordinator reads the widths from the simulators",
+      "lose": "The plain iPhone 18 may need a simulator the CI image lacks."
+    },
+    {
+      "gain": "Exact widths for your own phones.",
+      "how": "You tell me the iPhone 18 and iPhone Max widths in points and they are recorded.",
+      "id": "owner-gives-widths",
+      "key": "b",
+      "label": "You give the two widths",
+      "lose": "Your time."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "a",
+  "ref": "owner 2026-11-21 19:57 CST: phone-size answer",
+  "repo": "shivinate7/mailaudit",
+  "short": "Which widths to check: read them or you give them",
+  "shown": [
+    {
+      "id": "read-from-simulators",
+      "key": "a",
+      "label": "The coordinator reads the widths from the simulators"
+    },
+    {
+      "id": "owner-gives-widths",
+      "key": "b",
+      "label": "You give the two widths"
+    }
+  ],
+  "status": "open",
+  "title": "Which screen widths should the checks use for iPhone 18, iPhone Max and the folded Duo?",
+  "why": "Reading them from the simulators is measured and costs you nothing (coordinator's recommendation)."
+}
