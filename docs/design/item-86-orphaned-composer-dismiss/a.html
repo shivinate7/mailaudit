@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Drag Hides Keys</title>
+<style>
+/* Tokens: shared/tokens.json (Parchment). Paints: OrphanedPaint (ManifestKit) and ControlPaint. The native app is held to
+   light (UIUserInterfaceStyle), so this page has one theme: light. 1 CSS px = 1 pt on an iPhone 18 Pro, 402 x 874 pt. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832; --wax:#A8443C;
+  --shadow:rgba(28,43,36,0.06);
+  --cochin: Cochin, "Liberation Serif", Georgia, serif;
+  --mono: Menlo, "DejaVu Sans Mono", ui-monospace, monospace;
+  --sys: -apple-system, system-ui, "Helvetica Neue", sans-serif;
+  --new:#2E7A5E; --today:#A8443C;
+  /* Drawn, not measured: no record measures the 18 Pro's safe insets, tab bar or keys. */
+  --top: max(env(safe-area-inset-top), 62px);
+  --bottom: max(env(safe-area-inset-bottom), 34px);
+}
+* { box-sizing:border-box; }
+html, body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); }
+.page { width:402px; max-width:100%; padding:12px 0; }
+.page p, .page h1, .page nav { margin:0 12px 8px; }
+.pbanner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-weight:600; font-size:14px; margin:0 12px 8px; }
+.page h1 { font-family:var(--cochin); font-size:20px; line-height:1.25; }
+.page p { font-size:13px; line-height:1.45; color:var(--inkSoft); }
+.page code { font-family:var(--mono); font-size:12px; overflow-wrap:anywhere; }
+
+/* ---- the phone: exactly 402 x 874; the bezel is a shadow, so the content stays 402 wide ---- */
+#phone { position:relative; width:402px; height:874px; overflow:hidden; background:var(--paper); border-radius:48px;
+  box-shadow:0 0 0 2px var(--ink); }
+.sample { position:absolute; inset:0 0 auto 0; height:var(--top); background:var(--manila); color:var(--manilaInk);
+  display:flex; align-items:flex-end; justify-content:center; padding-bottom:10px; font:700 18px/1 var(--sys); z-index:9; }
+
+/* The running head: MastheadScreen.swift RunningHead, 46 pt, pinned once the masthead has scrolled up. */
+.rhead { position:absolute; top:var(--top); left:0; right:0; height:46px; background:var(--paper); border-bottom:1px solid var(--line);
+  display:flex; align-items:center; gap:8px; padding:0 16px; z-index:5; }
+.seal { width:22px; height:22px; border-radius:50%; background:var(--wax); box-shadow:inset 0 0 0 3px #C86A5F; }
+.rhead b { font:700 16px var(--cochin); letter-spacing:0.02em; }
+
+/* The scroll content, drawn at one scroll offset. 16 pt gutters: OrphanedView.list. */
+.scroll { position:absolute; left:16px; right:16px; top:0; }
+.mast { position:absolute; left:16px; right:16px; top:calc(var(--top) + 58px); height:104px; border:1px dashed var(--line); border-radius:8px;
+  display:flex; align-items:center; justify-content:center; color:var(--inkSoft); font:13px var(--sys); }
+
+/* ComposerView: card fill, 1 pt ink border, radius 8, 12 pt padding, 8 pt spacing. */
+.composer { position:absolute; left:16px; right:16px; background:var(--card); border:1px solid var(--ink); border-radius:8px;
+  box-shadow:0 1px 2px var(--shadow); padding:12px; display:flex; flex-direction:column; gap:8px; }
+.micro { font:11px var(--mono); text-transform:uppercase; letter-spacing:0.14em; color:var(--inkSoft); }
+.field { min-height:52px; border:1px solid var(--line); border-radius:8px; background:var(--card); padding:8px 12px;
+  font:16px/18px var(--cochin); color:var(--ink); display:flex; align-items:flex-start; }
+.field.focus { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+.field .ph { color:var(--inkSoft); }
+.caret { display:inline-block; width:2px; height:18px; background:var(--accent); margin-left:1px; vertical-align:top; }
+.found { border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.found .row { min-height:44px; display:flex; align-items:center; gap:8px; padding:8px 12px; }
+.found .row + .row { border-top:1px solid var(--line); }
+.found .name { flex:1; font:14px var(--cochin); }
+.found .meta { font:10.5px var(--mono); color:var(--inkSoft); }
+.found .typed { background:var(--manila); color:var(--manilaInk); font:13px var(--cochin); }
+.foot { display:flex; align-items:center; gap:8px; padding-top:4px; }
+.foot .count { flex:1; font:11px var(--mono); color:var(--inkSoft); }
+.mini { font:11.5px var(--mono); color:var(--ink); background:var(--card); border:1px solid var(--line); border-radius:5px; padding:6px 10px; }
+.mini.empty { color:var(--inkSoft); }
+.mini.discard { color:var(--red); border-color:var(--redSoft); font-size:11px; padding:4px 8px; }
+.mini.small { font-size:11px; padding:4px 8px; }
+
+/* EnvelopeCard, .full page. */
+.env { position:absolute; left:16px; right:16px; background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 2px var(--shadow); }
+.ehead { display:flex; align-items:center; gap:8px; padding:12px 12px 8px; }
+.ehead .micro { flex:1; letter-spacing:0.12em; }
+.entries { padding:0 12px 8px; font:13.5px var(--cochin); display:flex; flex-direction:column; gap:4px; }
+.rule { height:1px; background:var(--line); }
+.cands { padding:8px 12px 12px; display:flex; flex-direction:column; gap:8px; }
+.cands .micro { font-size:10.5px; letter-spacing:0.12em; }
+.cand { display:flex; align-items:center; gap:8px; padding:8px; border:1px solid var(--line); border-radius:8px; }
+.cand .col { flex:1; display:flex; flex-direction:column; gap:2px; }
+.cand .seller { font:700 14px var(--cochin); }
+.cand .cm { font:10.5px var(--mono); color:var(--inkSoft); }
+
+/* The tab bar: floats above the content (Apple HIG, Tab bars). Size and glass are drawn, not measured.
+   Tab order and symbols: RootView.swift, TabView. Tint: Parchment.accent. */
+.tabbar { position:absolute; left:16px; right:16px; bottom:calc(var(--bottom) + 4px); height:62px; border-radius:31px; z-index:6;
+  background:rgba(252,246,234,0.72); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  box-shadow:0 0 0 1px rgba(51,46,63,0.10), 0 6px 18px rgba(28,43,36,0.12); display:flex; align-items:center; padding:0 6px; }
+.tab { flex:1; min-height:44px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; color:var(--ink); font:600 10px var(--sys); position:relative; }
+.tab svg { width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linejoin:round; stroke-linecap:round; }
+.tab.on { color:var(--accent); }
+.tab.on::before { content:""; position:absolute; inset:2px 4px; border-radius:22px; background:rgba(111,92,166,0.12); z-index:-1; }
+.badge { position:absolute; top:3px; left:calc(50% + 6px); min-width:18px; height:18px; border-radius:9px; background:var(--red); color:var(--card);
+  font:700 11px/18px var(--sys); text-align:center; padding:0 5px; }
+.home { position:absolute; bottom:8px; left:50%; width:140px; height:5px; margin-left:-70px; border-radius:3px; background:var(--ink); z-index:7; }
+
+/* The drag cue: a finger mark at the end of a downward drag on the list. */
+.drag { position:absolute; z-index:8; pointer-events:none; }
+.drag .track { position:absolute; left:21px; top:0; width:0; height:400px; border-left:3px dashed var(--new); }
+.drag .head { position:absolute; left:11px; top:392px; width:0; height:0; border-left:12px solid transparent; border-right:12px solid transparent; border-top:16px solid var(--new); }
+.drag .finger { position:absolute; left:0; top:-22px; width:44px; height:44px; border-radius:50%; background:rgba(46,122,94,0.18); border:2px solid var(--new); }
+
+/* Labels: dashed outline on what exists today (red) and on what the option adds (green). Sized to read on a 0.55 card. */
+.tag { position:absolute; z-index:10; font:700 18px/1.25 var(--sys); padding:6px 10px; border-radius:6px; background:var(--card); border:2px dashed currentColor; }
+.tag.new { color:var(--new); } .tag.today { color:var(--today); }
+.ring { position:absolute; z-index:6; border-radius:34px; pointer-events:none; }
+.ring.today { border:3px dashed var(--today); }
+.ring.new { border:3px dashed var(--new); }
+@media (prefers-reduced-motion: no-preference) { .drag .finger { animation:press 1.6s ease-in-out infinite; } }
+@keyframes press { 0%,100% { transform:translateY(0); } 50% { transform:translateY(10px); } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="pbanner">Sample. No name, date, count or order number on this page is real.</div>
+  <h1>Add a drag that hides the keys</h1>
+  <p>Owner page item 86, <code>orphaned-composer-dismiss</code>. The Orphaned note form after a drag down on the list: the keys are gone, the draft stays, and the tabs are in reach. iPhone 18 Pro, 402 x 874 pt, light theme (the app ships light only).</p>
+</div>
+
+<div id="phone" data-state="keys-hidden" role="img" aria-label="Orphaned tab with the note form open, keys hidden after a drag, tab bar showing">
+  <div class="sample">Sample: no figure here is real</div>
+
+  <div class="rhead"><span class="seal" aria-hidden="true"></span><b>Manifest</b></div>
+  <div class="mast">Masthead, scrolled up (not drawn)</div>
+
+  <!-- Same scroll offset as when the keys were up: the Save row sat on the keys' top edge. -->
+  <div class="composer" style="top:254px">
+    <div class="micro">New envelope</div>
+    <div class="field">Light</div>
+    <div class="found">
+      <div class="row"><span class="name">Lightning Bolt</span><span class="meta">3 out · 2 sellers</span></div>
+      <div class="row typed">Add “Light” as typed</div>
+    </div>
+    <div class="field"><span class="ph">Note (optional) — tracking #, sender, mailer…</span></div>
+    <div class="foot"><span class="count">0 cards</span><span class="mini">Cancel</span><span class="mini empty">Save envelope</span></div>
+  </div>
+
+  <div class="env" style="top:563px">
+    <div class="ehead"><span class="micro">Envelope · 2026-11-14 · 2 cards</span><span class="mini small">Edit</span><span class="mini discard">Discard</span></div>
+    <div class="entries"><span>×2 Counterspell</span></div>
+    <div class="rule"></div>
+    <div class="cands">
+      <span class="micro">Could have come from</span>
+      <div class="cand"><div class="col"><span class="seller">Sample Seller Co.</span><span class="cm">2026-11-03 · 000000-0000</span></div><span class="mini">This one</span></div>
+    </div>
+  </div>
+
+  <div class="drag" style="left:343px;top:200px" aria-hidden="true"><span class="track"></span><span class="head"></span><span class="finger"></span></div>
+  <!-- Where the keys' top edge sat before the drag (the other option's picture): the drag passes it, so the keys follow. -->
+  <div style="position:absolute;left:0;right:0;top:538px;border-top:2px dashed var(--new);z-index:4" aria-hidden="true"></div>
+  <div class="tag new" style="left:16px;top:118px;width:296px">New: drag down on the list to hide the keys, as Card in Hand does</div>
+
+  <div class="ring today" style="left:12px;right:12px;bottom:calc(var(--bottom));height:70px"></div>
+  <div class="tag today" style="right:16px;bottom:calc(var(--bottom) + 80px)">Today: the tabs, now in reach</div>
+
+  <nav class="tabbar" aria-label="Tabs">
+    <span class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"/></svg>Ledger</span>
+    <span class="tab on"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3.5 7l8.5 6.5L20.5 7"/></svg>Orphaned<span class="badge">1</span></span>
+    <span class="tab"><svg viewBox="0 0 24 24"><path d="M9 4L7.5 20M16.5 4L15 20M4.5 9h16M3.5 15h16"/></svg>Tally</span>
+    <span class="tab"><svg viewBox="0 0 24 24"><path d="M12 3l8 4v10l-8 4-8-4V7z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg>Packages</span>
+  </nav>
+  <span class="home" aria-hidden="true"></span>
+</div>
+
+<div class="page">
+  <p><b>Measured versus drawn.</b> Nothing on this phone is measured on the 18 Pro. Drawn: the safe insets (62 pt top, 34 pt bottom), the tab bar's size and glass, the masthead's height and the scroll offset. Read from code: the 46 pt running head (<code>RunningHead.height</code>), the 16 pt gutters (<code>OrphanedView.list</code>), the form's parts and paints (<code>ComposerView</code>, <code>OrphanedPaint</code>), the tab order and badge (<code>RootView</code>).</p>
+  <p><b>The drag.</b> <code>HandScreen.swift</code> puts <code>.scrollDismissesKeyboard(.interactively)</code> on its scroll. The same line on the Orphaned scroll lets the keys follow a downward drag and close. The green dashed line across the phone marks where the keys' top edge sat; the keys follow the finger once the drag passes it. The draft stays in the form, because <code>model.draft(for:)</code> holds it, not the field.</p>
+  <p>State link: <code>#s=keys-hidden</code>. Cochin and Menlo fall back to a serif and DejaVu Sans Mono off a Mac.</p>
+</div>
+<script>
+// One state per option file. #s=<state> picks it; an unknown state falls back to the one drawn.
+(function () {
+  function read() {
+    var m = /(?:^|[#&])s=([\w-]+)/.exec(location.hash);
+    var want = m ? m[1] : "keys-hidden";
+    var el = document.querySelector('[data-state="' + want + '"]') || document.querySelector("[data-state]");
+    document.querySelectorAll("[data-state]").forEach(function (n) { n.hidden = n !== el; });
+  }
+  window.addEventListener("hashchange", read);
+  read();
+})();
+</script>
+</body>
+</html>
