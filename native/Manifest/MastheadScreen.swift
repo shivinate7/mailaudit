@@ -19,8 +19,12 @@ struct MastheadScreen<Content: View>: View {
     @ViewBuilder let content: Content
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.duoSpread) private var spread
     @State private var headHeight: CGFloat = 0
     @State private var pinned = false
+    @State private var position = ScrollPosition()
+    // The live content offset. A box, so a write each scroll frame does not redraw the content.
+    @State private var offset = ScrollOffset()
 
     /// The web's in-flow `.mdl-sticky`: the 46pt running head and its 1pt rule. A height, not a spacing.
     private static var slot: CGFloat { RunningHead.height + 1 }
@@ -28,6 +32,15 @@ struct MastheadScreen<Content: View>: View {
     var body: some View {
         // The scroll closure runs off the main actor, so it reads a copy of the height, never the state.
         let pinAt = headHeight
+        // On the open Duo spread the scroll keeps no position binding and no offset tracking, so it scrolls as it did before scrollBy
+        // existed. Whether the binding caused the spread's flat Orphaned failure is unproven.
+        let offSpread = spread.pages(for: tab.duoTab) == nil
+        // Two typed constants, not a ternary of two closure literals: a literal in a ternary is not inferred @MainActor @Sendable, which the
+        // environment value needs, and the compiler then refuses the conversion.
+        let scrollByReal: @MainActor @Sendable (CGFloat) -> Void = { dy in
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { position.scrollTo(y: offset.y + dy) }
+        }
+        let scrollByNone: @MainActor @Sendable (CGFloat) -> Void = { _ in }
         ScrollViewReader { proxy in
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -41,9 +54,12 @@ struct MastheadScreen<Content: View>: View {
                 content
             }
         }
+        .modifier(ScrollByTracking(on: offSpread, position: $position, offset: offset))
         .scrollDismissesKeyboard(dismissesKeyboard ? .immediately : .automatic)
         // A tab's content asks for a view by id (a focused field, its Save) to be kept above the keyboard.
         .environment(\.scrollTo, { id in withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { proxy.scrollTo(id, anchor: .bottom) } })
+        // A tab's content asks to be moved by a distance: it knows where its view lies and where the keys start, which an id cannot say.
+        .environment(\.scrollBy, offSpread ? scrollByReal : scrollByNone)
         // Pinned once the slot's top has passed the scroll view's top edge. A short tab never scrolls that far.
         .onScrollGeometryChange(for: Bool.self, of: { pinAt > 0 && $0.contentOffset.y + $0.contentInsets.top >= pinAt }) { pinned = $1 }
         .overlay(alignment: .top) {
@@ -59,9 +75,44 @@ struct MastheadScreen<Content: View>: View {
     }
 }
 
+/// A reference to the scroll view's current offset: ScrollPosition has no relative scroll, so scrollBy adds to this.
+private final class ScrollOffset { var y: CGFloat = 0 }
+
+/// The position binding and the offset tracking that scrollBy needs, applied only when `on`. A modifier, so the scroll view's own
+/// modifier chain stays one chain.
+private struct ScrollByTracking: ViewModifier {
+    let on: Bool
+    @Binding var position: ScrollPosition
+    let offset: ScrollOffset
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if on {
+            content
+                .scrollPosition($position)
+                .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y }) { offset.y = $1 }
+        } else {
+            content
+        }
+    }
+}
+
+private extension MastheadTab {
+    /// The Duo tab this masthead tab draws, to ask the spread whether it is open on two pages.
+    var duoTab: DuoTab {
+        switch self {
+        case .ledger: .ledger
+        case .orphaned: .orphaned
+        case .tally: .tally
+        case .packages: .packages
+        }
+    }
+}
+
 extension EnvironmentValues {
     /// Scrolls the enclosing MastheadScreen so the view with this id sits at the bottom of the space above the keyboard.
     @Entry var scrollTo: (String) -> Void = { _ in }
+    /// Scrolls the enclosing MastheadScreen's content up by this many points (down when negative). Call it on the main actor.
+    @Entry var scrollBy: @MainActor (CGFloat) -> Void = { _ in }
 }
 
 /// The letterhead's short form: seal, name and the two figures that matter, pinned over the scrolled list.
