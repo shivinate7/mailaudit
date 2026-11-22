@@ -39,7 +39,7 @@ The sample data holds the hard case: three open Gamma Cards orders across four w
 
 - Card in Hand stays a control on Packages, not the Packages tab (item 35 a). Both concepts draw it on the open Duo.
 - The Find pill's clear button (item 46 a). Title Case button labels (item 81 b): Clear Search, Show All, Mark All Received, Back to Matches.
-- The band under the pill is solid paper with a 1 pt line rule (item 101 a). Item 101 is closed as moot by item 95 b (owner, 2026-11-21 19:54 CST). Item 95 was open when this was drawn, so "Float the pill (item 95, open)" shows the floating form.
+- The band under the pill is solid paper with a 1 pt line rule (item 101 a). Item 101 is closed as moot by item 95 b (owner, 2026-11-21 19:54 CST). The float control shows the form item 95 b keeps: the pill floats over the list.
 - A search shows only the matching lines, with a way back (`search-filters-inside-package`).
 - Showing starts on unreceived (`ruled-head-showing-unreceived`): received orders stay out of both concepts. This holds only once PR 238's Showing lands on native. Main's native Packages has no hide-received (`native-filters-tally-only`), so the Today frames show the received order with RECEIVED.
 - A tapped row holds its place, bold with an accent bar, on a 10 pt pad (item 48 hold, `duo-card-in-hand`).
@@ -90,7 +90,7 @@ The sample data holds the hard case: three open Gamma Cards orders across four w
    - Gain: the late order reads at a glance. Loss: native cards still lack the flag (`native-card-lost-flags-unbuilt`), so the tile shows it before the card does.
    - Pick: apply.
 
-8. **The band under the pill.** Items 101 a and 95. Item 101 a is closed as moot by item 95 b (owner, 2026-11-21 19:54 CST). Control: "Float the pill (item 95, open)".
+8. **The band under the pill.** Items 101 a and 95. Item 101 a is closed as moot by item 95 b (owner, 2026-11-21 19:54 CST). Control: the float control.
    - What: drawn as ruled solid paper on both phones and on the open Duo's right page.
    - Gain: no list text sits under the pill, so the contrast audit needs no skip. Loss: the list ends higher; with the clue line, about 40 pt higher on the 18 Pro.
    - Pick: as 101 a. Item 95 is answered (option b, 2026-11-21 19:54 CST); the float control shows its other form.
