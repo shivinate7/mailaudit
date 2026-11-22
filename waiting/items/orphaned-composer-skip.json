@@ -31,8 +31,8 @@
   "id": "orphaned-composer-skip",
   "kind": "decision",
   "lastAnswer": {
-    "at": "2026-11-19T05:23:18.077Z",
-    "note": "does apple require this to be fixed if we ewre to publish the app?\nor it's just guidelines?"
+    "at": "2026-11-22T02:01:00Z",
+    "note": "throw me a mockup/pass that would pass the contrast audit"
   },
   "n": 84,
   "options": [
@@ -58,8 +58,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "pick": "a",
   "ref": "decision audit-skips-measured-flags (audit skips only for measured false flags); debt orphaned-composer-contrast (the ready Orphaned composer fails contrast); debt tally-audit-contrast-flags (the audit flags pairs above 4.5:1); step pro-ui-main-reds (the iPhone UI test reds on main)",
-  "replied": "2026-11-21T14:10:59-06:00",
-  "reply": "Your Apple question is answered above. Both pictures are in this item. Please pick a or b, or tell me what is missing.\n\nYou asked (23:23 CST): does Apple require this to be fixed to publish the app, or is it only guidelines? My answer, from what I know and not checked against Apple's current rules: the contrast audit is a test tool in Xcode. App Store review does not run it, and I know of no rule that rejects an app for failing it. Apple's design guidelines do ask for enough contrast, and Apple's accessibility labels on the App Store page let you claim 'Sufficient Contrast', and a claim should be true. So failing the audit is not a publishing block, but it is a real contrast gap for readers, and the project's own tests stay red until the audit passes or skips those two items. Unmeasured: Apple's current wording. Your choices are unchanged; none of these is still open.",
+  "replied": "2026-11-22T02:01:00Z",
+  "reply": "You asked for a mockup that would pass the contrast audit (2026-11-21 20:00 CST). Filed in git. I asked the coordinator to start a designer for the Save envelope button and the 1 card count at the folded Duo size (your phone-size answer on item 109); the picture lands on this item when it is drawn. Your choices a and b stay open until then. 20:01 CST.",
   "repo": "shivinate7/mailaudit",
   "short": "Orphaned composer skips",
   "shown": [

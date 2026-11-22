@@ -5,8 +5,8 @@
   "id": "reimport-refresh-devices",
   "kind": "decision",
   "lastAnswer": {
-    "at": "2026-11-19T03:54:59.294Z",
-    "note": "A is definitely out -- what's my tradeoffs between B and C -- those my only two options?"
+    "at": "2026-11-22T02:01:00Z",
+    "note": "All devices should be able to get the tracking update; ambivalent how, whichever is the easiest route that works."
   },
   "n": 94,
   "options": [
@@ -47,8 +47,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "c",
   "ref": "PR 342 (the pull request that refreshes tracking on a re-import); debt reimport-refresh-stays-on-device (the refresh stays on the importing device); item 89 reimport-changed-lines (your ruling that a re-import refreshes tracking only); invariant saved-state-shape (the saved-state shape is fixed)",
-  "replied": "2026-11-21T14:10:59-06:00",
-  "reply": "Option a stays ruled out. My answer on b against c is in the reply above. Say if you want the checked-update shape drawn as an option d, or pick b or c.\n\nYou ruled out a. B against C: B is the smaller change. The importing device sends a list of tracking updates and the Worker applies them, so all devices follow. The cost: the Worker cannot tell a stale CSV from a fresh one, so an old export can put old tracking back on every device (the debt record also says an old export could put an old-style name back; unmeasured, never tried). C stamps each line's tracking with the time it was set, and the newest value wins everywhere, so a stale device cannot revert anything. The cost: the saved data's layout changes, which a standing rule freezes, so C needs your ruling on that rule too, and it is more work; how many saved lines it touches is unmeasured. Only two designs are on the debt record besides a. I added a third, option d: B with a check, so the Worker applies an update only if its copy still holds the old value the importing device saw. It is not designed or tested.",
+  "replied": "2026-11-22T02:01:00Z",
+  "reply": "You said: every device should get the tracking update, and you do not mind how, so long as it is the easiest route that works (2026-11-21 20:00 CST). Filed in git. The easiest is b, the refresh map sent with the sync, because it is the smallest change. Its known cost: an old export can put old tracking back on every device (unmeasured, never tried). The coordinator picks the route and starts the lane; I close this item when it lands. 20:01 CST.",
   "repo": "shivinate7/mailaudit",
   "short": "Tracking refresh on all devices",
   "shown": [
