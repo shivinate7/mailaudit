@@ -20,7 +20,7 @@ button, input { font-family: inherit; }
 /* one column, 520px at most */
 .op { max-width: 520px; margin-inline: auto; padding: 32px 24px 48px; display: flex; flex-direction: column; gap: 24px; }
 
-/* letterhead: seal between gold rules, MANIFEST in caps, a mono house line */
+/* letterhead: seal between gold rules, CH Post as the title, a mono house line */
 .lh { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .lh .rule { display: flex; align-items: center; gap: 12px; width: 240px; }
 .lh .rule i { flex: 1; height: 1px; background: var(--gold); }
