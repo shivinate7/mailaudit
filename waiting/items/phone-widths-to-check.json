@@ -4,6 +4,10 @@
   "home": "measurements; test/screens.mjs",
   "id": "phone-widths-to-check",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-22T06:30:00Z",
+    "note": "a: the coordinator reads the widths. You asked if the web can give them (saved in git)."
+  },
   "n": 117,
   "options": [
     {
@@ -26,6 +30,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "a",
   "ref": "owner 2026-11-21 19:57 CST: phone-size answer",
+  "replied": "2026-11-22T06:32:00Z",
+  "reply": "You picked a (saved in git, 2026-11-22 00:30 CST). You asked if the widths can come from the web: yes, as a second source. The coordinator reads them from the simulators first, and Apple's published sizes check them. The width lane starts. 00:32 CST.",
   "repo": "shivinate7/mailaudit",
   "short": "Which widths to check: read them or you give them",
   "shown": [

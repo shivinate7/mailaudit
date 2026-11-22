@@ -9,8 +9,8 @@
   "id": "cloud-env-branch-delete-token",
   "kind": "task",
   "lastAnswer": {
-    "at": "2026-11-22T02:01:00Z",
-    "note": "Is this real? I don't believe this works -- I'd need to make a github app right?"
+    "at": "2026-11-22T06:31:00Z",
+    "note": "park (saved in git)"
   },
   "links": [
     {
@@ -40,8 +40,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "a",
   "ref": "claude-settings ruling r45",
-  "replied": "2026-11-22T02:04:00Z",
-  "reply": "You asked if this is real and if you would need a GitHub app (2026-11-21 20:00 CST, saved in git). No app: ruling r45 is your own, 2026-11-11 14:25 CST: a personal access token you create and save in the cloud environment as SHIV_GITHUB_TOKEN, and it stands. Whether it works is unproven: I have not tried it, the cloud rules refuse direct GitHub writes from a session, and the GitHub tools a session has include no delete-branch. So the coordinator made a command you can paste instead (the command box below) in any checkout of shivinate7/mailaudit. It deletes seven branches, each already copied on origin (merged to main, or archived under archive/...). Left out on purpose: red/hand-end-of-day (a lane is open) and design-explore and ideas branches (not checked). 20:04 CST.",
+  "replied": "2026-11-22T06:32:00Z",
+  "reply": "You parked this (saved in git, 2026-11-22 00:31 CST). Nothing runs. The branches stay, and the command box below keeps the stopgap if you want it later. Ruling r45 still stands. 00:32 CST.",
   "repo": "shivinate7/mailaudit",
   "short": "Create the branch-delete token (r45)",
   "shown": [

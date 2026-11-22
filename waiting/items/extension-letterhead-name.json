@@ -4,6 +4,10 @@
   "home": "decision masthead-is-not-project-name",
   "id": "extension-letterhead-name",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-22T06:30:00Z",
+    "note": "b: the extension's name becomes CH Post (saved in git)."
+  },
   "n": 118,
   "options": [
     {
@@ -26,6 +30,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "a",
   "ref": "decision masthead-is-not-project-name",
+  "replied": "2026-11-22T06:32:00Z",
+  "reply": "You picked b (saved in git, 2026-11-22 00:30 CST): the extension's name becomes CH Post. The coordinator can take draft PR 386 forward. 00:32 CST.",
   "repo": "shivinate7/mailaudit",
   "short": "Extension letterhead: MANIFEST or CH Post",
   "shown": [

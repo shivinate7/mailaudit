@@ -4,6 +4,10 @@
   "home": "decision guard-remedy-not-to-owner",
   "id": "ready-guard-override",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-22T06:30:00Z",
+    "note": "None of these: you had already typed override; find the cause if wanted (saved in git)."
+  },
   "n": 119,
   "options": [
     {
@@ -26,6 +30,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "a",
   "ref": "coordinator 2026-11-21 21:34 CST: ready-mark guard",
+  "replied": "2026-11-22T06:32:00Z",
+  "reply": "You said you already typed override (saved in git, 2026-11-22 00:30 CST). The coordinator can mark PRs 379, 380, 381 and 383 ready now. Finding the guard's cause is the coordinator's job, and I have told it to look. 00:32 CST.",
   "repo": "shivinate7/mailaudit",
   "short": "Four docs PRs: skip the ready guard once, or find the cause",
   "shown": [
