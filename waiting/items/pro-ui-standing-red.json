@@ -1,0 +1,60 @@
+{
+  "added": "2026-11-22T18:18:00Z",
+  "context": "Goal: the owner-ruled phone-screen changes (Orphaned composer margin, the held word, Hand end-of-day) merge.\nProblem (rule): the Pro-phone screen test shards (label pro-ui) show no green run on any pull request in the last 80 runs, the same 9 tests fail every time, and the merge tool refuses a red run, so no pull request with that label can merge.\nBased on (measured): runs 45025120326, 45025191429, 45025121981, 45025202524 and 44981596640 all fail the same 9 tests; a one-word change to the Hand box title (PR 388) fails the same set.\nBased on (read): debt tally-audit-contrast-flags calls three of these audits intermittent; main has no baseline run because the Duo shards do not run on main.\nDeparts from: main merges a native pull request only on a green run \u2014 option a lets one merge with a known failing set, option c skips one pull request's Pro shards.\nWaiting on: your answer; the coordinator keeps the native pull requests parked and the other lanes run.",
+  "home": "debt tally-audit-contrast-flags; decision merge-green-only",
+  "id": "pro-ui-standing-red",
+  "kind": "decision",
+  "n": 122,
+  "options": [
+    {
+      "gain": "Your ruled native work lands.",
+      "how": "A debt records the 9 tests; a native PR merges when its own tests pass and its failing set stays inside them.",
+      "id": "accept-known-red",
+      "key": "a",
+      "label": "File the 9 tests as a known red and let native PRs merge inside that set",
+      "lose": "The merge tool's rule must change, a real regression inside the 9 tests can hide, and this goes against your ruling that a repo changes to fit a shared tool, never the tool to fit a repo.",
+      "widens": true
+    },
+    {
+      "gain": "An honest green, nothing hidden.",
+      "how": "A builder lane fixes or pins the audit and layout checks on the Tally and Packages screens; the iOS 27.2 simulator is suspected, unmeasured.",
+      "id": "fix-core-first",
+      "key": "b",
+      "label": "A lane fixes or pins the 9 tests first",
+      "lose": "Native work stays unmerged for a time nobody can state yet."
+    },
+    {
+      "gain": "That one pull request lands.",
+      "how": "The coordinator removes the label from PR 388 so only the Duo shards must pass.",
+      "id": "drop-pro-label-on-388",
+      "key": "c",
+      "label": "Drop the Pro label on the Hand word PR 388 only",
+      "lose": "It skips the Pro proof the label exists for, and goes against your own labelling rule."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "b",
+  "ref": "coordinator 2026-11-22 12:17 CST: pro-ui standing red",
+  "repo": "shivinate7/mailaudit",
+  "short": "Pro-phone screen tests are always red: accept, fix first, or drop a label",
+  "shown": [
+    {
+      "id": "accept-known-red",
+      "key": "a",
+      "label": "File the 9 tests as a known red and let native PRs merge inside that set"
+    },
+    {
+      "id": "fix-core-first",
+      "key": "b",
+      "label": "A lane fixes or pins the 9 tests first"
+    },
+    {
+      "id": "drop-pro-label-on-388",
+      "key": "c",
+      "label": "Drop the Pro label on the Hand word PR 388 only"
+    }
+  ],
+  "status": "open",
+  "title": "The Pro-phone screen tests fail the same 9 tests on every run: how should native pull requests merge?",
+  "why": "Fixing the 9 tests first keeps a green run meaning something (coordinator's recommendation); a on one pull request at a time only if you say so."
+}
