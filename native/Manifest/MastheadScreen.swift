@@ -16,8 +16,6 @@ struct MastheadScreen<Content: View>: View {
     var ruledRow: AnyView?
     /// A drag on the scroll hides the keys at once (`.immediately`: `.interactively` waits for the finger to reach the keys). Off by default: only the Orphaned tab, whose composer's keys cover the tab bar, asks for it.
     var dismissesKeyboard = false
-    /// Clear room after the content, so a scroll can reach a place the content alone ends short of (the Orphaned composer's keyboard margin).
-    var bottomMargin: CGFloat = 0
     @ViewBuilder let content: Content
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -44,7 +42,6 @@ struct MastheadScreen<Content: View>: View {
                 if let ruledRow { ruledRow }
                 if let sync { SyncAdvisoryLine(sync: sync, open: openSync) }
                 content
-                if bottomMargin > 0 { Color.clear.frame(height: bottomMargin).accessibilityHidden(true) }
             }
         }
         .scrollPosition($position)

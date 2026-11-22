@@ -66,8 +66,7 @@ struct OrphanedView: View {
     private var list: some View {
         // A drag on the list hides the composer's keys, so the tab bar under them can be reached. Only this tab asks, so the other tabs keep
         // their keys. Owner ruling: `ux-house-rules-govern`, section "Orphaned composer keys".
-        MastheadScreen(masthead: masthead, tab: .orphaned, sync: sync, openSync: openSync, dismissesKeyboard: true,
-                       bottomMargin: model.composing == nil ? 0 : ComposerView.reach) {
+        MastheadScreen(masthead: masthead, tab: .orphaned, sync: sync, openSync: openSync, dismissesKeyboard: true) {
             VStack(alignment: .leading, spacing: 12) {
                 if model.composing == .new {
                     ComposerView(model: model, target: .new, onChange: onChange)
@@ -185,17 +184,15 @@ private struct ComposerView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var gauge = KeyGauge()
 
-    /// The keys draw this far above the frame they report (`keyboardDrawnAbove` in DuoHandUITests, measurement `duo-fold-and-keyboard`).
-    /// Measured on the open Duo only; the folded Duo and the 18 Pro are unmeasured.
-    private static let keysDrawnAbove: CGFloat = 44
-    /// The clear space kept above the drawn strip. A choice (the mockup `orphaned-composer-contrast`), not a measurement.
-    private static let clearance: CGFloat = 12
-    /// The Save row's bottom stays this far above the keys' reported top.
-    private static let keyMargin = keysDrawnAbove + clearance
-    /// Content that lies under the Save row with an empty pile and nothing after the composer: its 12pt padding and the list's 16pt bottom padding.
-    private static let contentBelowSave: CGFloat = 12 + 16
-    /// Extra room the screen adds after its content while composing, so a scroll can reach `keyMargin`. 28pt.
-    static let reach = keyMargin - contentBelowSave
+    /// The Save row's bottom stays this far above the keys' reported top. A choice (the mockup `orphaned-composer-contrast`), not a
+    /// measurement. On the iPhone 18 Pro the reported top is the prediction strip's top (pro-ui run: strip cells at y 546, reported
+    /// top 546), so this is 12 pt clear of the strip. The 44 pt strip that `duo-fold-and-keyboard` records above the open Duo's
+    /// reported frame is not added: the empty composer's Save then sat 56 pt above the strip, which needed a scroll that failed its
+    /// audits. The Duo's reported frame against this is unmeasured (`duo-keyboard-gap-unmeasured`).
+    private static let keyMargin: CGFloat = 12
+    /// A shortfall under this is layout rounding, not a row under the keys, so it starts no scroll. A bandaid: the empty composer's
+    /// Save lies 0.67 pt inside `keyMargin`, and a scroll for that moved the page under the audit.
+    private static let deadband: CGFloat = 2
     private var draft: EnvelopeDraft { model.draft(for: target) }
 
     var body: some View {
@@ -313,7 +310,7 @@ private struct ComposerView: View {
             await Task.yield()
             guard focused != nil, let keys = gauge.keysTop, let row = gauge.rowBottom else { return }
             let over = row - (keys - Self.keyMargin)
-            if over > 0.5 { scrollBy(over) }
+            if over > Self.deadband { scrollBy(over) }
         }
     }
 
