@@ -4,7 +4,7 @@ The saved ledger has one named shape. Its fields are the ledger data and the vie
 
 The fields mean the following:
 
-- `items` is an array of parsed line items.
+- `items` is an array of parsed line items. Ruled, not built (owner item 94, route c, 2026-11-21 20:00 CST): a line may carry an optional `trackingAt`, the time its `tracking` was set. The merge keeps the later stamp per line. It sits inside `items`, which is already saved, so like `updatedAt` in `envelopes` it adds no top-level key. It is optional and defaulted on load.
 - `received` is a map of item key to count received.
 - `receivedAt` is a map of item key to the time, in ms, of its last check or un-check. A key that is absent from `received` but has a time is an un-check. A merge keeps the later time per key. A side with no time for a key falls back to the per-key max, so older saves merge as before. It is optional and defaulted on load.
 - `envelopes` holds orphaned-mail records. Each record has the shape `{ id, createdAt, note, entries: [{ name, qty }], photos: [photoId], updatedAt, deletedAt }`. `deletedAt` is optional. An absent value means that the record is live.
@@ -28,6 +28,8 @@ Adding a persisted key means touching **five** sites. They are the load effect; 
 The count stays **five**, not six. The download and the GitHub push share one payload builder, `snapshot()`. Give the push its own builder, and the next person to add a key misses one. The push carries the same bytes as the Backup file, `savedAt` included. The commit message also carries a time.
 
 **One device-local field.** `workerSyncedAt` (when the Worker last agreed) rides the save payload and the load effect only. It is not in `snapshot()`, `backup`, the restore branches or the merge, because it describes this device and not the ledger. It is optional and defaulted on load.
+
+Ruled, not built: the restore stamp of owner item 107 b (2026-11-21 20:26 to 20:28 CST) is a second optional, defaulted field with a merge rule. A merge rule makes it travel, so it is a synced field and not a second device-local one. Built, it adds a top-level key and touches the five sites below.
 
 **Plus one outside `app.jsx`.** `mergeLedger` in `merge-rules.mjs` builds the merged ledger from named fields, then carries every top-level key it does not name. The merge applies that result as a full replace, and it pushes the result, so a carried key reaches both devices. `stamps` was the first key added after the named fields existed. Test 37.62 pins the key's presence. `receivedAt` is named there too, and group 49 pins it. A key that needs a real merge needs a named line in `mergeLedger`. An unnamed key gets the carry only.
 

@@ -2,6 +2,8 @@
 
 The native UI tests run Apple's accessibility audit. It flags "Contrast failed" on a few elements whose colours clear 4.5:1. The owner ruled on 2026-10-27 12:25 CDT: skip the contrast check only for the Orphaned mini buttons Cancel, Edit and Discard, and the Tally "left" line. Each skip cites the measured table. Every audit check not named in this record stays on, on every element.
 
+Any future skip applies to the shared skip area only (owner waiting-page item 99, "have on shared skip area only", 2026-11-21 20:26 to 20:28 CST). Item 99 itself is moot.
+
 The measurement, 2026-10-27, in a scratch app with the real views: a bordered `MiniLabel` inside its 44pt frame flags contrast in every container. Ink on card measures 12.2:1 and red on card 5.5:1. The Tally "left" line flagged in 2 of 8 runs of identical code. No pixel a person sees falls under the floor (`palette-tokens-contrast-floor`).
 
 The audit stays because it caught real defects in the same step: a shadow on a container, clipped text, and a dropped label.

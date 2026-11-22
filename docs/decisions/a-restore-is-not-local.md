@@ -6,6 +6,12 @@ Restoring a version rewrites `items`, `received` and `envelopes`. The sync POST 
 
 A restore is a change the person made now. `restampRestore` (in `src/merge-rules.mjs`) gives the restore time to every check-in key and stamp that either ledger holds. It also gives that time to every envelope the restore carries. An envelope the restore drops becomes a tombstone at that time. So a later Worker reply, older than the restore, cannot undo it, even for a key this device never held.
 
+**Tracking is the exception.** Owner waiting-page item 115, answer a, "leave the restore alone" (chat, recorded 2026-11-21 20:31 CST). `restampRestore` does not stamp a line's `tracking`. The latest tracking wins, so a newer tracking on the server can win after a restore. This departs from the paragraph above for the tracking field only. The rule above keeps its force for check-ins, stamps and envelopes. Item 94's route c, a per-line `trackingAt` stamp where the later stamp wins, is the route for tracking (owner item 94, 2026-11-21 20:00 CST; see `reimport-refresh-stays-on-device`).
+
+**Holds while:** `restampRestore` in `src/merge-rules.mjs` stamps no `tracking`.
+
+**Ruled, not built: a second restore stamp.** Owner waiting-page item 107, answer b, "ignore restore stamps" (2026-11-21 20:26 to 20:28 CST). A second stamp in saved data, optional and defaulted, on web and phone, with a merge rule. It is a synced field, not device-local; see `saved-state-shape`.
+
 The two-tap control said "replace everything", which reads as local. The control copy that named the backup is no longer in `src/app.jsx`. Its current wording is unmeasured.
 
 The native client restamps too. `build.mjs` bundles `restampRestore` into the native `rules.js`, and `LedgerStore.restore` applies it after the mend. Owner ruling 2026-11-08 10:55 CST, waiting page item 43: one shared rule, not a Swift copy. `RestoreRestampTests` and `RestampBundleTests` pin it.
