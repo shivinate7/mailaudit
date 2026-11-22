@@ -30,9 +30,9 @@ struct TallyView: View {
             if let pages {
                 // The mockup (pose 9) draws names with ratios on the left page, and the selected name, its totals and copies on the right.
                 // The Find pill sits on the right page above the bar and filters this left list (duo ruling Q5, 2026-11-08 11:14 CST).
-                DuoPages(pages: pages) { list } right: { detail }
+                DuoPages(pages: pages) { list.overlay(alignment: .bottom) { errorBar } } right: { detail }
             } else {
-                list
+                list.overlay(alignment: .bottom) { errorBar }
             }
         }
         .findPillOnDuo(show: model.hasItems, right: pages?.right, query: model.query) { q in Task { await run { try await model.setQuery(q) } } }
@@ -56,7 +56,6 @@ struct TallyView: View {
             .padding(.bottom, 8)
             CanceledListSection(options: model.options)
         }
-        .overlay(alignment: .bottom) { errorBar }  // on the list's edge, above the Find pill's band
         .findPill(show: findPillShown, query: model.query) { q in Task { await run { try await model.setQuery(q) } } }
     }
 
