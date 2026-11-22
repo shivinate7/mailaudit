@@ -1,8 +1,8 @@
 # Test suite assertion count and run time
 
-**Status:** measured 2026-11-21 at `00ed81f1`, a commit on branch `tracking-stamp-records` (the tracking-stamp PR, 391). New York (`TZ=America/New_York`): 1767 passed, 0 failed, exit 0, from `npm test`, in 227.5 s (one reading, npm start-up included). The part split is unmeasured. UTC: unmeasured (one fewer by the 38.9 rule). Earlier figures are in git.
+**Status:** measured 2026-11-22 at `6947a553`, a merge commit on branch `tracking-stamp-records` (the tracking-stamp PR, 391). New York (`TZ=America/New_York`): 1772 passed, 0 failed, exit 0, from `npm test`, in 232.6 s (one reading, npm start-up included). The part split is unmeasured. UTC: unmeasured (one fewer by the 38.9 rule). Earlier figures are in git.
 
-This record holds the assertion count and the run time for `npm test`. The suite runs 1767 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
+This record holds the assertion count and the run time for `npm test`. The suite runs 1772 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
 The count depends on the clock's zone, so the zone is pinned to `America/New_York`. In CI, the three part steps set `TZ`, and the `docs` job names their three logs in `CHECK_DOCS_SUITE_LOG`. The part split is unmeasured since 2026-11-16 (it was 296, 530 and 893 on 2026-11-15, summing to 1719); only the total is current. `check:docs` grades the figure in this sentence. Locally, `npm run check:docs` runs the suite itself and waits for it to end.
 
