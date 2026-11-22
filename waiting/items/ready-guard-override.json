@@ -1,0 +1,46 @@
+{
+  "added": "2026-11-22T03:36:00Z",
+  "context": "Goal: four docs-only pull requests are marked ready and merged.\nProblem (rule): the guard that checks before a pull request is marked ready refuses all four, though the coordinator's own pass printed \"records page is current\" and \"stays a draft\" on each; its message names no failing check, so the cause is unknown and only you can allow skipping the guard once.\nBased on (read): the coordinator's pass ran on each of the four heads, and a fresh checks run on one branch did not change the answer.\nDeparts from: main marks a pull request ready only after the guard's own pass \u2014 option a skips that recheck once; option b keeps it and finds the cause first.\nWaiting on: your answer; the other lanes run meanwhile. If you pick a, type override 15m in the coordinator's session (a page answer does not lift the guard).",
+  "home": "decision guard-remedy-not-to-owner",
+  "id": "ready-guard-override",
+  "kind": "decision",
+  "n": 119,
+  "options": [
+    {
+      "gain": "The four docs pull requests land.",
+      "how": "You type override 15m in the coordinator's session; it marks all four ready and the runner merges them on green.",
+      "id": "override-once",
+      "key": "a",
+      "label": "Skip the guard's recheck once",
+      "lose": "One second look by the guard is skipped."
+    },
+    {
+      "gain": "The cause is known and nothing is skipped.",
+      "how": "The coordinator reads the guard's rule and fixes what it asks for.",
+      "id": "find-cause-first",
+      "key": "b",
+      "label": "Find out what the guard wants first",
+      "lose": "The four pull requests wait."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "a",
+  "ref": "coordinator 2026-11-21 21:34 CST: ready-mark guard",
+  "repo": "shivinate7/mailaudit",
+  "short": "Four docs PRs: skip the ready guard once, or find the cause",
+  "shown": [
+    {
+      "id": "override-once",
+      "key": "a",
+      "label": "Skip the guard's recheck once"
+    },
+    {
+      "id": "find-cause-first",
+      "key": "b",
+      "label": "Find out what the guard wants first"
+    }
+  ],
+  "status": "open",
+  "title": "Should the ready-mark guard be skipped once for four docs-only pull requests?",
+  "why": "The pull requests are docs only and the guard names no failing check (coordinator's recommendation); b is the safer path if time allows."
+}
