@@ -49,7 +49,7 @@ Rules:
 
 - A page that parses to zero orders is a failure, kind `empty`. It may be a logon page served with 200 (review finding 1).
 - Zero items kept by `parseItems` across all pages is a failure, kind `no-items` (finding 2).
-- A line whose price or quantity cell does not read as a number, or that has no product id (no image), is unreadable. It is dropped, never merged with a default (findings 3 and 4). The good lines still merge. The reply counts the dropped lines, and the status records kind `unreadable`.
+- A line whose price or quantity cell does not read as a number, that has no product id (no image), or that has no card name, is unreadable, and so is every line of an order with no order id. It is dropped, never merged with a default (findings 3 and 4). The good lines still merge. The reply counts the dropped lines, and the status records kind `unreadable`.
 - A shipping-status text the parser does not know reads as blank, so the refresh skips it (finding 7 asks a test for it).
 - A failure (`empty`, `no-items`, or a posted failure kind) merges nothing.
 - A status write that fails is not hidden: the route replies 500 (finding 6). The merge runs first and stands.
