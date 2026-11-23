@@ -1,0 +1,9 @@
+{
+  "at": "2026-11-23T18:06:56.541Z",
+  "choice": "a",
+  "item": "worker-deploy-scope",
+  "label": "A: Deploy main as is",
+  "n": 128,
+  "note": "",
+  "optionId": "deploy-main-as-is"
+}
