@@ -732,6 +732,59 @@ final class HandModelTests: XCTestCase {
         XCTAssertEqual(rows, [], "a line taken back today is in the pile: its stamp is today, but its count is 0")
     }
 
+    /// debt mark-all-undo-keeps-checkin: a Mark all on a package whose line was checked in yesterday, then its Undo. The Undo
+    /// takes the count back to 1, so the line's real check-in is yesterday's and the envelope is not in today's pile.
+    func testPackageMarkAllThenUndoLeavesAYesterdayEnvelopeOutOfThePile() async throws {
+        let h = try await makeHand(extra: Self.deltaPonder())
+        Self.checkIn(h, Self.ponder, 1, at: Self.localMidnight - 60_000)
+        let packages = PackagesModel(engine: h.engine, store: h.store)
+        try await packages.load()
+        try await bulking(packages).bulk(gk: "S4::Delta Cards", on: true)
+        let marked = try await pile(h).map(\.gk)
+        XCTAssertEqual(marked, ["S4::Delta Cards"], "scope: the Mark all put Delta Cards in today's pile")
+        try await bulking(packages).undoBulk()
+        XCTAssertEqual(h.store.received()[Self.ponder], 1, "scope: the Undo took Ponder back to 1")
+        XCTAssertEqual(h.store.checkedInAt()[Self.ponder], Self.localMidnight - 60_000,
+                       "the Undo did not give Ponder its check-in time from before the Mark all")
+        let afterUndo = try await pile(h).map(\.gk)
+        XCTAssertEqual(afterUndo, [], "the Undo of a Mark all put Delta Cards in today's pile, though its check-in is yesterday's")
+    }
+
+    /// debt mark-all-undo-keeps-checkin, the Tally side: the same Mark all and Undo, through the product row.
+    func testTallyMarkAllThenUndoLeavesAYesterdayEnvelopeOutOfThePile() async throws {
+        let h = try await makeHand(extra: Self.deltaPonder())
+        Self.checkIn(h, Self.ponder, 1, at: Self.localMidnight - 60_000)
+        let tally = TallyModel(engine: h.engine, store: h.store)
+        try await tally.load()
+        try await bulking(tally).bulk(name: "Ponder", on: true)
+        let marked = try await pile(h).map(\.gk)
+        XCTAssertEqual(marked, ["S4::Delta Cards"], "scope: the Mark all put Delta Cards in today's pile")
+        try await bulking(tally).undoBulk()
+        XCTAssertEqual(h.store.received()[Self.ponder], 1, "scope: the Undo took Ponder back to 1")
+        XCTAssertEqual(h.store.checkedInAt()[Self.ponder], Self.localMidnight - 60_000,
+                       "the Tally Undo did not give Ponder its check-in time from before the Mark all")
+        let afterUndo = try await pile(h).map(\.gk)
+        XCTAssertEqual(afterUndo, [], "the Tally Undo of a Mark all put Delta Cards in today's pile, though its check-in is yesterday's")
+    }
+
+    /// debt mark-all-undo-keeps-checkin, the control: a line checked in earlier today keeps that time through the Undo, so the
+    /// envelope stays in today's pile.
+    func testPackageMarkAllThenUndoKeepsAnEarlierCheckInTodayInThePile() async throws {
+        let h = try await makeHand(extra: Self.deltaPonder())
+        let earlier = Self.localMidnight + 60_000
+        Self.checkIn(h, Self.ponder, 1, at: earlier)
+        let packages = PackagesModel(engine: h.engine, store: h.store)
+        try await packages.load()
+        try await bulking(packages).bulk(gk: "S4::Delta Cards", on: true)
+        try await bulking(packages).undoBulk()
+        XCTAssertEqual(h.store.received()[Self.ponder], 1, "scope: the Undo took Ponder back to 1")
+        XCTAssertEqual(h.store.checkedInAt()[Self.ponder], earlier,
+                       "the Undo did not keep Ponder's check-in time from earlier today")
+        let afterUndo = try await pile(h).map(\.gk)
+        XCTAssertEqual(afterUndo, ["S4::Delta Cards"],
+                       "the Undo took Delta Cards out of today's pile though Ponder was checked in earlier today")
+    }
+
     /// A held card is not an envelope. The shared name is held with no check-in today, and it puts no row in the pile.
     func testHeldCardPutsNoRowInThePile() async throws {
         let h = try await makeHand()
