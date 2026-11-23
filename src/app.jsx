@@ -3969,8 +3969,9 @@ export default function MailDayLedger() {
     const now = Date.now();
     const before = Number(ledgerRef.current.received[key]) || 0;
     const after = n > 0 ? n : 0;
+    const checkedBefore = ledgerRef.current.checkedInAt?.[key] ?? null;
     touchReceived([{ key, before, after }], now);
-    if (before !== after) logAction({ kind: "count", key, before, after, at: now });
+    if (before !== after) logAction({ kind: "count", key, before, after, checkedBefore, at: now });
     setReceived((prev) => {
       const next = { ...prev };
       if (n <= 0) delete next[key];
@@ -4069,6 +4070,7 @@ export default function MailDayLedger() {
         key: it.key,
         before: Number(ledgerRef.current.received[it.key]) || 0,
         after: on ? it.qty : 0,
+        checkedBefore: ledgerRef.current.checkedInAt?.[it.key] ?? null,
       }))
       .filter((c) => c.before !== c.after);
     if (counts.length) logAction({ kind: "bulk", gk: gkOf(pkgItems[0]), counts, at: now });
@@ -5207,7 +5209,11 @@ export default function MailDayLedger() {
       logAction({
         id: entryId,
         kind: "assign",
-        plan: cand.plan.map(({ itemKey, take }) => ({ itemKey, take })),
+        plan: cand.plan.map(({ itemKey, take }) => ({
+          itemKey,
+          take,
+          checkedBefore: ledgerRef.current.checkedInAt?.[itemKey] ?? null,
+        })),
         before: env,
         after: shrunk,
         updatedAt: now,
@@ -5262,6 +5268,7 @@ export default function MailDayLedger() {
       if (entry.kind !== "stamp" && entry.kind !== "envelope") {
         setReceived(res.ledger.received);
         setReceivedAt(res.ledger.receivedAt);
+        setCheckedInAt(res.ledger.checkedInAt);
       }
       if (entry.kind === "stamp") setStamps(res.ledger.stamps);
       if (entry.kind === "envelope" || entry.kind === "assign")

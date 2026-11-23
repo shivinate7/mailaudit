@@ -65,6 +65,8 @@ public final class TallyModel {
     /// The product the held Mark all Undo is for, as PackagesModel.bulkUndoGk is for a package. nil when there is none.
     public private(set) var bulkUndoName: String?
     private var bulkUndoTakes: [BulkTake] = []
+    /// The check-in times the held Mark all found, as PackagesModel.bulkUndoChecked.
+    private var bulkUndoChecked: [String: Double] = [:]
     /// BulkRules.takenBack for the held takes against `received`, as PackagesModel.bulkUndoHeld.
     private var bulkUndoHeld = 0
     /// The check-ins the held Undo would take back now, as PackagesModel.bulkUndoCount. 0 when none is held.
@@ -140,6 +142,7 @@ public final class TallyModel {
     public func bulk(name: String, on: Bool) async throws {
         let takes: [BulkTake]
         let keys: [String]
+        let checkedBefore = store.checkedInAt()
         do {
             struct Pooled: Decodable { let name: String; let items: [LedgerItem] }  // tallyGroups, before the filters add `shown`
             let all = try JSONDecoder().decode([Pooled].self, from: Data(groups.utf8))
@@ -167,7 +170,10 @@ public final class TallyModel {
             if !takes.isEmpty || bulkUndoName != nil {
                 bulkUndoTakes = counted
                 bulkUndoHeld = n
-                if !takes.isEmpty { bulkUndoName = name }
+                if !takes.isEmpty {
+                    bulkUndoName = name
+                    bulkUndoChecked = checkedBefore
+                }
             }
         }
         if on { sticky.formUnion(keys) }  // checked in under this filter, so the copies stay shown, as a check-in keeps one
@@ -178,9 +184,11 @@ public final class TallyModel {
     public func undoBulk() async throws {
         guard bulkUndoName != nil else { return }
         let takes = bulkUndoTakes
+        let checked = bulkUndoChecked
         endBulkUndo()
         do {
-            try store.commitReceived(try await BulkRules.undone(takes, received: store.received(), engine: engine), checkIn: false)
+            try store.commitReceived(
+                try await BulkRules.undone(takes, received: store.received(), engine: engine), checkIn: false, checkedInBack: checked)
         } catch {
             checkInError = "Could not take back the check-ins. \(error.localizedDescription)"
             throw error
@@ -193,6 +201,7 @@ public final class TallyModel {
     public func endBulkUndo() {
         bulkUndoName = nil
         bulkUndoTakes = []
+        bulkUndoChecked = [:]
         bulkUndoHeld = 0
     }
 

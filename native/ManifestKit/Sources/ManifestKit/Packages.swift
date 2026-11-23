@@ -61,6 +61,8 @@ public final class PackagesModel {
     /// that adds a copy, a Clear or endBulkUndo() ends it (undo-removes-only-its-delta). A Worker apply does not.
     public private(set) var bulkUndoGk: String?
     private var bulkUndoTakes: [BulkTake] = []
+    /// The check-in times the held Mark all found, so its Undo gives each line its own back (debt mark-all-undo-keeps-checkin).
+    private var bulkUndoChecked: [String: Double] = [:]
     /// BulkRules.takenBack for the held takes against `received`, set wherever `received` changes while an Undo is held.
     private var bulkUndoHeld = 0
     /// The check-ins the held Undo would take back now: the one source of the Undo hint's count. 0 when none is held.
@@ -325,6 +327,7 @@ public final class PackagesModel {
     public func bulk(gk: String, on: Bool) async throws {
         guard let pkg = rows.first(where: { $0.gk == gk }) else { return }
         let takes: [BulkTake]
+        let checkedBefore = store.checkedInAt()
         do {
             let before = store.received()
             let counts = try await BulkRules.counts(pkg.items, on: on, received: before, engine: engine)
@@ -349,7 +352,10 @@ public final class PackagesModel {
             if !takes.isEmpty || bulkUndoGk != nil {
                 bulkUndoTakes = counted
                 bulkUndoHeld = n
-                if !takes.isEmpty { bulkUndoGk = gk }
+                if !takes.isEmpty {
+                    bulkUndoGk = gk
+                    bulkUndoChecked = checkedBefore
+                }
             }
         }
         try await reread(pkg, items: pkg.items)
@@ -359,10 +365,11 @@ public final class PackagesModel {
     public func undoBulk() async throws {
         guard let gk = bulkUndoGk else { return }
         let takes = bulkUndoTakes
+        let checked = bulkUndoChecked
         endBulkUndo()
         do {
             let counts = try await BulkRules.undone(takes, received: store.received(), engine: engine)
-            try store.commitReceived(counts, checkIn: false)
+            try store.commitReceived(counts, checkIn: false, checkedInBack: checked)
         } catch {
             fail("Could not take back the check-ins. \(error.localizedDescription)")
             throw error
@@ -376,6 +383,7 @@ public final class PackagesModel {
     public func endBulkUndo() {
         bulkUndoGk = nil
         bulkUndoTakes = []
+        bulkUndoChecked = [:]
         bulkUndoHeld = 0
     }
 

@@ -10,7 +10,7 @@
    This file imports `tombstoneOf` from merge-rules.mjs, and merge-rules.mjs imports
    `mergeRecent` from here. The cycle is safe: both are used only inside function bodies. */
 
-import { tombstoneOf, isLiveEnvelope } from "./merge-rules.mjs";
+import { tombstoneOf, isLiveEnvelope, isCheckIn } from "./merge-rules.mjs";
 import { gkOf } from "./view-rules.mjs";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -209,7 +209,7 @@ export function rowListed(entry, ledger) {
 
 /* ---------- the inverse of each kind ---------- */
 
-/* Returns { ledger, undo } or { refused: state }. `ledger` holds the four fields an undo can
+/* Returns { ledger, undo } or { refused: state }. `ledger` holds the five fields an undo can
    write. `opts.log` is the whole log, which the count guards read; without it the row stands alone.
    `opts.hasPhoto(id)` says whether this device holds a photo blob; without it every id
    is kept. An envelope that loses a photo id gives an undo entry with `photoLost`. */
@@ -219,6 +219,7 @@ export function undoEntry(entry, ledger, now, opts = {}) {
   if (state !== "live") return { refused: state };
   const received = { ...(ledger.received || {}) };
   const receivedAt = { ...(ledger.receivedAt || {}) };
+  const checkedInAt = { ...(ledger.checkedInAt || {}) };
   const stamps = { ...(ledger.stamps || {}) };
   let envelopes = ledger.envelopes || [];
   let photoLost = 0;
@@ -227,6 +228,14 @@ export function undoEntry(entry, ledger, now, opts = {}) {
     if (n > 0) received[key] = n;
     else delete received[key];
     receivedAt[key] = now;
+  };
+  /* The undo of a check-in gives the line the check-in time it held before the act: the row's
+     `checkedBefore`, null for none. A row without the field (logged before it shipped) leaves the time
+     as it is, as does the undo of a removal, which never wrote one (only a real check-in sets it). */
+  const setCheckedIn = (key, checkedBefore, before, after) => {
+    if (checkedBefore === undefined || !isCheckIn(before, after)) return;
+    if (checkedBefore == null) delete checkedInAt[key];
+    else checkedInAt[key] = checkedBefore;
   };
   const putEnvelope = (env) => {
     envelopes = envelopes.some((e) => e.id === env.id)
@@ -242,10 +251,13 @@ export function undoEntry(entry, ledger, now, opts = {}) {
 
   if (entry.kind === "count") {
     setCount(entry.key, countUndo(ledger, entry.key, entry, log));
+    setCheckedIn(entry.key, entry.checkedBefore, entry.before, entry.after);
   } else if (entry.kind === "bulk") {
     for (const c of entry.counts || []) {
       const n = countUndo(ledger, c.key, { ...c, id: entry.id, at: entry.at }, log);
-      if (n != null) setCount(c.key, n);
+      if (n == null) continue;
+      setCount(c.key, n);
+      setCheckedIn(c.key, c.checkedBefore, c.before, c.after);
     }
   } else if (entry.kind === "stamp") {
     stamps[entry.gk] = entry.before?.kind
@@ -256,16 +268,17 @@ export function undoEntry(entry, ledger, now, opts = {}) {
     if (entry.op === "record") putEnvelope(tombstoneOf(cur, now));
     else restoreEnvelope(entry.before); // an edit returns the older copy, a discard the live one
   } else if (entry.kind === "assign") {
-    for (const { itemKey, take } of entry.plan || []) {
+    for (const { itemKey, take, checkedBefore } of entry.plan || []) {
       const cur = Number(received[itemKey]) || 0;
       setCount(itemKey, nextCount(cur, take, qtyOf(ledger, itemKey)));
+      setCheckedIn(itemKey, checkedBefore, 0, take);
     }
     restoreEnvelope(entry.before);
   }
 
   const undo = { id: newEntryId(), at: now, kind: "undo", of: entry.id };
   if (photoLost) undo.photoLost = photoLost;
-  return { ledger: { received, receivedAt, stamps, envelopes }, undo };
+  return { ledger: { received, receivedAt, checkedInAt, stamps, envelopes }, undo };
 }
 
 /* ---------- words and grouping ---------- */
