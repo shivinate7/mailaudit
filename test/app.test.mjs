@@ -8895,6 +8895,60 @@ await goTo("orphaned");
 await onLedger();
 ok(!recentBtn(), "79.7 after a Reset, the next Ledger visit hides the Recent cell");
 
+/* ── 87. Mark all, then Undo, gives each line its check-in time back (debt mark-all-undo-keeps-checkin) ──
+   A Mark all stamps checkedInAt on each line its count raised. The Undo of that Recent row takes the counts back, and each
+   line's time goes back to what the line held before the Mark all: none when it had none, the earlier time when it had one.
+   A time left behind would put the envelope in today's pile. */
+{
+  const CHECKED_EARLIER = Date.UTC(2026, 10, 22, 12, 0); /* a fixed past instant; the clock is never read */
+  const KB87 = ITEMS[2].key; /* Brainstorm, two copies, in Alpha Cards */
+  const markAllAlpha = async () => {
+    await goTo("packages");
+    const alpha = packageCard(/Alpha Cards/);
+    await click(
+      [...(alpha?.querySelectorAll("button") ?? [])].find((b) => /Mark all received/.test(b.textContent)),
+      "mark Alpha Cards all received"
+    );
+    await sleep(SAVE_WAIT);
+  };
+  const undoAlphaRow = async () => {
+    await onLedger();
+    await click(recentBtn(), "open Recent");
+    const row = rowWith(/PACKAGE CHECKED/);
+    await click(undoOf(row) ?? row, "undo the Alpha Cards row in Recent");
+    await sleep(SAVE_WAIT);
+  };
+
+  /* 87.1. a Mark all on lines with no earlier time: the Undo leaves no time on any of them */
+  await fresh();
+  await markAllAlpha();
+  const stamped87 = saved().checkedInAt ?? {};
+  ok(
+    Object.keys(stamped87).length > 0 && Object.values(stamped87).every((t) => typeof t === "number"),
+    "87.1pre the Mark all stamps a time on each line it raised"
+  );
+  await undoAlphaRow();
+  eq(saved().received ?? {}, {}, "87.1 scope: the Undo took every count back to 0");
+  eq(saved().checkedInAt ?? {}, {}, "87.1a the Undo leaves no check-in time, since no line had one before the Mark all");
+
+  /* 87.2. a line checked in before the Mark all keeps its earlier time through the Undo */
+  await boot({
+    items: ITEMS,
+    received: { [KB87]: 1 },
+    receivedAt: { [KB87]: CHECKED_EARLIER },
+    checkedInAt: { [KB87]: CHECKED_EARLIER },
+  });
+  await markAllAlpha();
+  eq(saved().received?.[KB87], 2, "87.2 scope: the Mark all took Brainstorm from 1 to its qty of 2");
+  ok(
+    typeof saved().checkedInAt?.[KB87] === "number" && saved().checkedInAt[KB87] !== CHECKED_EARLIER,
+    "87.2pre the Mark all moved Brainstorm's time off the earlier one"
+  );
+  await undoAlphaRow();
+  eq(saved().received?.[KB87], 1, "87.2 scope: the Undo took Brainstorm back to 1");
+  eq(saved().checkedInAt?.[KB87], CHECKED_EARLIER, "87.2a the Undo gives Brainstorm its earlier check-in time back, not the Mark all's");
+}
+
 /* ── 66. the Worker is the only voice (owner ruling 2026-10-12, default 5) ──
    The sync line, the Sync panel status, "Last sync" and the staleness clock
    read the Worker. GitHub is a mirror that runs itself, so no GitHub state may
