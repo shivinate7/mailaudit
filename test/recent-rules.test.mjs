@@ -476,6 +476,28 @@ eq(
     "R6.10a and one undo takes back every card in it"
   );
 }
+/* R6.11 (debt mark-all-undo-keeps-checkin). A Mark all stamps checkedInAt on each line it raised. Its Undo gives each line
+   the time it held before the Mark all: the earlier time when it had one, none when it had none. The entry carries that
+   prior time as `checkedBefore` on each count, null for none. The counts come back as they did before this case. */
+{
+  const EARLIER = T(3);
+  const r = bulk("b2", T(10), GK, [
+    { key: K, before: 1, after: 4, checkedBefore: EARLIER },
+    { key: K2, before: 0, after: 2, checkedBefore: null },
+  ]);
+  const l = ledger({
+    received: { [K]: 4, [K2]: 2 },
+    receivedAt: { [K]: T(10), [K2]: T(10) },
+    checkedInAt: { [K]: T(10), [K2]: T(10) },
+  });
+  const u = undo(r, l);
+  eq(u?.ledger?.received, { [K]: 1 }, "R6.11 scope: the undo takes each count back to what the Mark all took it from");
+  eq(
+    u?.ledger?.checkedInAt,
+    { [K]: EARLIER },
+    "R6.11a the undo leaves no check-in time for a line the Mark all raised from none, and gives K its earlier time back"
+  );
+}
 
 /* ---------- R7 isLive ---------- */
 
