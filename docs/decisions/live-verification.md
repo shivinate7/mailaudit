@@ -126,7 +126,8 @@ Run from main `7729d31` at 21:15 CDT on 2026-10-14 (02:15 UTC on 2026-10-15), on
 
 Run from main `b0aedbbf` at 12:13 CST on 2026-11-23, on the owner's word: page item 128, answer a, "Deploy main as is" (12:06 CST), confirmed in chat at 12:11 CST. The new version is `ca2bf6c6-8d0c-47ca-8c46-48bc031e5b3e`. The rollback version is `320c719d`, live since 2026-10-28.
 
-- It takes live everything merged into the Worker code since 2026-10-28: the tracking-stamp merge (item 94), the check-in time field `checkedInAt` (items 107 b and 127 c), the Recent-log merge, the CSV re-import refresh, and POST /orders with GET /orders/status.
+- It takes live the Worker-side changes merged since 2026-10-28: the tracking-stamp merge (item 94), the check-in time field `checkedInAt` (items 107 b and 127 c), the Recent-log merge, the CSV re-import refresh, and POST /orders with GET /orders/status.
+- It also takes live commit `9e4facce` (via PR 257): the orders parse in `worker/orders.mjs` drops nameless lines and orders with no id, and counts them unreadable. Its message says its fix check was pending and its mutant run for 72.13 was not done. The orders endpoints stay idle until the extension calls them.
 - A GET /ledger with no key gave 401 after the deploy. No keyed call was made, so the new merge rules are unmeasured on live data.
 
 ## Switch and photo copy, 2026-10-16

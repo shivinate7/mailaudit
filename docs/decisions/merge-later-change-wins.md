@@ -30,7 +30,7 @@ Removals are the exceptions. A removed stamp travels as a tombstone, and it beat
 
 **Pinned by:** groups 33, 34 and 49. Group 33 is pure, like groups 27 and 31. It imports `merge-rules.mjs` directly. A merge that dropped lines would make a plausible ledger, not an error. Its symmetry assertions are the ones to keep. Merging A into B and B into A must give the same counts. Merging twice must add nothing. Those two claims show that the merge does not prefer either device. They also show that a retry after a half-failed sync is harmless. Group 49 pins the un-check and tombstone merges. The tracking stamp is pinned by 33.80 to 33.90 and 33b.1 to 33b.4 in `test/app.test.mjs`, by R4.8 and R4.8a in `test/recent-rules.test.mjs`, and by 73.1 to 73.4 in `worker/core.test.mjs` (the app file also uses 73.x ids for its photo tests, so cite the file).
 
-**Live.** The stamp rule reached the live Worker in the deploy of 2026-11-23, version `ca2bf6c6` (see `live-verification`).
+**Deployed.** The stamp rule reached the live Worker in the deploy of 2026-11-23, version `ca2bf6c6` (see `live-verification`). It is unmeasured on live data.
 
 Mutants confirmed red:
 - `mergeReceived` using incoming-wins instead of `max`;
