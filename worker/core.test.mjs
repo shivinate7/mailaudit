@@ -2494,4 +2494,55 @@ await test("73.4 the orders refresh stamps no line whose tracking it leaves unch
   eq(line?.trackingAt ?? 0, 0, "and the unchanged line is not stamped");
 });
 
+/* checkedInAt (plan check-in-time-field): the Worker merges it per key, each key taking the
+   time of the side that won that key's receivedAt. */
+await test("74.1 a POST merges checkedInAt per key: a key takes the side that won its receivedAt, and a key one side holds is kept", async () => {
+  const A = "100|1|555";
+  const B = "100|2|666";
+  const s = fakeStore({
+    ledger: ledger({
+      received: { [A]: 1, [B]: 1 },
+      receivedAt: { [A]: 100, [B]: 300 },
+      checkedInAt: { [A]: 90, [B]: 300 },
+    }),
+    rev: 4,
+  });
+  const res = await send(s, "POST", "/ledger", {
+    key: KEY_LAPTOP,
+    json: {
+      ledger: ledger({
+        received: { [A]: 1 },
+        receivedAt: { [A]: 200 },
+        checkedInAt: { [A]: 150 },
+      }),
+    },
+  });
+  eq(res.status, 200, "status");
+  eq(canon(s.writes[0]?.ledger.checkedInAt), canon({ [A]: 150, [B]: 300 }), "the winning side's time for A, and the stored B");
+});
+
+await test("74.2 a POST keeps the stored time for a key the stored side won, though the posted copy holds an older time for it", async () => {
+  const A = "100|1|555";
+  const s = fakeStore({
+    ledger: ledger({
+      received: { [A]: 1 },
+      receivedAt: { [A]: 300 },
+      checkedInAt: { [A]: 250 },
+    }),
+    rev: 4,
+  });
+  const res = await send(s, "POST", "/ledger", {
+    key: KEY_LAPTOP,
+    json: {
+      ledger: ledger({
+        received: { [A]: 1 },
+        receivedAt: { [A]: 200 },
+        checkedInAt: { [A]: 150 },
+      }),
+    },
+  });
+  eq(res.status, 200, "status");
+  eq(canon(s.writes[0]?.ledger.checkedInAt), canon({ [A]: 250 }), "the stored time, since the stored receivedAt is later");
+});
+
 report();
