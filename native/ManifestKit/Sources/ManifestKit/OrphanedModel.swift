@@ -25,8 +25,8 @@ public final class OrphanedModel {
     /// The store generation the rankings were read at. A write since makes them stale.
     @ObservationIgnored private var rankedAt = -1
     /// What the last assign needs to undo itself: the whole record before it, its plan (deltas, not a snapshot), and the
-    /// check-in times before it, so the Undo gives each card its own back (debt mark-all-undo-keeps-checkin).
-    @ObservationIgnored private var undoRecord: (envelope: [String: Any], plan: [PlanStep], checkedIn: [String: Double])?
+    /// check-in times around it, so the Undo gives each card its own back.
+    @ObservationIgnored private var undoRecord: (envelope: [String: Any], plan: [PlanStep], checkedIn: CheckedInHeld)?
     @ObservationIgnored private var norms: [String: String] = [:]
     @ObservationIgnored private var sequence = 0
 
@@ -274,7 +274,7 @@ public final class OrphanedModel {
                 store.replaceEnvelope(shrunk)
             }
         }
-        undoRecord = (rec, c.plan, checkedBefore)
+        undoRecord = (rec, c.plan, CheckedInHeld(before: checkedBefore, stamped: store.checkedInAt()))
         undo = UndoNotice(
             matchedQty: c.matchedQty, leftoverQty: left.reduce(0) { $0 + (($1["qty"] as? NSNumber)?.intValue ?? 0) },
             index: index, pkgLabel: c.pkg.seller)
@@ -288,10 +288,8 @@ public final class OrphanedModel {
         try write {
             for s in u.plan {
                 // count 0 drops the key and stamps the time, so the un-check beats an older check-in.
-                let cur = store.received()[s.itemKey] ?? 0
-                let next = max(cur - s.take, 0)
-                store.setReceived(s.itemKey, count: next)
-                if next < cur { store.setCheckedIn(s.itemKey, to: u.checkedIn[s.itemKey]) }
+                store.setReceived(s.itemKey, count: max((store.received()[s.itemKey] ?? 0) - s.take, 0))
+                store.giveBackCheckedIn(s.itemKey, u.checkedIn)
             }
             var back = u.envelope
             back["updatedAt"] = store.clock()

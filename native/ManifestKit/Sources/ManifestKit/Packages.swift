@@ -61,8 +61,8 @@ public final class PackagesModel {
     /// that adds a copy, a Clear or endBulkUndo() ends it (undo-removes-only-its-delta). A Worker apply does not.
     public private(set) var bulkUndoGk: String?
     private var bulkUndoTakes: [BulkTake] = []
-    /// The check-in times the held Mark all found, so its Undo gives each line its own back (debt mark-all-undo-keeps-checkin).
-    private var bulkUndoChecked: [String: Double] = [:]
+    /// The check-in times the held Mark all found and left, so its Undo gives each line its own back.
+    private var bulkUndoChecked = CheckedInHeld.none
     /// BulkRules.takenBack for the held takes against `received`, set wherever `received` changes while an Undo is held.
     private var bulkUndoHeld = 0
     /// The check-ins the held Undo would take back now: the one source of the Undo hint's count. 0 when none is held.
@@ -338,6 +338,7 @@ public final class PackagesModel {
             throw error
         }
         checkInError = nil
+        let stamped = store.checkedInAt()
         received = store.received()
         // A Mark all that adds nothing has nothing to undo, so the held Undo stays. A Clear, or a Mark all that adds, ends it.
         // A new Undo sets its gk only after its count is known, so the hint never shows a count from before the press.
@@ -354,7 +355,7 @@ public final class PackagesModel {
                 bulkUndoHeld = n
                 if !takes.isEmpty {
                     bulkUndoGk = gk
-                    bulkUndoChecked = checkedBefore
+                    bulkUndoChecked = CheckedInHeld(before: checkedBefore, stamped: stamped)
                 }
             }
         }
@@ -383,7 +384,7 @@ public final class PackagesModel {
     public func endBulkUndo() {
         bulkUndoGk = nil
         bulkUndoTakes = []
-        bulkUndoChecked = [:]
+        bulkUndoChecked = .none
         bulkUndoHeld = 0
     }
 

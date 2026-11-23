@@ -66,7 +66,7 @@ public final class TallyModel {
     public private(set) var bulkUndoName: String?
     private var bulkUndoTakes: [BulkTake] = []
     /// The check-in times the held Mark all found, as PackagesModel.bulkUndoChecked.
-    private var bulkUndoChecked: [String: Double] = [:]
+    private var bulkUndoChecked = CheckedInHeld.none
     /// BulkRules.takenBack for the held takes against `received`, as PackagesModel.bulkUndoHeld.
     private var bulkUndoHeld = 0
     /// The check-ins the held Undo would take back now, as PackagesModel.bulkUndoCount. 0 when none is held.
@@ -157,6 +157,7 @@ public final class TallyModel {
             throw error
         }
         checkInError = nil
+        let stamped = store.checkedInAt()
         // As on PackagesModel.bulk: a Mark all that adds nothing keeps the held Undo, a Clear or a Mark all that adds ends it,
         // and a new Undo sets its name only after its count is known.
         if !on || !takes.isEmpty { endBulkUndo() }
@@ -172,7 +173,7 @@ public final class TallyModel {
                 bulkUndoHeld = n
                 if !takes.isEmpty {
                     bulkUndoName = name
-                    bulkUndoChecked = checkedBefore
+                    bulkUndoChecked = CheckedInHeld(before: checkedBefore, stamped: stamped)
                 }
             }
         }
@@ -201,7 +202,7 @@ public final class TallyModel {
     public func endBulkUndo() {
         bulkUndoName = nil
         bulkUndoTakes = []
-        bulkUndoChecked = [:]
+        bulkUndoChecked = .none
         bulkUndoHeld = 0
     }
 
