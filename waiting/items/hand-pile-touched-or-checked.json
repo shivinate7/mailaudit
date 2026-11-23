@@ -1,31 +1,47 @@
 {
-  "added": "2026-11-22T20:20:00Z",
-  "context": "Goal: the Hand end-of-day pile and \"Not normal today\" land, which the restore-stamp change and the live Worker deploy wait on.\nProblem (goal): the pile lists an envelope when its count is above 0 and its stamp is today, but a same-day \"One fewer\" on a copy checked in yesterday also stamps it today, so it shows with no check-in today, and the saved data cannot tell a check-in from a decrement, so only you can say what the pile means.\nBased on (ruling): the rule that the saved data's layout never changes, which rules out a new saved field; the Hand end-of-day answer you gave on 2026-11-19 23:23 CST covers only the count-0 un-check.\nBased on (read): the Hand end-of-day change is PR 390; the coordinator found this in review.\nDeparts from: main has no end-of-day pile on the Hand screen \u2014 this adds one that can list an envelope touched today by a decrement.\nWaiting on: your answer; PR 390 waits on this point, and the coordinator fixes its other review findings meanwhile.",
-  "home": "decision duo-card-in-hand",
+  "added": "2026-11-23T00:03:00Z",
+  "closed": "2026-11-23T01:41:00Z",
+  "context": "Goal: the Hand screen's end-of-day list ships and tells the truth.\nProblem (rule): you chose to keep the list as is when I told you no saved field could be added, but that was wrong, and a new saved field is your call because it changes the saved data.\nBased on (read): the house rule for changing what the app saves allows a new optional, defaulted field if it touches five places in the app; the restore-time stamp you approved already adds a field this way.\nBased on (read): today the list keys off one last-changed date per card, so a card you only reduced today with One fewer shows as checked in today.\nDeparts from: main saves no per-check-in date \u2014 option c adds a check-in date per envelope so the list shows only real check-ins.\nWaiting on: your answer; the local mailaudit session holds the known-gap record and keeps the other end-of-day fixes moving.",
+  "home": "PR 390 known-gap debt hand-pile-counts-one-fewer; option c queued in docs/todo.md",
   "id": "hand-pile-touched-or-checked",
   "kind": "decision",
-  "n": 126,
+  "lastAnswer": {
+    "at": "2026-11-23T01:41:00Z",
+    "choice": "b",
+    "note": "Answered in chat 19:41 CST: B with the known gap now, plus C (check-in date field) as a follow-up if possible."
+  },
+  "n": 127,
   "options": [
     {
-      "gain": "Nothing new is saved, and it ships now.",
-      "how": "The screen text says touched today; the coordinator records the same-day decrement as accepted in the Hand rules.",
+      "gain": "Nothing new is saved, ships now, and the label is always true.",
+      "how": "The screen text says touched today; the same-day decrement is recorded as accepted in the Hand rules.",
       "id": "pile-means-touched-today",
       "key": "a",
       "label": "The pile means \"touched today\", and the screen says so",
-      "lose": "An envelope can appear with no new check-in today, and the wording differs from the mockup."
+      "lose": "The wording differs from the mockup, and a reduced card can show."
     },
     {
-      "gain": "The wording stays as the mockup drew it.",
-      "how": "The coordinator files a known-gap record for the decrement case and PR 390 ships with the mockup wording.",
+      "gain": "Ships now, no saved-data change, wording matches the mockup.",
+      "how": "A known-gap record covers the decrement case; the end-of-day list ships with the mockup wording.",
       "id": "keep-wording-known-gap",
       "key": "b",
       "label": "Keep the wording \"checked in today\" and record the false entry as a known gap",
-      "lose": "The screen can say something untrue about an envelope."
+      "lose": "A card you only reduced today can show as checked in today."
+    },
+    {
+      "gain": "The list is always true, with the mockup wording.",
+      "how": "A new optional, defaulted check-in date per envelope, set only on a check-in, touching the five save places and the merge.",
+      "id": "add-checkin-date-field",
+      "key": "c",
+      "label": "Add a check-in date field so the list shows only real check-ins",
+      "lose": "A saved-data change in five places plus the merge, more tests, and the end-of-day list waits for it."
     }
   ],
-  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
-  "recommended": "a",
+  "owner": "local mailaudit session 62b63a9f (simulator proof and landing)",
+  "recommended": "b",
   "ref": "coordinator 2026-11-22 14:22 CST: PR 390 review finding",
+  "replied": "2026-11-23T00:03:00Z",
+  "reply": "Filed: PR 390 ships b with the known-gap record; c becomes a follow-up lane that adds the check-in date field and retires the gap.",
   "repo": "shivinate7/mailaudit",
   "short": "Hand pile: \"touched today\" or keep \"checked in today\"",
   "shown": [
@@ -38,9 +54,14 @@
       "id": "keep-wording-known-gap",
       "key": "b",
       "label": "Keep the wording \"checked in today\" and record the false entry as a known gap"
+    },
+    {
+      "id": "add-checkin-date-field",
+      "key": "c",
+      "label": "Add a check-in date field so the list shows only real check-ins"
     }
   ],
-  "status": "open",
-  "title": "Should the Hand end-of-day pile mean \"touched today\", or keep the wording \"checked in today\"?",
-  "why": "A stamp on each check-in would be exact but breaks the saved data's fixed layout, so it is not offered; a is the coordinator's recommendation."
+  "status": "closed",
+  "title": "Asked again: keep the Hand end-of-day list as is, or add a check-in date so it never lists a card you only reduced?",
+  "why": "Your earlier pick still ships today with a filed gap; c is the exact fix but adds a saved-data change and delays the list."
 }
