@@ -266,6 +266,14 @@ const card = packageCard;
 /* from group 32 */
 /* the jump scrolls on a frame, and the frame lands outside the click's act() */
 const settle = () => act(async () => await sleep(0));
+/* A line's own check and its One more / One fewer buttons, shared by the groups that tap a line (86, 88). A line's row
+   holds its name, so the row is found by its name inside the package card. Module scope, as the groups sit in part gates. */
+const lineRow = (pkgRe, name) =>
+  [...card(pkgRe).querySelectorAll('button[aria-label^="Mark as"]')].find((b) => b.parentElement?.textContent.includes(name));
+const oneFewer = (pkgRe, name) =>
+  lineRow(pkgRe, name)?.parentElement?.querySelector('button[aria-label="One fewer received"]');
+const oneMore = (pkgRe, name) =>
+  lineRow(pkgRe, name)?.parentElement?.querySelector('button[aria-label="One more received"]');
 /* a line as the tracking stamp leaves it: without trackingAt, which a refresh adds (owner item 94).
    Module scope, because groups 33 and 57 sit in different part gates. */
 const unstamped = (it) => {
@@ -5520,14 +5528,6 @@ const freshKeyed49 = () => boot({ items: ITEMS, received: {} }, null, { syncKey:
 {
   const K = ITEMS[0].key; /* Lightning Bolt, in Alpha Cards */
   const KB = ITEMS[2].key; /* Brainstorm, two copies, in Alpha Cards */
-  const lineRow = (pkgRe, name) =>
-    [...card(pkgRe).querySelectorAll('button[aria-label^="Mark as"]')].find((b) =>
-      b.parentElement?.textContent.includes(name)
-    );
-  const oneFewer = (pkgRe, name) =>
-    lineRow(pkgRe, name)?.parentElement?.querySelector('button[aria-label="One fewer received"]');
-  const oneMore = (pkgRe, name) =>
-    lineRow(pkgRe, name)?.parentElement?.querySelector('button[aria-label="One more received"]');
 
   await freshKeyed49();
   await click(lineRow(/Alpha Cards/, "Lightning Bolt"), "check Lightning Bolt in");
@@ -8894,6 +8894,140 @@ await sleep(SAVE_WAIT);
 await goTo("orphaned");
 await onLedger();
 ok(!recentBtn(), "79.7 after a Reset, the next Ledger visit hides the Recent cell");
+
+/* ── 87. Mark all, then Undo, gives each line its check-in time back (debt mark-all-undo-keeps-checkin) ──
+   A Mark all stamps checkedInAt on each line its count raised. The Undo of that Recent row takes the counts back, and each
+   line's time goes back to what the line held before the Mark all: none when it had none, the earlier time when it had one.
+   A time left behind would put the envelope in today's pile. */
+{
+  const CHECKED_EARLIER = Date.UTC(2026, 10, 22, 12, 0); /* a fixed past instant; the clock is never read */
+  const KB87 = ITEMS[2].key; /* Brainstorm, two copies, in Alpha Cards */
+  const markAllAlpha = async () => {
+    await goTo("packages");
+    const alpha = packageCard(/Alpha Cards/);
+    await click(
+      [...(alpha?.querySelectorAll("button") ?? [])].find((b) => /Mark all received/.test(b.textContent)),
+      "mark Alpha Cards all received"
+    );
+    await sleep(SAVE_WAIT);
+  };
+  const undoAlphaRow = async () => {
+    await onLedger();
+    await click(recentBtn(), "open Recent");
+    const row = rowWith(/PACKAGE CHECKED/);
+    await click(undoOf(row) ?? row, "undo the Alpha Cards row in Recent");
+    await sleep(SAVE_WAIT);
+  };
+
+  /* 87.1. a Mark all on lines with no earlier time: the Undo leaves no time on any of them */
+  await fresh();
+  await markAllAlpha();
+  const stamped87 = saved().checkedInAt ?? {};
+  ok(
+    Object.keys(stamped87).length > 0 && Object.values(stamped87).every((t) => typeof t === "number"),
+    "87.1pre the Mark all stamps a time on each line it raised"
+  );
+  await undoAlphaRow();
+  eq(saved().received ?? {}, {}, "87.1 scope: the Undo took every count back to 0");
+  eq(saved().checkedInAt ?? {}, {}, "87.1a the Undo leaves no check-in time, since no line had one before the Mark all");
+
+  /* 87.2. a line checked in before the Mark all keeps its earlier time through the Undo */
+  await boot({
+    items: ITEMS,
+    received: { [KB87]: 1 },
+    receivedAt: { [KB87]: CHECKED_EARLIER },
+    checkedInAt: { [KB87]: CHECKED_EARLIER },
+  });
+  await markAllAlpha();
+  eq(saved().received?.[KB87], 2, "87.2 scope: the Mark all took Brainstorm from 1 to its qty of 2");
+  ok(
+    typeof saved().checkedInAt?.[KB87] === "number" && saved().checkedInAt[KB87] !== CHECKED_EARLIER,
+    "87.2pre the Mark all moved Brainstorm's time off the earlier one"
+  );
+  await undoAlphaRow();
+  eq(saved().received?.[KB87], 1, "87.2 scope: the Undo took Brainstorm back to 1");
+  eq(saved().checkedInAt?.[KB87], CHECKED_EARLIER, "87.2a the Undo gives Brainstorm its earlier check-in time back, not the Mark all's");
+}
+
+/* ── 88. a single count and an assign: their Undo gives each line its check-in time back (debt mark-all-undo-keeps-checkin) ──
+   The same outcome as group 87, for the other two Undo rows of the Recent log: one line's tap (a CHECKED or COUNT row) and an
+   assign (its Undo notice, also the ASSIGNED row). Each line's checkedInAt returns to what it held before the act. */
+{
+  const EARLIER88 = Date.UTC(2026, 10, 22, 12, 0); /* a fixed past instant; the clock is never read */
+  const KK88 = ITEMS[0].key; /* Lightning Bolt, in Alpha Cards */
+  const KB88 = ITEMS[2].key; /* Brainstorm, two copies, in Alpha Cards */
+  const PK88 = ITEMS.find((it) => it.name === "Ponder").key; /* Ponder, one copy, in Gamma Cards */
+
+  /* 88.1. a single check with no earlier time: its CHECKED row's Undo leaves the line with no time */
+  await fresh();
+  await goTo("packages");
+  await click(lineRow(/Alpha Cards/, "Lightning Bolt"), "check Lightning Bolt in");
+  await sleep(SAVE_WAIT);
+  ok(typeof saved().checkedInAt?.[KK88] === "number", "88.1pre the check stamps a time on the line");
+  await onLedger();
+  await click(recentBtn(), "open Recent");
+  const checkedRow88 = rowWith(/CHECKED/);
+  await click(undoOf(checkedRow88) ?? checkedRow88, "undo the CHECKED row in Recent");
+  await sleep(SAVE_WAIT);
+  eq(saved().received ?? {}, {}, "88.1 scope: the Undo took the count back to 0");
+  eq(saved().checkedInAt ?? {}, {}, "88.1a the Undo leaves no check-in time, since the line had none before the check");
+
+  /* 88.2. one more copy of a line checked in before: its COUNT row's Undo gives back the earlier time */
+  await boot({
+    items: ITEMS,
+    received: { [KB88]: 1 },
+    receivedAt: { [KB88]: EARLIER88 },
+    checkedInAt: { [KB88]: EARLIER88 },
+  });
+  await goTo("packages");
+  await click(oneMore(/Alpha Cards/, "Brainstorm"), "one more Brainstorm");
+  await sleep(SAVE_WAIT);
+  eq(saved().received?.[KB88], 2, "88.2 scope: One more took Brainstorm to 2");
+  ok(
+    typeof saved().checkedInAt?.[KB88] === "number" && saved().checkedInAt[KB88] !== EARLIER88,
+    "88.2pre the rise moved Brainstorm's time off the earlier one"
+  );
+  await onLedger();
+  await click(recentBtn(), "open Recent");
+  const countRow88 = rowWith(/COUNT 1 → 2/);
+  await click(undoOf(countRow88) ?? countRow88, "undo the COUNT row in Recent");
+  await sleep(SAVE_WAIT);
+  eq(saved().received?.[KB88], 1, "88.2 scope: the Undo took Brainstorm back to 1");
+  eq(saved().checkedInAt?.[KB88], EARLIER88, "88.2a the Undo gives Brainstorm its earlier check-in time back");
+
+  /* 88.3. an assign with no earlier time: the Undo notice's Undo leaves Ponder with no time */
+  await fresh();
+  await goTo("orphaned");
+  await record(["Ponder"]);
+  await assign(0);
+  await sleep(SAVE_WAIT);
+  ok(typeof saved().checkedInAt?.[PK88] === "number", "88.3pre the assign stamps a time on Ponder");
+  await click(btn(/^Undo$/), "undo the assign from the notice");
+  await sleep(SAVE_WAIT);
+  eq(saved().received ?? {}, {}, "88.3 scope: the Undo took Ponder back out");
+  eq(saved().checkedInAt ?? {}, {}, "88.3a the Undo of the assign leaves Ponder no check-in time");
+
+  /* 88.4. an assign of a card checked in earlier and taken back since: the Undo gives the earlier time back. A
+     taken-back card keeps its check-in time (an un-check writes no checkedInAt), so the earlier time is still there. */
+  await boot({
+    items: ITEMS,
+    received: {},
+    receivedAt: { [PK88]: EARLIER88 },
+    checkedInAt: { [PK88]: EARLIER88 },
+  });
+  await goTo("orphaned");
+  await record(["Ponder"]);
+  await assign(0);
+  await sleep(SAVE_WAIT);
+  ok(
+    typeof saved().checkedInAt?.[PK88] === "number" && saved().checkedInAt[PK88] !== EARLIER88,
+    "88.4pre the assign moved Ponder's time off the earlier one"
+  );
+  await click(btn(/^Undo$/), "undo the assign from the notice, with an earlier time");
+  await sleep(SAVE_WAIT);
+  eq(saved().received ?? {}, {}, "88.4 scope: the Undo took Ponder back out");
+  eq(saved().checkedInAt?.[PK88], EARLIER88, "88.4a the Undo gives Ponder its earlier check-in time back");
+}
 
 /* ── 66. the Worker is the only voice (owner ruling 2026-10-12, default 5) ──
    The sync line, the Sync panel status, "Last sync" and the staleness clock

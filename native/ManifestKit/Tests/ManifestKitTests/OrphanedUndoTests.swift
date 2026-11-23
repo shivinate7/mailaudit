@@ -159,4 +159,98 @@ final class OrphanedUndoTests: XCTestCase {
         try await model.undoAssign()
         XCTAssertEqual(try box.savedReceived(), [OrphanedSandbox.a1Counter: 1], "an undo with no notice changes nothing")
     }
+
+    /// debt mark-all-undo-keeps-checkin, the assign path. The assign checks Counterspell in and stamps its time. The card had no
+    /// check-in time before the assign, so the Undo, which takes the copy back, leaves it with none.
+    func testUndoOfAnAssignLeavesACardWithNoCheckInTimeWhenItHadNone() async throws {
+        let box = try makeOrphanedSandbox()
+        try box.write(extra: ["envelopes": [OrphanedSandbox.env("e1", [("Counterspell", 1)])]])
+        let (model, _) = try await box.open()
+        box.clock.t = OrphanedSandbox.t0 + 1_000
+        try await model.assign(envelope: "e1", to: OrphanedSandbox.a1)
+        XCTAssertEqual(try box.savedCheckedInAt()[OrphanedSandbox.a1Counter], OrphanedSandbox.t0 + 1_000,
+                       "scope: the assign stamped the card's check-in time")
+        box.clock.t = OrphanedSandbox.t0 + 2_000
+
+        try await model.undoAssign()
+
+        XCTAssertEqual(try box.savedReceived(), [String: Int](), "scope: the undo took the copy back out")
+        XCTAssertNil(try box.savedCheckedInAt()[OrphanedSandbox.a1Counter],
+                     "the undo of an assign left a check-in time on a card that had none before the assign")
+    }
+
+    /// debt mark-all-undo-keeps-checkin, the assign path with an earlier time. The card was checked in earlier and taken back, so
+    /// its time is still in the file (an un-check writes none). The assign stamps now; the Undo gives the earlier time back.
+    func testUndoOfAnAssignPutsAnEarlierCheckInTimeBack() async throws {
+        let box = try makeOrphanedSandbox()
+        let earlier = OrphanedSandbox.t0 - 60_000
+        try box.write(extra: [
+            "envelopes": [OrphanedSandbox.env("e1", [("Counterspell", 1)])],
+            "checkedInAt": [OrphanedSandbox.a1Counter: earlier],
+        ])
+        let (model, _) = try await box.open()
+        box.clock.t = OrphanedSandbox.t0 + 1_000
+        try await model.assign(envelope: "e1", to: OrphanedSandbox.a1)
+        XCTAssertEqual(try box.savedCheckedInAt()[OrphanedSandbox.a1Counter], OrphanedSandbox.t0 + 1_000,
+                       "scope: the assign stamped the card's check-in time")
+        box.clock.t = OrphanedSandbox.t0 + 2_000
+
+        try await model.undoAssign()
+
+        XCTAssertEqual(try box.savedReceived(), [String: Int](), "scope: the undo took the copy back out")
+        XCTAssertEqual(try box.savedCheckedInAt()[OrphanedSandbox.a1Counter], earlier,
+                       "the undo of an assign did not give the card its earlier check-in time back")
+    }
+
+    /// debt mark-all-undo-keeps-checkin, F3: a stepper check-in after the assign. The assign took one Brainstorm. A stepper then
+    /// took the second copy at 1 500 (a store write, as the hand-edit case above). The Undo takes only the assign's copy, and
+    /// must keep the 1 500 time of the stepper's check-in, not give back the time from before the assign.
+    func testUndoOfAnAssignKeepsAStepperCheckInAfterIt() async throws {
+        let box = try makeOrphanedSandbox()
+        try box.write(extra: ["envelopes": [OrphanedSandbox.env("e1", [("Brainstorm", 1)])]])
+        let (model, store) = try await box.open()
+        box.clock.t = OrphanedSandbox.t0 + 1_000
+        try await model.assign(envelope: "e1", to: OrphanedSandbox.a1)
+        XCTAssertEqual(try box.savedCheckedInAt()[OrphanedSandbox.a1Brain], OrphanedSandbox.t0 + 1_000,
+                       "anchor: the assign stamped Brainstorm's check-in time")
+        box.clock.t = OrphanedSandbox.t0 + 1_500
+        try store.commitReceived(OrphanedSandbox.a1Brain, count: 2)
+        XCTAssertEqual(try box.savedCheckedInAt()[OrphanedSandbox.a1Brain], OrphanedSandbox.t0 + 1_500,
+                       "anchor: the stepper's check-in stamped 1 500")
+        box.clock.t = OrphanedSandbox.t0 + 2_000
+
+        try await model.undoAssign()
+
+        XCTAssertEqual(try box.savedReceived(), [OrphanedSandbox.a1Brain: 1], "scope: the Undo took the assign's copy, and kept the stepper's")
+        XCTAssertEqual(try box.savedCheckedInAt()[OrphanedSandbox.a1Brain], OrphanedSandbox.t0 + 1_500,
+                       "the Undo of an assign gave Brainstorm the time from before the assign and lost the stepper's check-in time")
+    }
+
+    /// debt mark-all-undo-keeps-checkin, F4: the count is already 0. Counterspell was checked in earlier and then taken back, so
+    /// its time is still in the file. The assign checks it in again, and an un-check takes the count to 0 before the Undo. The
+    /// Undo must still give the card its earlier time back, as the web does (web test 88.4): at count 0 it must not read as
+    /// checked in today.
+    func testUndoOfAnAssignAfterAnUnCheckStillRestoresTheEarlierTime() async throws {
+        let box = try makeOrphanedSandbox()
+        let earlier = OrphanedSandbox.t0 - 60_000
+        try box.write(extra: [
+            "envelopes": [OrphanedSandbox.env("e1", [("Counterspell", 1)])],
+            "checkedInAt": [OrphanedSandbox.a1Counter: earlier],
+        ])
+        let (model, store) = try await box.open()
+        box.clock.t = OrphanedSandbox.t0 + 1_000
+        try await model.assign(envelope: "e1", to: OrphanedSandbox.a1)
+        XCTAssertEqual(try box.savedCheckedInAt()[OrphanedSandbox.a1Counter], OrphanedSandbox.t0 + 1_000,
+                       "anchor: the assign stamped Counterspell's check-in time")
+        box.clock.t = OrphanedSandbox.t0 + 1_500
+        try store.commitReceived(OrphanedSandbox.a1Counter, count: 0)
+        XCTAssertEqual(try box.savedReceived(), [String: Int](), "anchor: the un-check took the count to 0")
+        box.clock.t = OrphanedSandbox.t0 + 2_000
+
+        try await model.undoAssign()
+
+        XCTAssertEqual(try box.savedReceived(), [String: Int](), "scope: the count stays at 0")
+        XCTAssertEqual(try box.savedCheckedInAt()[OrphanedSandbox.a1Counter], earlier,
+                       "the Undo of an assign at count 0 left the assign's time, so Counterspell reads as checked in today")
+    }
 }

@@ -108,6 +108,30 @@ final class PackageBulkModelTests: XCTestCase {
         XCTAssertEqual(model.done[Self.a2], false, "a2 no longer reads done")
     }
 
+    /// debt mark-all-undo-keeps-checkin, F2: a later rise while the Undo is held. A remote apply, written to the store as the
+    /// other cases here write one, un-checks a2 at 2 000 and checks it in again at 2 500. A Worker apply does not end the held
+    /// Undo, so the Undo lowers a2 and must keep the 2 500 time of that rise, not give back the time from before the Mark all.
+    func testUndoOfAMarkAllKeepsALaterRiseFromAWorkerApply() async throws {
+        let clock = PressClock(1_000)
+        let (model, store) = try await rig(received: [Self.a1: 1, Self.f1: 1], clock: clock)
+        try await bulking(model).bulk(gk: Self.gk, on: true)
+        XCTAssertEqual(store.checkedInAt()[Self.a2], 1_000, "anchor: Mark all stamped a2's check-in with the press time")
+        clock.t = 2_000
+        try store.commitReceived(Self.a2, count: 0)
+        clock.t = 2_500
+        try store.commitReceived(Self.a2, count: 1)
+        try await model.load()
+        XCTAssertEqual(model.bulkUndoGk, Self.gk, "anchor: a remote apply does not end the held Undo")
+        XCTAssertEqual(store.checkedInAt()[Self.a2], 2_500, "anchor: the rise from the apply stamped 2 500")
+
+        clock.t = 3_000
+        try await bulking(model).undoBulk()
+
+        XCTAssertNil(store.received()[Self.a2], "scope: the Undo took a2's remaining copy back out")
+        XCTAssertEqual(store.checkedInAt()[Self.a2], 2_500,
+                       "the Undo of a Mark all gave a2 the time from before the press and lost the later rise's check-in time")
+    }
+
     /// The Undo is for the last Mark all. A check-in the owner makes through the model is the next write on this device and
     /// ends it, so a later undo call writes nothing.
     func testACheckInEndsTheUndo() async throws {

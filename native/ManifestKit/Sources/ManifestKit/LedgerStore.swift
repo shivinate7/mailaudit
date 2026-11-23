@@ -161,10 +161,32 @@ public final class LedgerStore {
 
     /// Mark all, Clear and an Undo: every key goes to its count (0 un-checks it) in one save at one clock reading, as the
     /// web's single touchReceived call stamps every key. A failed save leaves the ledger as it was.
-    public func commitReceived(_ counts: [String: Int], checkIn: Bool = true) throws {
+    /// `checkedInBack` is the Undo of a Mark all: a key whose count the Undo lowers gets back its time from before the Mark
+    /// all, unless a later check-in has moved it (see `CheckedInHeld`).
+    public func commitReceived(_ counts: [String: Int], checkIn: Bool = true, checkedInBack: CheckedInHeld? = nil) throws {
         guard !counts.isEmpty else { return }
         let time = now()
-        try commit { for (key, count) in counts { setReceived(key, count: count, at: time, checkIn: checkIn) } }
+        try commit {
+            for (key, count) in counts {
+                let before = (doc["received"] as? [String: Any])?[key] as? Int ?? 0
+                setReceived(key, count: count, at: time, checkIn: checkIn)
+                if let back = checkedInBack, count < before { giveBackCheckedIn(key, back) }
+            }
+        }
+    }
+
+    /// The Undo of a check-in puts the line's time back to what it was before the act, but only while the time is still the
+    /// one the act left. A later rise, a stepper or a Worker apply, has moved it, and that real check-in stays.
+    func giveBackCheckedIn(_ key: String, _ held: CheckedInHeld) {
+        if checkedInAt()[key] == held.stamped[key] { setCheckedIn(key, to: held.before[key]) }
+    }
+
+    /// Puts one line's check-in time to `time`, or removes it when `time` is nil: the Undo of a check-in gives the line the
+    /// time it held before (the web's undoEntry). With setReceived, the only writer of `checkedInAt`.
+    func setCheckedIn(_ key: String, to time: Double?) {
+        var ci = doc["checkedInAt"] as? [String: Any] ?? [:]
+        if let time { ci[key] = time } else { ci.removeValue(forKey: key) }
+        doc["checkedInAt"] = ci
     }
 
     public func setStamp(_ key: String, kind: String, note: String, at: String) {
@@ -236,6 +258,14 @@ public final class LedgerStore {
             throw error
         }
     }
+}
+
+/// The check-in times around one act that an Undo may reverse (a Mark all, an assign): each line's time `before` the act, and
+/// the time the act left (`stamped`). A line absent from a map has no time.
+public struct CheckedInHeld: Equatable, Sendable {
+    let before: [String: Double]
+    let stamped: [String: Double]
+    static let none = CheckedInHeld(before: [:], stamped: [:])
 }
 
 public enum LedgerEditError: Error, Equatable { case noLiveEnvelope(String) }

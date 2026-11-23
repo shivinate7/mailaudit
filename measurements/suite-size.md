@@ -1,8 +1,8 @@
 # Test suite assertion count and run time
 
-**Status:** measured 2026-11-23 at `4e95f2fd`, on `checkin-time-field` (PR 408), by CI run 45126087251 (`TZ=America/New_York`, the three suite parts summed by `check:docs`): 1796 passed, 0 failed. The part split is unmeasured. UTC: unmeasured (one fewer by the 38.9 rule). The rise from 1777 is 19, from the check-in time cases of PR 408 (group 86 and 50.B5a); main's figure was not re-measured between. The recent-rules cases run in their own script and are not in this count. Earlier figures are in git.
+**Status:** measured 2026-11-23 at `8c3e620b` plus the Undo change on `undo-clears-checkin`, by a local `TZ=America/New_York node test/app.test.mjs` run: 1816 passed, 0 failed. The part split is unmeasured. UTC: unmeasured (one fewer by the 38.9 rule). The rise from 1796 is 20, from the Undo check-in time cases (groups 87 and 88); main's figure was not re-measured between. The recent-rules cases run in their own script and are not in this count. Earlier figures are in git.
 
-This record holds the assertion count and the run time for `npm test`. The suite runs 1796 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
+This record holds the assertion count and the run time for `npm test`. The suite runs 1816 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
 The count depends on the clock's zone, so the zone is pinned to `America/New_York`. In CI, the three part steps set `TZ`, and the `docs` job names their three logs in `CHECK_DOCS_SUITE_LOG`. The part split is unmeasured since 2026-11-16 (it was 296, 530 and 893 on 2026-11-15, summing to 1719); only the total is current. `check:docs` grades the figure in this sentence. Locally, `npm run check:docs` runs the suite itself and waits for it to end.
 
