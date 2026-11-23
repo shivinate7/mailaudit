@@ -16,6 +16,7 @@ import {
   isLiveEnvelope,
   tombstoneOf,
   restampRestore,
+  isCheckIn,
   mergeSummary,
   canon,
 } from "./merge-rules.mjs";
@@ -3138,6 +3139,10 @@ export default function MailDayLedger() {
   /* item key -> ms of its last check or un-check; what lets the two-device merge
      carry an un-check. Persisted: invariant saved-state-shape. */
   const [receivedAt, setReceivedAt] = useState({});
+  /* item key -> ms of its last real check-in (a count that rose). A check-in writes it; an un-check,
+     a "One fewer" and a restore never do. The end-of-day pile reads it.
+     Persisted: invariant saved-state-shape, plan check-in-time-field. */
+  const [checkedInAt, setCheckedInAt] = useState({});
   const [opened, setLoaded] = useState(false);
   /* the raw saved text when a list field is present but the wrong shape; the
      load stopped, so `loaded` stays false and nothing writes or syncs. */
@@ -3370,14 +3375,22 @@ export default function MailDayLedger() {
   });
   /* the newest ledger fields an undo or a logged action reads, set on render like payloadRef */
   const ledgerRef = useRef(null);
-  ledgerRef.current = { items, received, receivedAt, stamps, envelopes };
-  /* the one writer for receivedAt: every check or un-check calls it */
-  const touchReceived = useCallback((keys, now = Date.now()) => {
+  ledgerRef.current = { items, received, receivedAt, checkedInAt, stamps, envelopes };
+  /* the one writer for receivedAt: every check or un-check calls it, with each key's count before
+     and after. A key whose count rose is a check-in and also takes checkedInAt (isCheckIn). */
+  const touchReceived = useCallback((changes, now = Date.now()) => {
     setReceivedAt((prev) => {
       const next = { ...prev };
-      for (const k of keys) next[k] = now;
+      for (const { key } of changes) next[key] = now;
       return next;
     });
+    const rose = changes.filter((c) => isCheckIn(c.before, c.after));
+    if (rose.length)
+      setCheckedInAt((prev) => {
+        const next = { ...prev };
+        for (const { key } of rose) next[key] = now;
+        return next;
+      });
   }, []);
   const saveTimer = useRef(null);
   const skipFirstSave = useRef(true);
@@ -3432,6 +3445,8 @@ export default function MailDayLedger() {
           setReceived(data.received || {});
           // absent on anything saved before receivedAt shipped
           setReceivedAt(data.receivedAt || {});
+          // absent on anything saved before checkedInAt shipped
+          setCheckedInAt(data.checkedInAt || {});
           // absent on anything saved before orphaned mail shipped;
           // photos absent on anything saved before photos shipped
           setEnvelopes(
@@ -3479,6 +3494,7 @@ export default function MailDayLedger() {
             items,
             received,
             receivedAt,
+            checkedInAt,
             envelopes,
             stamps,
             ...(recent.length && { recent }),
@@ -3495,14 +3511,14 @@ export default function MailDayLedger() {
       }
     }, 500);
     return () => clearTimeout(saveTimer.current);
-  }, [items, received, receivedAt, envelopes, stamps, recent, dateFilter, sortBy, itemSort, loaded]);
+  }, [items, received, receivedAt, checkedInAt, envelopes, stamps, recent, dateFilter, sortBy, itemSort, loaded]);
 
   /* The last Worker agreement is device-local and survives a reload, but a
      successful sync must not flash the save indicator (decision
      remote-sync-is-off-the-save-path). So it has its own silent write, which
      reads the newest ledger fields from a ref. */
   const payloadRef = useRef(null);
-  payloadRef.current = { items, received, receivedAt, envelopes, stamps, ...(recent.length && { recent }), dateFilter, sortBy, itemSort };
+  payloadRef.current = { items, received, receivedAt, checkedInAt, envelopes, stamps, ...(recent.length && { recent }), dateFilter, sortBy, itemSort };
   useEffect(() => {
     if (!loaded || !workerSyncedAt) return;
     const t = bgTimeout(() => {
@@ -3627,6 +3643,7 @@ export default function MailDayLedger() {
       items,
       received,
       receivedAt,
+      checkedInAt,
       envelopes,
       stamps,
       ...(recent.length && { recent }),
@@ -3635,7 +3652,7 @@ export default function MailDayLedger() {
       itemSort,
       ...(savedAtRef.current != null && { savedAt: savedAtRef.current }),
     }),
-    [items, received, receivedAt, envelopes, stamps, recent, dateFilter, sortBy, itemSort]
+    [items, received, receivedAt, checkedInAt, envelopes, stamps, recent, dateFilter, sortBy, itemSort]
   );
 
   /* Two backups on purpose. The plain one is small and quick and holds the
@@ -3819,6 +3836,7 @@ export default function MailDayLedger() {
       setItems(data.items);
       setReceived(data.received || {});
       setReceivedAt(stamped.receivedAt || {});
+      setCheckedInAt(stamped.checkedInAt || {});
       setEnvelopes(
         (stamped.envelopes || []).map((e) => ({
           ...e,
@@ -3951,7 +3969,7 @@ export default function MailDayLedger() {
     const now = Date.now();
     const before = Number(ledgerRef.current.received[key]) || 0;
     const after = n > 0 ? n : 0;
-    touchReceived([key], now);
+    touchReceived([{ key, before, after }], now);
     if (before !== after) logAction({ kind: "count", key, before, after, at: now });
     setReceived((prev) => {
       const next = { ...prev };
@@ -4038,7 +4056,14 @@ export default function MailDayLedger() {
 
   const bulkSet = useCallback((pkgItems, on) => {
     const now = Date.now();
-    touchReceived(pkgItems.map((it) => it.key), now);
+    touchReceived(
+      pkgItems.map((it) => ({
+        key: it.key,
+        before: Number(ledgerRef.current.received[it.key]) || 0,
+        after: on ? it.qty : 0,
+      })),
+      now
+    );
     const counts = pkgItems
       .map((it) => ({
         key: it.key,
@@ -4125,6 +4150,7 @@ export default function MailDayLedger() {
     setItems([]);
     setReceived({});
     setReceivedAt({});
+    setCheckedInAt({});
     /* envelopes have to go too — left in state they'd be written straight back
        by the next debounced save and reappear pointing at a ledger that's gone */
     setEnvelopes([]);
@@ -4709,6 +4735,7 @@ export default function MailDayLedger() {
     items: l.items || [],
     received: l.received || {},
     receivedAt: l.receivedAt || {},
+    checkedInAt: l.checkedInAt || {},
     envelopes: l.envelopes || [],
     stamps: l.stamps || {},
   });
@@ -5044,7 +5071,7 @@ export default function MailDayLedger() {
       if (lastServer.current && !lacksRef.current(lastServer.current)) return;
       postRef.current();
     }, SYNC_POST_MS);
-  }, [items, received, receivedAt, envelopes, stamps, loaded]);
+  }, [items, received, receivedAt, checkedInAt, envelopes, stamps, loaded]);
 
   /* unmount stops every pending background timer, so none fires into a dead app */
   useEffect(
@@ -5144,7 +5171,13 @@ export default function MailDayLedger() {
       for (const it of cand.pkg.items) qtyOf[it.key] = it.qty;
 
       const now = Date.now();
-      touchReceived(cand.plan.map((p) => p.itemKey), now);
+      touchReceived(
+        cand.plan.map((p) => {
+          const before = Number(ledgerRef.current.received[p.itemKey]) || 0;
+          return { key: p.itemKey, before, after: before + p.take };
+        }),
+        now
+      );
       setReceived((prev) => {
         const next = { ...prev };
         for (const { itemKey, take } of cand.plan) {

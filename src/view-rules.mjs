@@ -573,7 +573,7 @@ export const countLine = (view, { packages, uniqueItems, envelopes }, range) => 
 
 /* Lane B1 (saved-state-shape, native-ledger-is-raw-json): keep every entry of a
    ledger that can be read, drop the rest. Pure: data -> { data, dropped }; the
-   input is never changed. Checked fields are received and receivedAt (counts and
+   input is never changed. Checked fields are received, receivedAt and checkedInAt (counts and
    times, numbers), stamps (objects), envelopes (objects with a string id). A field
    that is absent is not damage; a field of the wrong shape, JSON null included,
    is dropped whole and counts 1. Each dropped entry counts 1. */
@@ -581,6 +581,7 @@ const isRecord = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 const SALVAGE = {
   received: (v) => typeof v === "number" && Number.isFinite(v),
   receivedAt: (v) => typeof v === "number" && Number.isFinite(v),
+  checkedInAt: (v) => typeof v === "number" && Number.isFinite(v),
   stamps: isRecord,
   envelopes: (e) => isRecord(e) && typeof e.id === "string",
 };

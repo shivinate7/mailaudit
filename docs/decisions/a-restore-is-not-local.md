@@ -10,7 +10,7 @@ A restore is a change the person made now. `restampRestore` (in `src/merge-rules
 
 **Holds while:** `restampRestore` in `src/merge-rules.mjs` stamps no `tracking`.
 
-**Ruled, not built: a second restore stamp.** Owner waiting-page item 107, answer b, "ignore restore stamps" (2026-11-21 20:26 to 20:28 CST). A second stamp in saved data, optional and defaulted, on web and phone, with a merge rule. It is a synced field, not device-local; see `saved-state-shape`.
+**Built: a check-in time, not a restore stamp.** Owner waiting-page item 107, answer b, "ignore restore stamps" (2026-11-21 20:26 to 20:28 CST). The second field is `checkedInAt`, a synced map of the time of each line's last real check-in (a count that rises). `restampRestore` returns the backup's `checkedInAt` as it was and never stamps it with the restore time, so the end-of-day pile shows only real check-ins. `mergeReceived` merges it: each key takes the value of the side that won that key's `receivedAt`, and a tie takes the later check-in time. Pinned by R4.9 in `test/recent-rules.test.mjs` and 50.B5a in `test/app.test.mjs`. See `saved-state-shape`.
 
 The two-tap control said "replace everything", which reads as local. The control copy that named the backup is no longer in `src/app.jsx`. Its current wording is unmeasured.
 

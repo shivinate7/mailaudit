@@ -151,7 +151,7 @@ export async function route(request, env, store, now = Date.now()) {
 export async function mergeIntoStore(incoming, store, now, refresh = null) {
   if (!incoming || incoming.mailday !== 1 || !Array.isArray(incoming.items))
     return { status: 400, body: { error: "bad ledger" } };
-  /* a received, receivedAt, stamps or envelopes of the wrong shape never reaches the store */
+  /* a received, receivedAt, checkedInAt, stamps or envelopes of the wrong shape never reaches the store */
   if (salvageLedger(incoming).dropped) return { status: 400, body: { error: "bad ledger" } };
 
   /* a stored ledger saved before the shape check shipped is mended before the merge;

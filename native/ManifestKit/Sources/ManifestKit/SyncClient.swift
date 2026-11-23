@@ -363,7 +363,7 @@ public final class SyncClient {
         // The four fields are always present after a load, so an empty carried map matches a store with no user data.
         func norm(_ d: [String: Any]) -> NSDictionary {
             var out = d
-            for k in ["received", "receivedAt", "stamps"] where out[k] == nil { out[k] = [String: Any]() }
+            for k in ["received", "receivedAt", "checkedInAt", "stamps"] where out[k] == nil { out[k] = [String: Any]() }
             if out["envelopes"] == nil { out["envelopes"] = [Any]() }
             return out as NSDictionary
         }

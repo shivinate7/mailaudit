@@ -1,6 +1,6 @@
 # Check-in time field (items 107 b and 127 c)
 
-**Status:** planned, not built. Starts after PR 390 (Hand end-of-day list) merges. A Plan agent and a refuter read it on 2026-11-22. The refuter's verdict was holds with changes; the changes are folded in below.
+**Status:** built. A Plan agent and a refuter read it on 2026-11-22. The refuter's verdict was holds with changes; the changes are folded in below.
 
 Decisions: `a-restore-is-not-local` (item 107 b), `duo-card-in-hand`. Invariant: `saved-state-shape`. Debt it retires: `hand-pile-counts-one-fewer`.
 

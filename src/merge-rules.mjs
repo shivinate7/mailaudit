@@ -102,6 +102,10 @@ export function mergeItems(base, incoming, opts = {}) {
   return { items: [...map.values()], added, refreshed, renamed };
 }
 
+/* A check-in is a count that rises. An un-check, a "One fewer" and a restore are not. The one
+   test every writer of `checkedInAt` asks (plan check-in-time-field). */
+export const isCheckIn = (before, after) => (Number(after) || 0) > (Number(before) || 0);
+
 /* Per-key, later change wins. `baseAt` / `incomingAt` map a key to the ms of its
    last change. A key ABSENT from `received` but carrying a time is an un-check.
    Equal times take the max count. If either side has no time for a key (a ledger
@@ -109,14 +113,24 @@ export function mergeItems(base, incoming, opts = {}) {
    older ledger merges by the old rule, except that a timed absence beats an
    untimed count. `added` counts positive increases; `removed` counts keys whose
    count this merge lowered or cleared.
-   The merged time map is the union, later time per key. */
-export function mergeReceived(base, incoming, baseAt, incomingAt) {
+   The merged time map is the union, later time per key.
+
+   `baseCheckedIn` / `incomingCheckedIn` map a key to the time of its last real check-in
+   (`checkedInAt`, plan check-in-time-field). This is the field's one home: each key takes the
+   value of the side that won that key's `receivedAt`, so a reply older than a restore cannot put
+   back a false check-in. When the two `receivedAt` values tie, the later check-in time wins, so the
+   merge does not depend on the side order. A key the winner holds no value for is left out, and
+   reads as no check-in. */
+export function mergeReceived(base, incoming, baseAt, incomingAt, baseCheckedIn, incomingCheckedIn) {
   const bAt = baseAt || {};
   const iAt = incomingAt || {};
   const b = base || {};
   const i = incoming || {};
+  const bCi = baseCheckedIn || {};
+  const iCi = incomingCheckedIn || {};
   const received = {};
   const receivedAt = {};
+  const checkedInAt = {};
   let added = 0;
   let removed = 0;
   const keys = new Set([
@@ -124,6 +138,8 @@ export function mergeReceived(base, incoming, baseAt, incomingAt) {
     ...Object.keys(i),
     ...Object.keys(bAt),
     ...Object.keys(iAt),
+    ...Object.keys(bCi),
+    ...Object.keys(iCi),
   ]);
   for (const k of keys) {
     const mine = Number(b[k]) || 0;
@@ -138,8 +154,12 @@ export function mergeReceived(base, incoming, baseAt, incomingAt) {
     if (n > mine) added += n - mine;
     if (n < mine) removed++;
     if (ta || tb) receivedAt[k] = Math.max(ta, tb);
+    const ca = Number(bCi[k]) || 0;
+    const cb = Number(iCi[k]) || 0;
+    const c = ta === tb ? Math.max(ca, cb) : ta > tb ? ca : cb;
+    if (c) checkedInAt[k] = c;
   }
-  return { received, receivedAt, added, removed };
+  return { received, receivedAt, checkedInAt, added, removed };
 }
 
 /* Union by id, newest-first by createdAt.
@@ -233,7 +253,7 @@ export function mergeStamps(base, incoming) {
    converge on one. A new persisted key still needs invariant saved-state-shape's
    five sites in app.jsx; this file only keeps an unnamed one alive. */
 const KNOWN_KEYS = new Set([
-  "mailday", "items", "received", "receivedAt", "envelopes", "stamps",
+  "mailday", "items", "received", "receivedAt", "checkedInAt", "envelopes", "stamps",
   "dateFilter", "sortBy", "itemSort", "recent",
 ]);
 
@@ -273,11 +293,16 @@ export function mergeLedger(local, incoming, now = Date.now()) {
     local?.received,
     incoming?.received,
     local?.receivedAt,
-    incoming?.receivedAt
+    incoming?.receivedAt,
+    local?.checkedInAt,
+    incoming?.checkedInAt
   );
   const envelopes = mergeEnvelopes(local?.envelopes, incoming?.envelopes);
   const stamps = mergeStamps(local?.stamps, incoming?.stamps);
   const holdsRecent = Object.hasOwn(local || {}, "recent") || Object.hasOwn(incoming || {}, "recent");
+  /* like `recent`: the merged ledger gains the key only when a side holds one, so a ledger from
+     before the field merges with itself to itself and the Worker writes nothing */
+  const holdsCheckedIn = Object.hasOwn(local || {}, "checkedInAt") || Object.hasOwn(incoming || {}, "checkedInAt");
   return {
     merged: {
       ...carryUnknownKeys(local, incoming),
@@ -286,6 +311,7 @@ export function mergeLedger(local, incoming, now = Date.now()) {
       items: items.items,
       received: received.received,
       receivedAt: received.receivedAt,
+      ...(holdsCheckedIn && { checkedInAt: received.checkedInAt }),
       envelopes: envelopes.envelopes,
       stamps: stamps.stamps,
       dateFilter: local?.dateFilter,
@@ -306,7 +332,8 @@ export function mergeLedger(local, incoming, now = Date.now()) {
 
 /* A restore is a change the person made now, so every check-in key, stamp and
    envelope in either ledger takes `now` as its change time (owner ruling
-   2026-10-15, restore-must-stick). Without that, a later reply from the other
+   2026-10-15, restore-must-stick). The check-in time is the exception: a restore is no
+   check-in, so the backup's `checkedInAt` comes back as it was (owner item 107 b). Without that, a later reply from the other
    device (older than the restore, newer than the version) wins the merge and
    undoes the restore. That holds for a key the restore leaves as it was and for
    one this device never held, so the rule is all of them, not the ones that
@@ -327,7 +354,7 @@ export function restampRestore(cur, data, now) {
   const envelopes = (data.envelopes || []).map((e) => ({ ...e, updatedAt: now }));
   const kept = new Set(envelopes.map((e) => e.id));
   for (const c of cur.envelopes || []) if (!kept.has(c.id)) envelopes.push(tombstoneOf(c, now));
-  return { receivedAt, stamps, envelopes };
+  return { receivedAt, checkedInAt: { ...(data.checkedInAt || {}) }, stamps, envelopes };
 }
 
 /* Phrasing for the merge notice. Here rather than in app.jsx because it is

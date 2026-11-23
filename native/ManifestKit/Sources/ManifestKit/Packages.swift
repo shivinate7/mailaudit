@@ -362,7 +362,7 @@ public final class PackagesModel {
         endBulkUndo()
         do {
             let counts = try await BulkRules.undone(takes, received: store.received(), engine: engine)
-            try store.commitReceived(counts)
+            try store.commitReceived(counts, checkIn: false)
         } catch {
             fail("Could not take back the check-ins. \(error.localizedDescription)")
             throw error

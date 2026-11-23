@@ -96,7 +96,6 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `checkin-error-bar-is-sans` — The native check-in error bar is set in sans on material.
 - `hand-open-under-bar-at-l` — At AccessibilityL the Card in Hand control sits under the tab bar.
 - `hand-tap-label-unpinned` — No test pins the tapped name's sideways place.
-- `hand-pile-counts-one-fewer` — A same-day "One fewer" on an earlier copy shows its envelope as checked in today (named limit, owner ruling 2026-11-22).
 - `duo-left-page-dead-margin` — The Duo left page scrolls past its end by the bar's height, which no run has measured (a `DuoShellUITests` comment caps the bar at 76 pt); low priority, after restyle's step 8.
 - `duo-hand-first-case-timeout` — A Duo UI wait times out in CI while its value is already right.
 - `duo-keys-minimize-pref` — A simulator keyboard preference fails the Duo keys-up tests.
