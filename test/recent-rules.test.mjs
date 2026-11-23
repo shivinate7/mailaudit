@@ -310,6 +310,14 @@ eq(
   eq(applied.items[0].tracking, "with tracking", "R4.8a and keeps the restored version's tracking");
 }
 {
+  // plan check-in-time-field: a restore keeps the check-in time the backup holds. It never stamps it with now.
+  const KC = "A1|0|pLightningBolt";
+  const data = ledger({ received: { [KC]: 2 }, receivedAt: { [KC]: 1234 }, checkedInAt: { [KC]: 1234 } });
+  const res = restampRestore(ledger({ received: { [KC]: 2 }, receivedAt: { [KC]: T(20) }, checkedInAt: { [KC]: T(20) } }), data, NOW);
+  eq(res.checkedInAt, { [KC]: 1234 }, "R4.9 a restore keeps the check-in time the backup holds");
+  ok(!Object.values(res.checkedInAt ?? {}).includes(NOW), "R4.9a control: no check-in time is stamped with the restore's now");
+}
+{
   // check X, check Y, uncheck X, check Z, check X: only the newest step on X is live
   const K3 = "A1|2|pBrainstorm";
   const items3 = [...ITEMS, { key: K3, qty: 4 }];
