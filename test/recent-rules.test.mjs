@@ -550,6 +550,72 @@ eq(
     "R6.14a the undo gives K its earlier time back, and K2, which had none before the assign, has none"
   );
 }
+/* R6.15 (F1, debt mark-all-undo-keeps-checkin). A later rise on a line must survive an older row's Undo. Each row is logged
+   through addEntry, so this is the log the app keeps: row A (1000, K 0 to 1, none before), row Y (1500, another card), and row
+   B (2000, K 1 to 2, 1000 before). Undo of A takes its own count out and leaves K's time at B's 2000, not A's checkedBefore.
+   The variant with 500 before A is the same. The log is passed, so the row's guards read it. */
+{
+  const rows = (aBefore) => {
+    const a = { id: "fa", at: T(10), kind: "count", key: K, before: 0, after: 1, checkedBefore: aBefore };
+    const y = { id: "fy", at: T(15), kind: "count", key: K2, before: 0, after: 1, checkedBefore: null };
+    const b = { id: "fb", at: T(20), kind: "count", key: K, before: 1, after: 2, checkedBefore: T(10) };
+    let s = add([], a, null);
+    s = add(s.log, y, s.lastId);
+    s = add(s.log, b, s.lastId);
+    return { a, log: s.log };
+  };
+  const l = ledger({
+    received: { [K]: 2, [K2]: 1 },
+    receivedAt: { [K]: T(20), [K2]: T(15) },
+    checkedInAt: { [K]: T(20), [K2]: T(15) },
+  });
+  for (const [aBefore, name] of [
+    [null, "R6.15"],
+    [T(5), "R6.15b"],
+  ]) {
+    const { a, log } = rows(aBefore);
+    eq(log.length, 3, `${name} scope: the three rows stay three, since the row on K2 breaks the chain`);
+    eq(api("rowState")(a, log, l), "live", `${name} scope: the 1000 row is still live under the later rise`);
+    const res = api("undoEntry")(a, l, NOW, { log });
+    eq(res?.ledger?.received?.[K], 1, `${name} scope: the undo takes its own count out and keeps B's`);
+    eq(res?.ledger?.checkedInAt?.[K], T(20), `${name} the undo of an older row keeps the later rise's time, 2000, not its checkedBefore`);
+  }
+}
+/* R6.16 (F1, no false today). A row that merges into one that ends in an un-check keeps the un-check's `at`, but the line's time
+   is the rise's. Rise (1 to 2, 1000 before, at T(20)) and un-check (2 to 0, at T(30)) merge into one row at T(30) with
+   checkedBefore T(10). Its Undo takes the copies back and leaves the time at the rise's T(20): the un-check is no check-in. */
+{
+  const rise = { id: "m16a", at: T(20), kind: "count", key: K, before: 1, after: 2, checkedBefore: T(10) };
+  const unc = { id: "m16b", at: T(30), kind: "count", key: K, before: 2, after: 0, checkedBefore: T(20) };
+  let s = add([], rise, null);
+  s = add(s.log, unc, s.lastId);
+  eq(s.log.length, 1, "R6.16 scope: the un-check merges into the rise's row");
+  const merged = s.log[0];
+  eq(merged.at, T(30), "R6.16 scope: the merged row keeps the un-check's time");
+  const l = ledger({ received: {}, receivedAt: { [K]: T(30) }, checkedInAt: { [K]: T(20) } });
+  eq(api("rowState")(merged, s.log, l), "live", "R6.16 scope: the merged row is live under the un-check");
+  const res = api("undoEntry")(merged, l, NOW, { log: s.log });
+  eq(res?.ledger?.received, { [K]: 1 }, "R6.16 scope: the undo puts back the copy the un-check took");
+  eq(res?.ledger?.checkedInAt?.[K], T(20), "R6.16a the undo keeps the rise's time, T(20), not the un-check's at (T(30)) or checkedBefore");
+}
+/* R6.17 (F4, control). An assign's Undo restores the earlier time when an un-check already took the count to 0 (web test 88.4 does
+   this in the app). The web has no false today at count 0, so this pins it, and the native case must match it. */
+{
+  const E17 = T(3);
+  const before = E("e17", T(5), [{ name: "Lightning Bolt", qty: 1 }]);
+  const after = E("e17", T(10), []);
+  const r = assign("a17", T(10), [{ itemKey: K, take: 1, checkedBefore: E17 }], before, after, T(10));
+  const l = ledger({
+    received: {},
+    receivedAt: { [K]: T(15) },
+    checkedInAt: { [K]: T(10) },
+    envelopes: [after],
+  });
+  eq(state(r, [r], l), "live", "R6.17 scope: the assign is live with the card at 0 after an un-check");
+  const u = undo(r, l);
+  eq(u?.ledger?.received, {}, "R6.17 scope: the count stays at 0");
+  eq(u?.ledger?.checkedInAt, { [K]: E17 }, "R6.17a the undo gives the earlier time back at count 0, so the card is not checked in today");
+}
 
 /* ---------- R7 isLive ---------- */
 
