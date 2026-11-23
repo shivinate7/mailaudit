@@ -1,0 +1,63 @@
+{
+  "added": "2026-11-23T09:17:00Z",
+  "context": "Goal: the tracking-stamp merge fix and the check-in time fix reach the live Worker, so the phone gets them.\nProblem (risk): deploying main b3ccea4e would also take live everything built since the live Worker version 320c719d (2026-10-28), including POST /orders and GET /orders/status, the Recent-log merge and the CSV re-import refresh, while your deploy ruling (\"Deploy both together after PR 390 merges\", item 124 b) names only the two fixes; a live Worker change touches real check-in data, so only you say how far it reaches.\nBased on (read): `wrangler deployments list` shows the live code from 2026-10-28, and `git log` on worker/ and src/ lists the other changes (read by the coordinator).\nBased on (ruling): item 124 b; PR 390 merged 2026-11-22 23:42 CST, PR 408 (check-in time) merged 2026-11-23 03:14 CST.\nDeparts from: live Worker 320c719d \u2014 runs main b3ccea4e.\nWaiting on: your answer; the coordinator then deploys, and the other lanes run meanwhile.",
+  "holds": "The live Worker deploy waits for your answer.",
+  "home": "decision live-verification; item 124 worker-deploy-tracking-stamp",
+  "id": "worker-deploy-scope",
+  "kind": "decision",
+  "n": 128,
+  "options": [
+    {
+      "gain": "Tracking updates, check-in times and the other merge fixes reach the phone now, and a rollback to 320c719d is one command.",
+      "how": "The coordinator deploys main b3ccea4e to the live Worker as it is.",
+      "id": "deploy-main-as-is",
+      "key": "a",
+      "label": "Deploy main as is",
+      "lose": "The orders endpoints go live before your first run of them; they sit idle until the extension calls them."
+    },
+    {
+      "gain": "The live change stays inside your ruling.",
+      "how": "A stripped build carries only the tracking-stamp merge and the check-in time fix, and goes live after its own review.",
+      "id": "deploy-two-fixes",
+      "key": "b",
+      "label": "Deploy only the two fixes",
+      "lose": "A separate stripped build with its own review, and the web and Worker merge rules differ until the rest ships."
+    },
+    {
+      "gain": "You review each undeployed change first.",
+      "how": "Nothing goes live until you say.",
+      "id": "hold-deploy",
+      "key": "c",
+      "label": "Hold the deploy",
+      "lose": "The phone keeps the old merge."
+    }
+  ],
+  "owner": "coordinator local_ff7531b7-a326-46b1-b136-cdbf257091f9",
+  "recommended": "a",
+  "ref": "item 124 worker-deploy-tracking-stamp; PR 390; PR 408; live Worker version 320c719d; main b3ccea4e",
+  "repo": "shivinate7/mailaudit",
+  "short": "Worker deploy: main as is, two fixes, or hold",
+  "shown": [
+    {
+      "id": "deploy-main-as-is",
+      "key": "a",
+      "label": "Deploy main as is"
+    },
+    {
+      "id": "deploy-two-fixes",
+      "key": "b",
+      "label": "Deploy only the two fixes"
+    },
+    {
+      "id": "hold-deploy",
+      "key": "c",
+      "label": "Hold the deploy"
+    }
+  ],
+  "status": "open",
+  "stops": [
+    "live Worker deploy"
+  ],
+  "title": "How much of main should go to the live Worker: all of it, only the two fixes, or hold?",
+  "why": "The extra changes are merged and tested on main and a rollback is one command (coordinator's recommendation)."
+}
