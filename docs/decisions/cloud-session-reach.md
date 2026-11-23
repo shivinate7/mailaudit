@@ -33,7 +33,7 @@ The web app's import has a second way in, for a session that holds the CSV. It n
 
 Figures from the one run so far: `cloud-csv-import`.
 
-**Status:** open. The owner ruled that a re-import refreshes `tracking` (item 89 b, 2026-11-15 13:38 CST, `imports-merge-never-replace`). The web import does. This route adds new lines only and refreshes no `tracking`: `POST /ledger` merges with the stored copy as the base, and an incoming line with no later `trackingAt` never beats a stored one. A web refresh reaches the stored ledger through its `trackingAt` stamp, once built and deployed (`merge-later-change-wins`). The name refresh stays on the importing device (debt `reimport-refresh-stays-on-device`).
+**Status:** open. The owner ruled that a re-import refreshes `tracking` (item 89 b, 2026-11-15 13:38 CST, `imports-merge-never-replace`). The web import does. This route adds new lines only and refreshes no `tracking`: `POST /ledger` merges with the stored copy as the base, and an incoming line with no later `trackingAt` never beats a stored one. A web refresh reaches the stored ledger through its `trackingAt` stamp, deployed 2026-11-23 (`merge-later-change-wins`). The name refresh stays on the importing device (debt `reimport-refresh-stays-on-device`).
 
 ## See also
 
