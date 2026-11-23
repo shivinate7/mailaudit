@@ -40,11 +40,11 @@ The ledger borrows five traits. These are newest first, day headings, one row fo
 
 One entry per action, from any device. Each entry holds an id that no two devices share, its time, and its subject. Names of fields that do not exist yet are in plain type, because `check:docs` reads backticks.
 
-- Check, un-check and stepper: the card key, and the count before and after. Writes to one card merge into one entry. The merge needs three facts. No other action came between the writes. This device wrote the entry. No undo names the entry. The merged entry keeps the first before, the last after and the last time. A merged entry with no net change is kept, at the same before and after: it keeps its later time, so a server copy of its first step cannot outrank it in a merge, and it reads `NOTHING TO UNDO`.
-- Bulk check or clear on a package (`bulkSet`): each card's count before and after, as one entry. A mis-tapped bulk is the worst mis-tap.
+- Check, un-check and stepper: the card key, the count before and after, and `checkedBefore`, the card's check-in time before the act (null for none). Writes to one card merge into one entry. The merge needs three facts. No other action came between the writes. This device wrote the entry. No undo names the entry. The merged entry keeps the first before and the first `checkedBefore`, the last after and the last time. A merged entry with no net change is kept, at the same before and after: it keeps its later time, so a server copy of its first step cannot outrank it in a merge, and it reads `NOTHING TO UNDO`.
+- Bulk check or clear on a package (`bulkSet`): each card's count before and after and its `checkedBefore`, as one entry. A mis-tapped bulk is the worst mis-tap.
 - Stamp set, replaced, edited or removed: the package key, and the stamp before and after.
 - Envelope recorded, edited or discarded: the envelope before and after.
-- Envelope assigned: the plan (card key and take), and the envelope before and after. This is the data of today's `undo`.
+- Envelope assigned: the plan (card key, take and `checkedBefore` for each line, null for none), and the envelope before and after. This is the data of today's `undo`.
 - Undo: its own entry. It names the row it undoes. A row is undone when an undo entry names it.
 
 A count entry takes its time from the same call that stamps `receivedAt`, so the two are equal. A stamp or envelope entry also holds the `updatedAt` that the write set.
