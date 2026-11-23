@@ -498,6 +498,58 @@ eq(
     "R6.11a the undo leaves no check-in time for a line the Mark all raised from none, and gives K its earlier time back"
   );
 }
+/* R6.12 (debt mark-all-undo-keeps-checkin). A single check's count entry carries the line's time from before the check as
+   `checkedBefore` (null for none). Its Undo gives the line that time back, so a line with none has none after the undo. */
+{
+  const r = count("c12", T(10), K, 0, 1);
+  r.checkedBefore = null;
+  const l = ledger({ received: { [K]: 1 }, receivedAt: { [K]: T(10) }, checkedInAt: { [K]: T(10) } });
+  const u = undo(r, l);
+  eq(u?.ledger?.received, {}, "R6.12 scope: the undo takes the single check's count back to 0");
+  eq(u?.ledger?.checkedInAt, {}, "R6.12a the undo leaves no check-in time for a line the check raised from none");
+}
+/* R6.13 (debt mark-all-undo-keeps-checkin). A single "One more" on a line checked in before keeps that earlier time through
+   its Undo. The entry's `checkedBefore` is that earlier time. */
+{
+  const EARLIER = T(3);
+  const r = count("c13", T(10), K, 1, 2);
+  r.checkedBefore = EARLIER;
+  const l = ledger({ received: { [K]: 2 }, receivedAt: { [K]: T(10) }, checkedInAt: { [K]: T(10) } });
+  const u = undo(r, l);
+  eq(u?.ledger?.received, { [K]: 1 }, "R6.13 scope: the undo takes the count back to 1");
+  eq(u?.ledger?.checkedInAt, { [K]: EARLIER }, "R6.13a the undo gives the line its earlier check-in time back, not the rise's");
+}
+/* R6.14 (debt mark-all-undo-keeps-checkin). An assign's plan carries each line's time from before the assign as `checkedBefore`.
+   Its Undo gives each line that time back: the earlier time for K, none for K2 (which had none). */
+{
+  const EARLIER = T(3);
+  const before = E("e14", T(5), [{ name: "Lightning Bolt", qty: 2 }]);
+  const after = E("e14", T(10), []);
+  const r = assign(
+    "a14",
+    T(10),
+    [
+      { itemKey: K, take: 1, checkedBefore: EARLIER },
+      { itemKey: K2, take: 1, checkedBefore: null },
+    ],
+    before,
+    after,
+    T(10)
+  );
+  const l = ledger({
+    received: { [K]: 2, [K2]: 1 },
+    receivedAt: { [K]: T(10), [K2]: T(10) },
+    checkedInAt: { [K]: T(10), [K2]: T(10) },
+    envelopes: [after],
+  });
+  const u = undo(r, l);
+  eq(u?.ledger?.received, { [K]: 1 }, "R6.14 scope: the undo takes each copy back out of the counts");
+  eq(
+    u?.ledger?.checkedInAt,
+    { [K]: EARLIER },
+    "R6.14a the undo gives K its earlier time back, and K2, which had none before the assign, has none"
+  );
+}
 
 /* ---------- R7 isLive ---------- */
 
