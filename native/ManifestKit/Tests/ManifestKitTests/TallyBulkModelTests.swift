@@ -75,6 +75,29 @@ final class TallyBulkModelTests: XCTestCase {
         XCTAssertEqual(try shared(model).ratio, "0/4", "the row reads the ledger again after the undo")
     }
 
+    /// debt mark-all-undo-keeps-checkin, F2 on the Tally row: a later rise while the Undo is held. A remote apply, written to the
+    /// store, un-checks a2 at 2 000 and checks it in again at 2 500. The Undo lowers a2 and must keep the 2 500 time of that rise.
+    func testTallyUndoOfAMarkAllKeepsALaterRiseFromAWorkerApply() async throws {
+        let clock = PressClock(1_000)
+        let (model, store) = try await rig(received: [Self.f1: 1], clock: clock)
+        try await bulking(model).bulk(name: "Shared", on: true)
+        XCTAssertEqual(store.checkedInAt()[Self.a2], 1_000, "anchor: Mark all stamped a2's check-in with the press time")
+        clock.t = 2_000
+        try store.commitReceived(Self.a2, count: 0)
+        clock.t = 2_500
+        try store.commitReceived(Self.a2, count: 1)
+        try await model.load()
+        XCTAssertEqual(model.bulkUndoName, "Shared", "anchor: a remote apply does not end the held Undo")
+        XCTAssertEqual(store.checkedInAt()[Self.a2], 2_500, "anchor: the rise from the apply stamped 2 500")
+
+        clock.t = 3_000
+        try await bulking(model).undoBulk()
+
+        XCTAssertNil(store.received()[Self.a2], "scope: the Undo took a2's remaining copy back out")
+        XCTAssertEqual(store.checkedInAt()[Self.a2], 2_500,
+                       "the Tally Undo of a Mark all gave a2 the time from before the press and lost the later rise's check-in time")
+    }
+
     /// A Mark all that adds nothing keeps the held Undo, as on Packages. Mark all on "Shared" adds a2, e1 and s1. Then Mark all
     /// on "Beta", whose only copy f1 is already in, adds nothing: the Undo is still Shared's, and undo takes back Shared's delta.
     func testAMarkAllThatAddsNothingKeepsTheHeldUndo() async throws {
