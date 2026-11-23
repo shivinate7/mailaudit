@@ -384,6 +384,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 
 | Slug | Gist | Link |
 |---|---|---|
+| `check-in-time-field` | Check-in time field (items 107 b and 127 c) | [`docs/plans/check-in-time-field.md`](../docs/plans/check-in-time-field.md) |
 | `cloud-lane-cut` | Cloud restart: one lane cut from every handoff | [`docs/plans/cloud-lane-cut.md`](../docs/plans/cloud-lane-cut.md) |
 | `cloud-sessions` | Cloud sessions for mailaudit: what is still unbuilt | [`docs/plans/cloud-sessions.md`](../docs/plans/cloud-sessions.md) |
 | `orders-extension` | Orders by browser extension | [`docs/plans/orders-extension.md`](../docs/plans/orders-extension.md) |
