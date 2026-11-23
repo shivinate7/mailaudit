@@ -169,6 +169,11 @@ final class OrphanedSandbox: @unchecked Sendable {
         (try saved()["receivedAt"] as? [String: Any] ?? [:]).compactMapValues { ($0 as? NSNumber)?.doubleValue }
     }
 
+    /// The `checkedInAt` map: the time of each card's last real check-in. An absent field reads as empty.
+    func savedCheckedInAt() throws -> [String: Double] {
+        (try saved()["checkedInAt"] as? [String: Any] ?? [:]).compactMapValues { ($0 as? NSNumber)?.doubleValue }
+    }
+
     func savedEnvelopes() throws -> [[String: Any]] {
         try saved()["envelopes"] as? [[String: Any]] ?? []
     }

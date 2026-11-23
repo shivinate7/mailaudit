@@ -159,4 +159,46 @@ final class OrphanedUndoTests: XCTestCase {
         try await model.undoAssign()
         XCTAssertEqual(try box.savedReceived(), [OrphanedSandbox.a1Counter: 1], "an undo with no notice changes nothing")
     }
+
+    /// debt mark-all-undo-keeps-checkin, the assign path. The assign checks Counterspell in and stamps its time. The card had no
+    /// check-in time before the assign, so the Undo, which takes the copy back, leaves it with none.
+    func testUndoOfAnAssignLeavesACardWithNoCheckInTimeWhenItHadNone() async throws {
+        let box = try makeOrphanedSandbox()
+        try box.write(extra: ["envelopes": [OrphanedSandbox.env("e1", [("Counterspell", 1)])]])
+        let (model, _) = try await box.open()
+        box.clock.t = OrphanedSandbox.t0 + 1_000
+        try await model.assign(envelope: "e1", to: OrphanedSandbox.a1)
+        XCTAssertEqual(try box.savedCheckedInAt()[OrphanedSandbox.a1Counter], OrphanedSandbox.t0 + 1_000,
+                       "scope: the assign stamped the card's check-in time")
+        box.clock.t = OrphanedSandbox.t0 + 2_000
+
+        try await model.undoAssign()
+
+        XCTAssertEqual(try box.savedReceived(), [String: Int](), "scope: the undo took the copy back out")
+        XCTAssertNil(try box.savedCheckedInAt()[OrphanedSandbox.a1Counter],
+                     "the undo of an assign left a check-in time on a card that had none before the assign")
+    }
+
+    /// debt mark-all-undo-keeps-checkin, the assign path with an earlier time. The card was checked in earlier and taken back, so
+    /// its time is still in the file (an un-check writes none). The assign stamps now; the Undo gives the earlier time back.
+    func testUndoOfAnAssignPutsAnEarlierCheckInTimeBack() async throws {
+        let box = try makeOrphanedSandbox()
+        let earlier = OrphanedSandbox.t0 - 60_000
+        try box.write(extra: [
+            "envelopes": [OrphanedSandbox.env("e1", [("Counterspell", 1)])],
+            "checkedInAt": [OrphanedSandbox.a1Counter: earlier],
+        ])
+        let (model, _) = try await box.open()
+        box.clock.t = OrphanedSandbox.t0 + 1_000
+        try await model.assign(envelope: "e1", to: OrphanedSandbox.a1)
+        XCTAssertEqual(try box.savedCheckedInAt()[OrphanedSandbox.a1Counter], OrphanedSandbox.t0 + 1_000,
+                       "scope: the assign stamped the card's check-in time")
+        box.clock.t = OrphanedSandbox.t0 + 2_000
+
+        try await model.undoAssign()
+
+        XCTAssertEqual(try box.savedReceived(), [String: Int](), "scope: the undo took the copy back out")
+        XCTAssertEqual(try box.savedCheckedInAt()[OrphanedSandbox.a1Counter], earlier,
+                       "the undo of an assign did not give the card its earlier check-in time back")
+    }
 }
