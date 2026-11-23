@@ -1,0 +1,1 @@
+- salvage-checkin-time-untested: No test feeds a wrong-shape `checkedInAt` through `salvageLedger`, so the SALVAGE line for it (src/view-rules.mjs:584) is unpinned. worker/core.test.mjs:1388 checks only that a written ledger has no unreadable field, and its fixtures hold numbers. Seen: 2026-11-23 x1 Decision: saved-state-shape.

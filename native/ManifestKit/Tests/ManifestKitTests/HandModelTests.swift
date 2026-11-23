@@ -694,6 +694,35 @@ final class HandModelTests: XCTestCase {
         XCTAssertEqual(rows.map(\.gk), ["S1::Alpha Cards"], "the pile's cut is not local midnight to the millisecond")
     }
 
+    /// plan check-in-time-field: a restore is not a check-in. A version written before checkedInAt existed restores to an
+    /// empty pile, even though the restore stamps every key it carries with the time it lands.
+    func testARestoreOfAVersionWithNoCheckInTimeLeavesNoPileToday() async throws {
+        let box = try VersionSandbox()
+        addTeardownBlock { box.cleanup() }
+        let (store, vs) = try box.open(try VersionSandbox.ledger())
+        let version = try VersionSandbox.bytes(try VersionSandbox.ledger(received: [VersionSandbox.keyA: 1]))
+        let v = try vs.put(version, label: "before import", lines: 12, checked: 1)
+        box.clock.t = VersionSandbox.t0 + 5_000
+
+        try store.restore(v.id)
+
+        XCTAssertEqual(store.received(), [VersionSandbox.keyA: 1], "scope: the version was applied")
+        let model = HandModel(engine: try RulesEngine(bundleURL: RulesGoldenTests.bundleURL), store: store)
+        let rows = try await model.todaysPile(now: Date(timeIntervalSince1970: box.clock.t / 1000), calendar: Self.fixtureCalendar)
+        XCTAssertEqual(rows.map(\.gk), [], "a restore put an envelope in today's pile though the version holds no check-in time")
+    }
+
+    /// plan check-in-time-field: a "One fewer" today stamps the line today, but a count that falls is no check-in. On a copy
+    /// checked in yesterday, the envelope stays out of today's pile (debt hand-pile-counts-one-fewer).
+    func testATodayDecrementOnAnOlderCheckInLeavesTheEnvelopeOut() async throws {
+        let h = try await makeHand(extra: Self.deltaPonder())
+        Self.checkIn(h, Self.ponder, 4, at: Self.localMidnight - 60_000)
+        Self.checkIn(h, Self.ponder, 3, at: Self.localMidnight + 60_000)
+        XCTAssertEqual(h.store.received()[Self.ponder], 3, "scope: One fewer took Ponder from 4 to 3")
+        let rows = try await pile(h)
+        XCTAssertEqual(rows.map(\.gk), [], "a One fewer today put an envelope in today's pile though its check-in was yesterday")
+    }
+
     /// An un-check stamps the line too, with no count. A line checked in and taken back today is no check-in.
     func testCheckedInAndTakenBackTodayIsNoPileRow() async throws {
         let h = try await makeHand()

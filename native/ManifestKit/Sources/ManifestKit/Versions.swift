@@ -112,7 +112,7 @@ extension LedgerStore {
         let (bytes, lines, checked) = try heldBytes()
         if let v = versions { try v.put(bytes, label: "before reset", kind: "milestone", lines: lines, checked: checked) }
         let (oldDoc, oldGen, oldLoaded) = (doc, generation, loaded)
-        doc = ["mailday": 1, "items": [Any](), "received": [String: Any](), "receivedAt": [String: Any](), "stamps": [String: Any](), "envelopes": [Any]()]
+        doc = ["mailday": 1, "items": [Any](), "received": [String: Any](), "receivedAt": [String: Any](), "checkedInAt": [String: Any](), "stamps": [String: Any](), "envelopes": [Any]()]
         loaded = true
         generation += 1
         do { try save() } catch { (doc, generation, loaded) = (oldDoc, oldGen, oldLoaded); throw error }
@@ -130,7 +130,7 @@ extension LedgerStore {
         let kept = keepingHeldPhotos(bytes, from: o, rules: v.rulesURL)
         // The bundle must run before the milestone is spent: a probe call refuses the restore with
         // nothing spent and nothing changed. The restamp itself runs on the mended ledger, inside adoptRaw.
-        let cur = doc.filter { ["received", "receivedAt", "stamps", "envelopes"].contains($0.key) }
+        let cur = doc.filter { ["received", "receivedAt", "checkedInAt", "stamps", "envelopes"].contains($0.key) }
         let core = try restampCore(rules: v.rulesURL)
         _ = try core.call("restampRestore", String(decoding: JSONSerialization.data(withJSONObject: [cur, [String: Any](), now()] as [Any]), as: UTF8.self))
         let (held, lines, checked) = try heldBytes()
@@ -156,7 +156,7 @@ extension LedgerStore {
         guard let stamped = try JSONSerialization.jsonObject(with: Data(out.utf8)) as? [String: Any] else {
             throw CocoaError(.fileReadCorruptFile)
         }
-        for field in ["receivedAt", "stamps", "envelopes"] { data[field] = stamped[field] }
+        for field in ["receivedAt", "checkedInAt", "stamps", "envelopes"] { data[field] = stamped[field] }
         return data
     }
 

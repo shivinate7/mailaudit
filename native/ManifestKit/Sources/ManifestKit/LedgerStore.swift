@@ -69,9 +69,9 @@ public final class LedgerStore {
     /// The whole ledger, unknown fields included.
     public func snapshot() -> [String: Any] { doc }
 
-    /// The four fields an edit touches. A sync client compares this with what a reply carried.
+    /// The five fields an edit touches. A sync client compares this with what a reply carried.
     public func userData() -> [String: Any] {
-        doc.filter { ["received", "receivedAt", "stamps", "envelopes"].contains($0.key) }
+        doc.filter { ["received", "receivedAt", "checkedInAt", "stamps", "envelopes"].contains($0.key) }
     }
 
     private func ingest(_ data: Data) throws {
@@ -124,15 +124,28 @@ public final class LedgerStore {
     /// The `receivedAt` map, key to the time of its last check-in or un-check, in milliseconds.
     public func receivedAt() -> [String: Double] { (doc["receivedAt"] as? [String: Any] ?? [:]).compactMapValues { ($0 as? NSNumber)?.doubleValue } }
 
+    /// The `checkedInAt` map, key to the time of its last real check-in, in milliseconds. A restore, an un-check and a
+    /// "One fewer" never write it, so a line with no value reads as no check-in (plan check-in-time-field).
+    public func checkedInAt() -> [String: Double] { (doc["checkedInAt"] as? [String: Any] ?? [:]).compactMapValues { ($0 as? NSNumber)?.doubleValue } }
+
     /// The raw `stamps` map, group key to stamp.
     public func stamps() -> [String: [String: Any]] { (doc["stamps"] as? [String: Any] ?? [:]).compactMapValues { $0 as? [String: Any] } }
 
     /// count 0 is an un-check: drop `received`, stamp `receivedAt`. `time` is the time to stamp; the store's clock when nil.
-    public func setReceived(_ key: String, count: Int, at time: Double? = nil) {
+    /// A count that rises is a check-in and also stamps `checkedInAt`, as the web's isCheckIn rule says; a count that
+    /// falls does not. `checkIn: false` is an Undo, which puts a count back and is no check-in.
+    public func setReceived(_ key: String, count: Int, at time: Double? = nil, checkIn: Bool = true) {
         var r = doc["received"] as? [String: Any] ?? [:]
         var at = doc["receivedAt"] as? [String: Any] ?? [:]
+        let before = (r[key] as? Int) ?? 0
+        let stamp = time ?? now()
         if count > 0 { r[key] = count } else { r.removeValue(forKey: key) }
-        at[key] = time ?? now()
+        at[key] = stamp
+        if checkIn && count > before {
+            var ci = doc["checkedInAt"] as? [String: Any] ?? [:]
+            ci[key] = stamp
+            doc["checkedInAt"] = ci
+        }
         doc["received"] = r
         doc["receivedAt"] = at
         generation += 1
@@ -148,10 +161,10 @@ public final class LedgerStore {
 
     /// Mark all, Clear and an Undo: every key goes to its count (0 un-checks it) in one save at one clock reading, as the
     /// web's single touchReceived call stamps every key. A failed save leaves the ledger as it was.
-    public func commitReceived(_ counts: [String: Int]) throws {
+    public func commitReceived(_ counts: [String: Int], checkIn: Bool = true) throws {
         guard !counts.isEmpty else { return }
         let time = now()
-        try commit { for (key, count) in counts { setReceived(key, count: count, at: time) } }
+        try commit { for (key, count) in counts { setReceived(key, count: count, at: time, checkIn: checkIn) } }
     }
 
     public func setStamp(_ key: String, kind: String, note: String, at: String) {

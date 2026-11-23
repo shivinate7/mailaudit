@@ -183,7 +183,7 @@ public final class HandModel {
     /// bundle's groupPackages order. The group keys come from the bundle, not a copy of gkOf.
     private func todaysEnvelopes(now: Date, calendar: Calendar) async throws -> [DayEnvelope] {
         let midnight = calendar.startOfDay(for: now).timeIntervalSince1970 * 1000
-        let (received, stamped) = (store.received(), store.receivedAt())
+        let (received, stamped) = (store.received(), store.checkedInAt())
         let live = try await LiveItems.of(store.items(), stamps: store.stamps(), engine: engine)
         let out = try await engine.call("groupPackages", "[\(live)]")
         let packages = try JSONDecoder().decode([Package].self, from: Data(out.utf8))

@@ -15,6 +15,7 @@ One known gap per file under `docs/debts/`. Each carries a Status line and a Dec
 - `claim-11-fixed-edge-taps` — Claim 11 skips taps at a fixed control's edge.
 - `chip-gap-tolerance-at-12px` — The chip-gap tolerance needs a 12px re-measure.
 - `claim-9-fractional-box-edges` — Claim 9 can pass a box just under 44px.
+- `mark-all-undo-keeps-checkin` — Mark all, then Undo, keeps today's check-in time on web and native.
 - `tally-card-moves-at-320px` — Closed by the owner (item 62): no fix at 320px; decision `card-the-action-row-is-reserved`.
 - `key-re-accepts-token-shape` — The key check accepts a GitHub token's shape.
 - `received-at-size-unmeasured` — The size of receivedAt is unmeasured.

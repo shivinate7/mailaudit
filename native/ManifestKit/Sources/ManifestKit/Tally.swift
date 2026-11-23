@@ -180,7 +180,7 @@ public final class TallyModel {
         let takes = bulkUndoTakes
         endBulkUndo()
         do {
-            try store.commitReceived(try await BulkRules.undone(takes, received: store.received(), engine: engine))
+            try store.commitReceived(try await BulkRules.undone(takes, received: store.received(), engine: engine), checkIn: false)
         } catch {
             checkInError = "Could not take back the check-ins. \(error.localizedDescription)"
             throw error

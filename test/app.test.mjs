@@ -118,6 +118,7 @@ import {
   mergeStamps,
   mergeLedger,
   mergeSummary,
+  canon,
 } from "../src/merge-rules.mjs";
 /* group 60 reads the palette from the built bundle and from the files on disk */
 import { readFileSync } from "node:fs";
@@ -5513,6 +5514,107 @@ const freshKeyed49 = () => boot({ items: ITEMS, received: {} }, null, { syncKey:
   eq(saved().receivedAt ?? {}, {}, "49.C4 Reset clears receivedAt, and the debounce does not write it back");
 }
 
+/* ---- 86. the check-in time (checkedInAt; plan check-in-time-field, act 1). A check-in is a count
+   that rises. An un-check, a "One fewer" and a restore never write it. The merge takes each key's
+   time from the side that won that key's receivedAt. ---- */
+{
+  const K = ITEMS[0].key; /* Lightning Bolt, in Alpha Cards */
+  const KB = ITEMS[2].key; /* Brainstorm, two copies, in Alpha Cards */
+  const lineRow = (pkgRe, name) =>
+    [...card(pkgRe).querySelectorAll('button[aria-label^="Mark as"]')].find((b) =>
+      b.parentElement?.textContent.includes(name)
+    );
+  const oneFewer = (pkgRe, name) =>
+    lineRow(pkgRe, name)?.parentElement?.querySelector('button[aria-label="One fewer received"]');
+  const oneMore = (pkgRe, name) =>
+    lineRow(pkgRe, name)?.parentElement?.querySelector('button[aria-label="One more received"]');
+
+  await freshKeyed49();
+  await click(lineRow(/Alpha Cards/, "Lightning Bolt"), "check Lightning Bolt in");
+  await sleep(SAVE_WAIT);
+  ok(typeof saved().checkedInAt?.[K] === "number", "86.1 a check-in writes its time to checkedInAt");
+
+  /* A checked line folds behind "+N more line" in its package, so these cases act on a line that is still open:
+     a line checked in this session (86.2), or Brainstorm, which has two copies (86.3, 86.4). */
+  await freshKeyed49();
+  await click(lineRow(/Alpha Cards/, "Lightning Bolt"), "check Lightning Bolt in");
+  await sleep(SAVE_WAIT);
+  const t86 = saved().checkedInAt?.[K];
+  ok(typeof t86 === "number", "86.2pre a check-in writes the time that an un-check must leave alone");
+  await click(lineRow(/Alpha Cards/, "Lightning Bolt"), "un-check Lightning Bolt");
+  await sleep(SAVE_WAIT);
+  eq(saved().received?.[K], undefined, "86.2 scope: the un-check removed the count");
+  ok(typeof t86 === "number" && saved().checkedInAt?.[K] === t86, "86.2a an un-check leaves checkedInAt as the check left it");
+
+  await boot({ items: ITEMS, received: { [KB]: 1 }, receivedAt: { [KB]: 100 }, checkedInAt: { [KB]: 100 } }, null, { syncKey: KEY49 });
+  await click(oneMore(/Alpha Cards/, "Brainstorm"), "one more Brainstorm");
+  await sleep(SAVE_WAIT);
+  eq(saved().received?.[KB], 2, "86.3 scope: One more took Brainstorm to 2");
+  const tRise = saved().checkedInAt?.[KB];
+  ok(typeof tRise === "number", "86.3pre a rise writes the time that a One fewer must leave alone");
+  await click(oneFewer(/Alpha Cards/, "Brainstorm"), "one fewer Brainstorm");
+  await sleep(SAVE_WAIT);
+  eq(saved().received?.[KB], 1, "86.3a scope: One fewer took Brainstorm back to 1");
+  ok(typeof tRise === "number" && saved().checkedInAt?.[KB] === tRise, "86.3b a One fewer leaves checkedInAt as the rise set it");
+
+  await boot({ items: ITEMS, received: { [KB]: 1 }, receivedAt: { [KB]: 100 } }, null, { syncKey: KEY49 });
+  await click(oneFewer(/Alpha Cards/, "Brainstorm"), "one fewer Brainstorm, from a save with no field");
+  await sleep(SAVE_WAIT);
+  eq(saved().received?.[KB], undefined, "86.4 scope: One fewer took the count to 0, an un-check");
+  eq(saved().checkedInAt, {}, "86.4a a save from before the field loads checkedInAt as {}");
+
+  await boot({ items: ITEMS, received: { [K]: 1 }, receivedAt: { [K]: 100 }, checkedInAt: { [K]: 100 } }, null, { syncKey: KEY49 });
+  let backupBlob86 = null;
+  const captureHook86 = win.URL.createObjectURL;
+  win.URL.createObjectURL = (b) => {
+    backupBlob86 = b;
+    return "blob:86";
+  };
+  await openHistory();
+  await click(btn(/^Backup$/), "backup");
+  const backed86 = backupBlob86 ? JSON.parse(await backupBlob86.text()) : {};
+  win.URL.createObjectURL = captureHook86;
+  eq(backed86.checkedInAt, { [K]: 100 }, "86.5 the Backup file carries checkedInAt");
+
+  await boot({ items: ITEMS, received: { [K]: 1 }, receivedAt: { [K]: 100 }, checkedInAt: { [K]: 100 } }, null, { syncKey: KEY49 });
+  await openHistory();
+  await reachFor(/^Reset$/);
+  await click(btn(/^Reset$/), "reset");
+  await click(btn(/Tap again to clear \d+ cards?/), "confirm reset");
+  await sleep(800); /* past the debounce, when a stale value would come back */
+  eq(saved().received ?? {}, {}, "86.6 scope: Reset cleared the counts");
+  eq(saved().checkedInAt, {}, "86.6a Reset clears checkedInAt, and the debounce does not write it back");
+
+  /* the merge: each key takes the time of the side that won that key's receivedAt */
+  const side = (received, receivedAt, checkedInAt) => ({
+    mailday: 1,
+    items: ITEMS,
+    received,
+    receivedAt,
+    checkedInAt,
+    envelopes: [],
+    stamps: {},
+  });
+  const mergedCI = (a, b) => mergeLedger(a, b).merged.checkedInAt;
+  const stored86 = side({ [K]: 1, [KB]: 1 }, { [K]: 100, [KB]: 300 }, { [K]: 90, [KB]: 300 });
+  const incoming86 = side({ [K]: 1 }, { [K]: 200 }, { [K]: 150 });
+  eq(
+    canon(mergedCI(stored86, incoming86)),
+    canon({ [K]: 150, [KB]: 300 }),
+    "86.7 a merge takes each key's time from the side that won its receivedAt, and keeps a key only one side holds"
+  );
+
+  const winStored = side({ [K]: 1 }, { [K]: 300 }, { [K]: 250 });
+  const winIncoming = side({ [K]: 1 }, { [K]: 200 }, { [K]: 150 });
+  eq(canon(mergedCI(winStored, winIncoming)), canon({ [K]: 250 }), "86.8 when the stored side wins the key, its time is kept");
+  eq(canon(mergedCI(winIncoming, winStored)), canon({ [K]: 250 }), "86.8a and the same the other way round");
+
+  const tieA = side({ [K]: 1 }, { [K]: 100 }, { [K]: 150 });
+  const tieB = side({ [K]: 1 }, { [K]: 100 }, { [K]: 90 });
+  eq(canon(mergedCI(tieA, tieB)), canon({ [K]: 150 }), "86.9 a tie in receivedAt takes the later check-in time");
+  eq(canon(mergedCI(tieB, tieA)), canon({ [K]: 150 }), "86.9a and the same the other way round, so the merge does not depend on order");
+}
+
 /* ---- 49.D. the log travels with its undo entries (decision recent-checks-can-be-undone).
    The pure merge: an undo's un-check beats the other device's older check, and the undo
    reaches the merged log. Pinned on the merge alone, so no screen is needed. */
@@ -5833,6 +5935,25 @@ const freshKeyed49 = () => boot({ items: ITEMS, received: {} }, null, { syncKey:
     typeof saved().receivedAt?.[K] === "number" && saved().receivedAt[K] >= before50,
     "50.B4 a restore into an empty device stamps the time it lands, not the file's"
   );
+
+  /* the check-in time is the backup's own value: a restore never stamps it with the time it lands */
+  await freshKeyed49();
+  await reachFor(/Re-import CSV/);
+  await click(btn(/Re-import CSV/), "show upload zone");
+  await dropFile(
+    "mailday-backup.json",
+    JSON.stringify({
+      mailday: 1,
+      items: ITEMS,
+      received: { [K]: 1 },
+      receivedAt: { [K]: 1234567 },
+      checkedInAt: { [K]: 1234567 },
+      envelopes: [],
+      stamps: {},
+    })
+  );
+  await sleep(SAVE_WAIT);
+  eq(saved().checkedInAt, { [K]: 1234567 }, "50.B5a a restore keeps the backup's checkedInAt, and does not stamp it with the time it lands");
 
   await freshKeyed49();
   await goTo("orphaned");
