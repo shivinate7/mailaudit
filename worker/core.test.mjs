@@ -2542,7 +2542,8 @@ await test("74.2 a POST keeps the stored time for a key the stored side won, tho
     },
   });
   eq(res.status, 200, "status");
-  eq(canon(s.writes[0]?.ledger.checkedInAt), canon({ [A]: 250 }), "the stored time, since the stored receivedAt is later");
+  const reply = await res.json();
+  eq(canon(reply.ledger?.checkedInAt), canon({ [A]: 250 }), "the reply keeps the stored time, since the stored receivedAt is later");
 });
 
 report();
