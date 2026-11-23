@@ -37,4 +37,4 @@ The name avoids "stamp", which in this repo means a package stamp.
 ## Risks
 
 - Until the Worker redeploys, it carries the field as an unknown key: the whole map moves, and the later `savedAt` wins.
-- An old web build drops the field from its snapshot. The carry merge keeps it.
+- An old web build drops the field from its snapshot. The carry merge does not keep it, because the field is a known key. Where the old copy wins a key's `receivedAt`, that key's check-in time is dropped.

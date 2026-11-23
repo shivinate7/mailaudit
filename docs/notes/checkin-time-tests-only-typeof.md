@@ -1,0 +1,1 @@
+- checkin-time-tests-only-typeof: test/app.test.mjs asserts only `typeof number` at 86.1 (line 5535), 86.2pre (line 5544) and 86.3pre (line 5554). 86.2a (line 5547) and 86.3b (line 5558) compare to the same value read earlier, so a constant 0 passes all of them. Seen: 2026-11-23 x1 Decision: saved-state-shape.
