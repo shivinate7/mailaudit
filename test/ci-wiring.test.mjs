@@ -139,7 +139,7 @@ const TESTFLIGHT_WORKFLOW = resolve(ROOT, ".github/workflows/testflight.yml");
 
 const ROLLUP = "all-jobs-passed";
 const CI_DONE = "ci-done";
-const ACTIONS = "shivinate7/claude-settings/actions/";
+const ACTIONS = "swlshiv/claude-settings/actions/";
 const ALARM_ACTION = ACTIONS + "ci-alarm";
 const STE_LINT = ACTIONS + "ste-lint";
 // The ref every claude-settings action is called at: the branch stable, not a sha (owner ruling R44 part 1).
@@ -1445,7 +1445,7 @@ const PRE_TEXT =
     "      # A run block is text: the fake pin and the lone apostrophe below are not steps.",
     "      - name: block scalar text is not a step",
     "        run: |",
-    "          # uses: shivinate7/claude-settings/actions/all-jobs-passed@main",
+    "          # uses: swlshiv/claude-settings/actions/all-jobs-passed@main",
     "          echo \"don't read this line as a pin or a step\"",
     "      - run: npm test",
     "  scope:",
@@ -2692,14 +2692,14 @@ const PIN_GREEN = [
   ["every pin names @stable", [{ name: "checks.yml", text: GOOD }, { name: "ci-alarm.yml", text: GOOD_ALARM }]],
   [
     "a quoted pin names @stable",
-    [{ name: "x.yml", text: `jobs:\n  j:\n    steps:\n      - uses: "shivinate7/claude-settings/actions/ste-lint@${ACTION_PIN}"\n` }],
+    [{ name: "x.yml", text: `jobs:\n  j:\n    steps:\n      - uses: "swlshiv/claude-settings/actions/ste-lint@${ACTION_PIN}"\n` }],
   ],
   [
     "a comment and a run block name another pin",
     [
       {
         name: "x.yml",
-        text: "# uses: shivinate7/claude-settings/actions/all-jobs-passed@main\njobs:\n  j:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          uses: shivinate7/claude-settings/actions/all-jobs-passed@main\n",
+        text: "# uses: swlshiv/claude-settings/actions/all-jobs-passed@main\njobs:\n  j:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          uses: swlshiv/claude-settings/actions/all-jobs-passed@main\n",
       },
     ],
   ],
