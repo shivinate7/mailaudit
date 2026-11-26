@@ -1,5 +1,5 @@
 # Cloud screen check: iPhone screenshots of the MANIFEST app in fixture mode, for sessions that cannot boot a simulator.
-# Copied from shivinate7/home .github/workflows/screen-check.yml at f96df63 (home PRs 604 and 613). Dispatch, download and the
+# Copied from swlshiv/home .github/workflows/screen-check.yml at f96df63 (home PRs 604 and 613). Dispatch, download and the
 # label path: see the header of scripts/screen-check.sh.
 # Never part of the ordinary PR checks and no required check: each run bills macOS minutes, so a session runs it once per finished
 # piece of screen work. It starts on a manual dispatch, or when the label screen-check is added to a pull request. It runs on no

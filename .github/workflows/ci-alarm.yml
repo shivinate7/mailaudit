@@ -26,4 +26,4 @@ jobs:
     timeout-minutes: 5 # provisional
     steps:
       - name: Alarm on a red main
-        uses: shivinate7/claude-settings/actions/ci-alarm@stable # tracks claude-settings stable
+        uses: swlshiv/claude-settings/actions/ci-alarm@stable # tracks claude-settings stable

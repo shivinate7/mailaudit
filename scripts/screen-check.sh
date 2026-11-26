@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # Screen check: iPhone screenshots of the MANIFEST app in fixture mode, for sessions that cannot boot a simulator.
-# Copied from shivinate7/home scripts/screen-check.sh at f96df63 (home PRs 604 and 613). Changed for this repo: the screens are
+# Copied from swlshiv/home scripts/screen-check.sh at f96df63 (home PRs 604 and 613). Changed for this repo: the screens are
 # the four tabs, the app is built with xcodegen, the Family apps are gone, and `check-count` is new.
 #
 # How to use it (a cloud session has no simulator). Two ways to start the workflow; each bills macOS minutes, so run it once per
 # finished piece of screen work.
 #   Dispatch the branch whose screens you want, then download the artifact:
-#     gh workflow run screen-check.yml --repo shivinate7/mailaudit --ref <branch>   (add -f screens=tally,packages for fewer; default all)
+#     gh workflow run screen-check.yml --repo swlshiv/mailaudit --ref <branch>   (add -f screens=tally,packages for fewer; default all)
 #   Find your run, never the newest of all (another session may have dispatched one):
-#     gh run list --workflow screen-check.yml --repo shivinate7/mailaudit --branch <branch> --json databaseId,headSha,status
+#     gh run list --workflow screen-check.yml --repo swlshiv/mailaudit --branch <branch> --json databaseId,headSha,status
 #   and take the one whose headSha is the head of <branch>. Download:
-#     gh run download <id> --repo shivinate7/mailaudit -n screens   (PNGs named as below, plus logs/)
+#     gh run download <id> --repo swlshiv/mailaudit -n screens   (PNGs named as below, plus logs/)
 #   Or add the label `screen-check` to the pull request. That run uses fixed inputs: both devices, both Duo postures, all four
 #   screens, sizes AX3 and AX5, and a video of Packages on the 18 Pro. Only that label starts it; a push to the PR starts nothing,
 #   so remove and add the label again to repeat it. Download the artifact the same way, with the run id from `gh run list`

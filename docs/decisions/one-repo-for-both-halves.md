@@ -4,7 +4,7 @@ The source repository, `mailaudit`, is public and holds no data. That arrangemen
 
 **Holds while:** `REMOTE` and `PHOTOS` in `src/entry.jsx` both name `mailaudit-data`, and `mailaudit` answers 200 to an anonymous request. Checked 2026-10-10.
 
-Measured anonymously after the repo move, the Pages site answers 200. `api.github.com/repos/shivinate7/mailaudit-data` and `raw.githubusercontent.com/shivinate7/mailaudit-data/data/ledger.json` both answer 404.
+Measured anonymously after the repo move, the Pages site answers 200. `api.github.com/repos/swlshiv/mailaudit-data` and `raw.githubusercontent.com/swlshiv/mailaudit-data/data/ledger.json` both answer 404.
 
 The real cost is that a device with no GitHub token cannot read the private repo. GitHub hides a repo you cannot see behind a 404, not a 403.
 

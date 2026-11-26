@@ -4,7 +4,7 @@ Photos lived on the `main` branch of `mailaudit-data`, in `photos/`. They now go
 
 No caller in the web app writes the branch now, so the rule that it must exist before any Contents PUT is retired. If the repo is ever recreated, initialise it with a README first, because a PUT into a repo with no commits is not a path worth relying on.
 
-**Holds while:** `PHOTOS` in `src/entry.jsx` names branch `main` under `photos`, and `shivinate7/mailaudit-data` is private and has a `main` branch.
+**Holds while:** `PHOTOS` in `src/entry.jsx` names branch `main` under `photos`, and `swlshiv/mailaudit-data` is private and has a `main` branch.
 
 Kind: process
 
