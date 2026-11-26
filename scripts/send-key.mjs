@@ -54,7 +54,7 @@ try {
     throw new Error(`Could not read the ${device} key from the Keychain.`);
   }
   if (native && !KEY_RE.test(key)) throw new Error("Could not use the Keychain key: it has characters the sync key cannot hold.");
-  const url = native ? `manifestledger://sync#k=${key}` : `https://shivinate7.github.io/mailaudit/#k=${key}`;
+  const url = native ? `manifestledger://sync#k=${key}` : `https://swlshiv.github.io/mailaudit/#k=${key}`;
   if (device === "mac") {
     await run("open", [url]);
     console.log("Opened the sync link on this Mac.");
