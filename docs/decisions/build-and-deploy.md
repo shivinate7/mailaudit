@@ -39,7 +39,7 @@ The `mutation-report` job in `checks.yml` starts on every non-draft run, and the
 
 ## What the build writes
 
-`build.mjs` bundles `src/entry.jsx` with esbuild. It inlines the JavaScript into a self-contained `index.html`, with iOS home-screen-app meta tags. `index.html` is the build output, and it is committed to the repo. `build.mjs` also writes `native/ManifestKit/Sources/ManifestKit/rules.js`, the rules bundle the Swift client loads. It is committed beside `index.html`. When the bundle is stale, `check:rules` goes red. See `rules-run-in-javascriptcore`, why the bundle exists. GitHub Pages serves it at https://shivinate7.github.io/mailaudit/. The owner runs it as an iOS home-screen web app. `dev-server.mjs` is the optional static server behind `npm run serve`.
+`build.mjs` bundles `src/entry.jsx` with esbuild. It inlines the JavaScript into a self-contained `index.html`, with iOS home-screen-app meta tags. `index.html` is the build output, and it is committed to the repo. `build.mjs` also writes `native/ManifestKit/Sources/ManifestKit/rules.js`, the rules bundle the Swift client loads. It is committed beside `index.html`. When the bundle is stale, `check:rules` goes red. See `rules-run-in-javascriptcore`, why the bundle exists. GitHub Pages serves it at https://swlshiv.github.io/mailaudit/. The owner runs it as an iOS home-screen web app. `dev-server.mjs` is the optional static server behind `npm run serve`.
 
 ## ios-ship testflight
 

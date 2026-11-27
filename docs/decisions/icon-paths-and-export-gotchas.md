@@ -1,6 +1,6 @@
 # Icon paths stay relative, and iOS caches hard
 
-Both icon `href`s must stay relative. Pages serves this site from the `/mailaudit/` subpath. A root-absolute `/apple-touch-icon.png` resolves to `shivinate7.github.io/apple-touch-icon.png` and 404s.
+Both icon `href`s must stay relative. Pages serves this site from the `/mailaudit/` subpath. A root-absolute `/apple-touch-icon.png` resolves to `swlshiv.github.io/apple-touch-icon.png` and 404s.
 
 **Holds while:** every icon `href` in `build.mjs` stays relative with no leading slash, and the Pages site stays at the `/mailaudit/` subpath.
 
