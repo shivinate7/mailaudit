@@ -7,7 +7,7 @@
    that turns on origin behaviour.
 
    Every origin has its OWN storage — file://, http://localhost:4173 and
-   https://shivinate7.github.io are three separate ledgers that cannot see each
+   https://swlshiv.github.io are three separate ledgers that cannot see each
    other. Moving data between them means Backup → restore. */
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";

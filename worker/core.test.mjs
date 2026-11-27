@@ -91,10 +91,10 @@ const KEY_LAPTOP = "k-test-laptop-b21e04";
 const KEY_STRANGER = "k-test-stranger-00000";
 const ENV = {
   DEVICE_KEY_HASHES: `${sha256(KEY_PHONE)},${sha256(KEY_LAPTOP)}`,
-  ALLOWED_ORIGINS: "https://shivinate7.github.io,http://localhost:4173",
+  ALLOWED_ORIGINS: "https://swlshiv.github.io,http://localhost:4173",
 };
 const BASE = "https://manifestnumberone.shivamsemwal01.workers.dev";
-const PAGES = "https://shivinate7.github.io";
+const PAGES = "https://swlshiv.github.io";
 const LOCAL = "http://localhost:4173";
 const STRANGER = "https://evil.example";
 
@@ -683,8 +683,8 @@ await test("5.3 an unlisted origin gets no ACAO header on any response", async (
 
 await test("5.4 an origin that only starts like an allowed one gets no ACAO", async () => {
   for (const near of [
-    "https://shivinate7.github",
-    "https://shivinate7.github.io.evil.example",
+    "https://swlshiv.github",
+    "https://swlshiv.github.io.evil.example",
     "http://localhost:41730",
   ]) {
     const res = await send(seeded(), "GET", "/ledger", { key: KEY_PHONE, origin: near });

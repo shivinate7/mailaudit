@@ -8,7 +8,7 @@ import { photoIdFromName, mimeFromName } from "../src/photo-rules.mjs";
 import { KEY_RE } from "../src/sync-rules.mjs";
 import { MAX_PHOTO_BYTES } from "../worker/core.mjs";
 
-const SOURCE = { owner: "shivinate7", repo: "mailaudit-data", branch: "main", dir: "photos" }; // PHOTOS in src/entry.jsx
+const SOURCE = { owner: "swlshiv", repo: "mailaudit-data", branch: "main", dir: "photos" }; // PHOTOS in src/entry.jsx
 const WORKER = (process.env.WORKER_URL || "https://manifestnumberone.shivamsemwal01.workers.dev").replace(/\/$/, "");
 const apply = process.argv.includes("--apply");
 const token = process.env.GITHUB_TOKEN || "";

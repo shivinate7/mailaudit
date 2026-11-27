@@ -4,7 +4,7 @@ Mail Day Ledger tracks which TCGplayer card orders have arrived, using OrderWand
 
 The app presents itself as MANIFEST.
 
-**Live site:** https://shivinate7.github.io/mailaudit/
+**Live site:** https://swlshiv.github.io/mailaudit/
 
 **Status:** live. The native client is in progress.
 
