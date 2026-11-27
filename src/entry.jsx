@@ -288,7 +288,7 @@ window.versions = {
    per photo into that log and leave the path filter doing real work to hide
    them. Don't "simplify" the branch away on the strength of the dead reason. */
 const REMOTE = {
-  owner: "shivinate7",
+  owner: "swlshiv",
   repo: "mailaudit-data",
   branch: "data",
   path: "ledger.json",
@@ -301,7 +301,7 @@ const REMOTE = {
    `mailaudit` went public and the ledger had to leave it anyway.
 
    What the merge buys: one repo in the token's blast radius instead of two.
-   `shivinate7.github.io` is a single origin across every Pages project, so
+   `swlshiv.github.io` is a single origin across every Pages project, so
    script from any other project there can read the stored token — the mitigation
    is the fine-grained, Contents-only, now genuinely SINGLE-repo scope.
 
@@ -315,7 +315,7 @@ const REMOTE = {
    written exactly once by whoever holds it, so photo sync is a set difference
    with no merge, no sha bookkeeping and no conflict possible by construction. */
 const PHOTOS = {
-  owner: "shivinate7",
+  owner: "swlshiv",
   repo: "mailaudit-data",
   branch: "main",
   dir: "photos",

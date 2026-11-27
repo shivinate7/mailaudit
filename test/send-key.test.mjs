@@ -53,7 +53,7 @@ const SCRIPT = join(REPO, "scripts", "send-key.mjs");
 const SCRIPT_PRESENT = existsSync(SCRIPT);
 
 const FAKE_KEY = "f4k3K3y0a1b2c3d4e5f60718293a4b5c6d";
-const URL_WITH_KEY = `https://shivinate7.github.io/mailaudit/#k=${FAKE_KEY}`;
+const URL_WITH_KEY = `https://swlshiv.github.io/mailaudit/#k=${FAKE_KEY}`;
 const NATIVE_URL = `manifestledger://sync#k=${FAKE_KEY}`;
 const LEAK_TOKENS = [FAKE_KEY, FAKE_KEY.slice(0, 8), FAKE_KEY.slice(-8), URL_WITH_KEY, NATIVE_URL];
 const BAD_KEY = "bad key/x"; // fails KEY_RE: a space and a slash

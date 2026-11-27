@@ -246,7 +246,7 @@ function b64ToBlob(b64, type) {
 const remoteApi = {
   async target() {
     return {
-      owner: "shivinate7",
+      owner: "swlshiv",
       repo: "mailaudit",
       branch: "data",
       path: "ledger.json",
@@ -384,7 +384,7 @@ const remoteApi = {
   },
   async photoTarget() {
     return {
-      owner: "shivinate7",
+      owner: "swlshiv",
       repo: "mailaudit-photos",
       branch: "main",
       dir: "photos",

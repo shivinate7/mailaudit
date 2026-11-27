@@ -6,7 +6,7 @@ The private repo `mailaudit-data` holds the frozen ledger history on branch `dat
 
 Privacy was the whole reason for two repos. A mailing label shows a delivery address. The ledger repo was public. That reason ended when the ledger repo went private.
 
-The merge happened when `mailaudit` went public. The ledger had to leave it regardless. Before that, `mailaudit` held the ledger on its own `data` branch, which is why it had to stay private. Moving the ledger out let the source repo go public. `shivinate7.github.io` is one origin across every Pages project. So a key stored on that origin is exposed to every project there. See `token-sits-on-shared-origin`.
+The merge happened when `mailaudit` went public. The ledger had to leave it regardless. Before that, `mailaudit` held the ledger on its own `data` branch, which is why it had to stay private. Moving the ledger out let the source repo go public. `swlshiv.github.io` is one origin across every Pages project. So a key stored on that origin is exposed to every project there. See `token-sits-on-shared-origin`.
 
 The GitHub 409 on rapid successive Contents writes was a reason too. It retired with the GitHub photo writes, see `photo-writes-wait-one-second`.
 
