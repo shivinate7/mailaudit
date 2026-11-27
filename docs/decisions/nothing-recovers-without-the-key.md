@@ -8,7 +8,7 @@ Kind: process
 
 Home: docs/decisions/sync-revamp-cloudflare.md
 
-**Holds while:** the Worker's snapshot routes need a device key (`worker-keeps-snapshots`). An unauthenticated request to `repos/shivinate7/mailaudit-data` returns 404. `src/entry.jsx` sends a stored GitHub token as a Bearer header if one is present.
+**Holds while:** the Worker's snapshot routes need a device key (`worker-keeps-snapshots`). An unauthenticated request to `repos/swlshiv/mailaudit-data` returns 404. `src/entry.jsx` sends a stored GitHub token as a Bearer header if one is present.
 
 ## See also
 

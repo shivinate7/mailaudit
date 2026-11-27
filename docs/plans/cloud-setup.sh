@@ -13,12 +13,12 @@ say() { printf 'mailaudit setup: %s\n' "$*"; }
 # This is the paste block from the claude-settings README, section "Cloud sessions", unchanged
 # in effect. It installs agents, hooks, skills and the output style.
 f=$(mktemp)
-if ! curl -fsS --max-time 20 https://raw.githubusercontent.com/shivinate7/claude-settings/main/cloud-setup.sh -o "$f"; then
+if ! curl -fsS --max-time 20 https://raw.githubusercontent.com/swlshiv/claude-settings/main/cloud-setup.sh -o "$f"; then
   : > "$f"
   for d in ${CLAUDE_SETTINGS_SEARCH_ROOTS:-/home/user /root}; do
     for c in "$d"/*/cloud-setup.sh; do
       case "$(git -C "${c%/*}" config --get remote.origin.url 2>/dev/null)" in
-        *github.com[/:]shivinate7/claude-settings|*github.com[/:]shivinate7/claude-settings.git) cp "$c" "$f" && break 2 ;;
+        *github.com[/:]swlshiv/claude-settings|*github.com[/:]swlshiv/claude-settings.git) cp "$c" "$f" && break 2 ;;
       esac
     done
   done

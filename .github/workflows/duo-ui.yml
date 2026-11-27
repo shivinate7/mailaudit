@@ -41,7 +41,7 @@ env:
   # The simulator device types, by name.
   DUO_DEVICE: "iPhone Duo"
   PRO_DEVICE: "iPhone 18 Pro"
-  # hinge v0.3.0 folds the iPhone Duo simulator. The same pin as shivinate7/home scripts/screen-check.sh.
+  # hinge v0.3.0 folds the iPhone Duo simulator. The same pin as swlshiv/home scripts/screen-check.sh.
   HINGE_SHA: afb8f0bd277cb12187f0844a79542cbac35e7385
 
 on:
@@ -358,6 +358,6 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: shivinate7/claude-settings/actions/ci-done-comment@stable # tracks claude-settings stable
+      - uses: swlshiv/claude-settings/actions/ci-done-comment@stable # tracks claude-settings stable
         with:
           needs: ${{ toJSON(needs) }}

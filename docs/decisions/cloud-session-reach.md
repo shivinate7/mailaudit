@@ -10,9 +10,9 @@ This record says what a cloud session of this repo can do against the live Worke
 |---|---|---|
 | Worker, read | works: `/health`, `/ledger`, `/snapshots`, `/kept`, `/photos` all answer 200 | `curl -sS -o /dev/null -w "%{http_code}\n" https://manifestnumberone.shivamsemwal01.workers.dev/ledger` prints 200 (401 means that the proxy is not adding the key) |
 | Worker, write | works: `POST /ledger` with `{"ledger": ...}` | `curl -sS -o /dev/null -w "%{http_code}\n" -X POST -H 'content-type: application/json' -d '{"ledger":{}}' <host>/ledger` prints 400 `bad ledger`: the key is accepted and the shape check refuses it, so nothing is stored |
-| GitHub, this repo | REST works through `gh api repos/{owner}/{repo}/...` and the GitHub MCP tools; branches push | `gh api repos/shivinate7/mailaudit --jq .full_name` prints the name |
-| GitHub, `gh pr`, `gh issue`, GraphQL | refused with 403 | `gh pr list -R shivinate7/mailaudit -L1` prints HTTP 403 |
-| GitHub, a repo not attached to the session (`mailaudit-data`) | refused with 403 until the add-repo tool attaches it | `gh api repos/shivinate7/mailaudit-data` prints 403 |
+| GitHub, this repo | REST works through `gh api repos/{owner}/{repo}/...` and the GitHub MCP tools; branches push | `gh api repos/swlshiv/mailaudit --jq .full_name` prints the name |
+| GitHub, `gh pr`, `gh issue`, GraphQL | refused with 403 | `gh pr list -R swlshiv/mailaudit -L1` prints HTTP 403 |
+| GitHub, a repo not attached to the session (`mailaudit-data`) | refused with 403 until the add-repo tool attaches it | `gh api repos/swlshiv/mailaudit-data` prints 403 |
 | Mac | not reachable: the owner's computer serves no folder to a cloud session | the cloud session's computer-folders tool lists no usable folder, and shows the Mac folders as not available |
 | Xcode, simulators, `swift test` | not available: Ubuntu VM | these run in macOS CI (`native-ci-on-hosted-macos`) |
 | Phone install | not available: it runs on the Mac | the CI route is the manual `testflight` dispatch (`native-ships-via-testflight`) |

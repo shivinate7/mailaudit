@@ -60,10 +60,10 @@ const TRIGGER_TYPES = ["opened", "synchronize", "reopened", "ready_for_review", 
 const PASS_FLAGS = ["-retry-tests-on-failure", "-resultBundlePath"];
 const HINGE_REPO = "artemnovichkov/hinge";
 const HINGE_SHA = "afb8f0bd277cb12187f0844a79542cbac35e7385";
-const CI_DONE_ACTION = "shivinate7/claude-settings/actions/ci-done-comment";
+const CI_DONE_ACTION = "swlshiv/claude-settings/actions/ci-done-comment";
 const UPLOAD = "actions/upload-artifact";
 // Every claude-settings action is called at this branch ref, not a sha (owner ruling R44 part 1).
-const CLAUDE_SETTINGS = "shivinate7/claude-settings/";
+const CLAUDE_SETTINGS = "swlshiv/claude-settings/";
 const STABLE = "stable";
 const SHA = /^[0-9a-f]{40}$/;
 const DUO_FILE = /^Duo.*UITests\.swift$/;
