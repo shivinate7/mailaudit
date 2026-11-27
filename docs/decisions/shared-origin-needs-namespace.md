@@ -1,8 +1,8 @@
 # The Pages origin is shared, so storage is namespaced
 
-`shivinate7.github.io` is a single origin across every repo the user has on Pages. That is why the key namespace is `mailday:`. Every stored key carries that prefix.
+`swlshiv.github.io` is a single origin across every repo the user has on Pages. That is why the key namespace is `mailday:`. Every stored key carries that prefix.
 
-**Holds while:** `src/entry.jsx` still sets the storage namespace `mailday:`, and the app is still served from shivinate7.github.io.
+**Holds while:** `src/entry.jsx` still sets the storage namespace `mailday:`, and the app is still served from swlshiv.github.io.
 
 It is also why the storage quota is shared. The quota is per origin, so every other Pages project on that origin uses the same quota.
 
